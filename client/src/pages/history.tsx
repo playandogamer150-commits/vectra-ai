@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useI18n } from "@/lib/i18n";
 import type { GeneratedPrompt } from "@shared/schema";
 import { 
   History as HistoryIcon, Play, Copy, Gauge, Clock, Zap, 
@@ -15,6 +16,7 @@ import { format } from "date-fns";
 
 export default function HistoryPage() {
   const { toast } = useToast();
+  const { t } = useI18n();
 
   const { data: history, isLoading } = useQuery<GeneratedPrompt[]>({
     queryKey: ["/api/history"],
@@ -22,7 +24,7 @@ export default function HistoryPage() {
 
   const handleCopy = async (prompt: string) => {
     await navigator.clipboard.writeText(prompt);
-    toast({ title: "Copied to clipboard!" });
+    toast({ title: t.studio.promptCopied });
   };
 
   const formatDate = (dateStr: string | Date) => {
@@ -37,8 +39,8 @@ export default function HistoryPage() {
     <div className="min-h-screen pt-16">
       <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2" data-testid="text-history-title">Generation History</h1>
-          <p className="text-muted-foreground">Review and replay your previous prompts</p>
+          <h1 className="text-3xl font-semibold mb-2" data-testid="text-history-title">{t.history.title}</h1>
+          <p className="text-muted-foreground">{t.history.subtitle}</p>
         </div>
 
         {isLoading ? (
@@ -62,14 +64,14 @@ export default function HistoryPage() {
           <Card className="text-center py-16">
             <CardContent>
               <HistoryIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">No prompts generated yet</h3>
+              <h3 className="text-lg font-medium mb-2">{t.history.noHistory}</h3>
               <p className="text-muted-foreground mb-6">
-                Start creating prompts in the Studio to see them here
+                {t.history.noHistoryDesc}
               </p>
               <Link href="/studio">
                 <Button className="gap-2">
                   <Zap className="w-4 h-4" />
-                  Open Studio
+                  {t.history.goToStudio}
                 </Button>
               </Link>
             </CardContent>
@@ -98,7 +100,7 @@ export default function HistoryPage() {
                             className="gap-1 shrink-0"
                           >
                             <Gauge className="w-3 h-3" />
-                            {item.score}
+                            {t.history.score}: {item.score}
                           </Badge>
                         </div>
                         

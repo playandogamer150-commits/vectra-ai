@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { useI18n } from "@/lib/i18n";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { LlmProfile, PromptBlueprint, Filter, GeneratedPrompt } from "@shared/schema";
 import { 
@@ -22,6 +23,7 @@ type FilterValue = Record<string, string>;
 
 export default function StudioPage() {
   const { toast } = useToast();
+  const { t } = useI18n();
   const [selectedProfile, setSelectedProfile] = useState<string>("");
   const [selectedBlueprint, setSelectedBlueprint] = useState<string>("");
   const [activeFilters, setActiveFilters] = useState<FilterValue>({});
@@ -64,11 +66,11 @@ export default function StudioPage() {
     onSuccess: (data: GeneratedPrompt) => {
       setResult(data);
       setSeed(data.seed);
-      toast({ title: "Prompt generated successfully!" });
+      toast({ title: t.studio.copied });
       queryClient.invalidateQueries({ queryKey: ["/api/history"] });
     },
     onError: (error: Error) => {
-      toast({ title: "Generation failed", description: error.message, variant: "destructive" });
+      toast({ title: t.studio.errorGenerating, description: error.message, variant: "destructive" });
     },
   });
 
@@ -80,7 +82,7 @@ export default function StudioPage() {
   const handleCopy = async () => {
     if (result) {
       await navigator.clipboard.writeText(result.compiledPrompt);
-      toast({ title: "Copied to clipboard!" });
+      toast({ title: t.studio.promptCopied });
     }
   };
 
@@ -107,8 +109,8 @@ export default function StudioPage() {
     <div className="min-h-screen pt-16">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2" data-testid="text-studio-title">Prompt Studio</h1>
-          <p className="text-muted-foreground">Configure your prompt parameters and generate</p>
+          <h1 className="text-3xl font-semibold mb-2" data-testid="text-studio-title">{t.studio.title}</h1>
+          <p className="text-muted-foreground">{t.studio.subtitle}</p>
         </div>
 
         <div className="grid lg:grid-cols-[320px_1fr] gap-8">
@@ -117,7 +119,7 @@ export default function StudioPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-2">
                   <Sparkles className="w-4 h-4" />
-                  LLM Profile
+                  {t.studio.llmProfile}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -156,7 +158,7 @@ export default function StudioPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-2">
                   <Layers className="w-4 h-4" />
-                  Blueprint
+                  {t.studio.blueprint}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -207,7 +209,7 @@ export default function StudioPage() {
                 >
                   <CardTitle className="text-sm font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-2">
                     <SlidersHorizontal className="w-4 h-4" />
-                    Filters
+                    {t.studio.filters}
                   </CardTitle>
                   {showFilters ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                 </button>
@@ -250,26 +252,26 @@ export default function StudioPage() {
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-2">
                   <FileText className="w-4 h-4" />
-                  Subject & Context
+                  {t.studio.inputFields}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="subject">Subject</Label>
+                    <Label htmlFor="subject">{t.studio.subject}</Label>
                     <Input
                       id="subject"
-                      placeholder="Main subject of the prompt..."
+                      placeholder={t.studio.subjectPlaceholder}
                       value={subject}
                       onChange={(e) => setSubject(e.target.value)}
                       data-testid="input-subject"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="environment">Environment</Label>
+                    <Label htmlFor="environment">{t.studio.environment}</Label>
                     <Input
                       id="environment"
-                      placeholder="Setting or background..."
+                      placeholder={t.studio.environmentPlaceholder}
                       value={environment}
                       onChange={(e) => setEnvironment(e.target.value)}
                       data-testid="input-environment"
@@ -278,10 +280,10 @@ export default function StudioPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="context">Context</Label>
+                  <Label htmlFor="context">{t.studio.context}</Label>
                   <Textarea
                     id="context"
-                    placeholder="Additional context, mood, atmosphere..."
+                    placeholder={t.studio.contextPlaceholder}
                     className="min-h-24"
                     value={context}
                     onChange={(e) => setContext(e.target.value)}
@@ -291,20 +293,20 @@ export default function StudioPage() {
 
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label htmlFor="items">Items / Elements</Label>
+                    <Label htmlFor="items">{t.studio.items}</Label>
                     <Input
                       id="items"
-                      placeholder="Objects, props, details..."
+                      placeholder={t.studio.itemsPlaceholder}
                       value={items}
                       onChange={(e) => setItems(e.target.value)}
                       data-testid="input-items"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="restrictions">Restrictions</Label>
+                    <Label htmlFor="restrictions">{t.studio.restrictions}</Label>
                     <Input
                       id="restrictions"
-                      placeholder="What to avoid..."
+                      placeholder={t.studio.restrictionsPlaceholder}
                       value={restrictions}
                       onChange={(e) => setRestrictions(e.target.value)}
                       data-testid="input-restrictions"
@@ -316,11 +318,11 @@ export default function StudioPage() {
 
                 <div className="flex items-end gap-4">
                   <div className="flex-1 space-y-2">
-                    <Label htmlFor="seed">Seed (for reproducibility)</Label>
+                    <Label htmlFor="seed">{t.studio.seed}</Label>
                     <div className="flex gap-2">
                       <Input
                         id="seed"
-                        placeholder="Enter seed or leave empty for random"
+                        placeholder={t.studio.seedPlaceholder}
                         value={seed}
                         onChange={(e) => setSeed(e.target.value)}
                         className="font-mono"
@@ -350,12 +352,12 @@ export default function StudioPage() {
               {generateMutation.isPending ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  Generating...
+                  {t.studio.generating}
                 </>
               ) : (
                 <>
                   <Zap className="w-4 h-4" />
-                  Generate Prompt
+                  {t.studio.generatePrompt}
                 </>
               )}
             </Button>
@@ -365,7 +367,7 @@ export default function StudioPage() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
                     <CardTitle className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-                      Generated Prompt
+                      {t.studio.generatedPrompt}
                     </CardTitle>
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge variant="secondary" data-testid="badge-profile">
@@ -380,7 +382,7 @@ export default function StudioPage() {
                         data-testid="badge-score"
                       >
                         <Gauge className="w-3 h-3" />
-                        Score: {result.score}
+                        {t.studio.qualityScore}: {result.score}
                       </Badge>
                     </div>
                   </div>
@@ -404,15 +406,15 @@ export default function StudioPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <Button variant="outline" size="sm" onClick={handleCopy} className="gap-2" data-testid="button-copy">
                       <Copy className="w-4 h-4" />
-                      Copy
+                      {t.studio.copyToClipboard}
                     </Button>
                     <Button variant="outline" size="sm" onClick={handleExportJSON} className="gap-2" data-testid="button-export">
                       <Download className="w-4 h-4" />
-                      Export JSON
+                      {t.studio.exportJson}
                     </Button>
                     <Button variant="outline" size="sm" className="gap-2" data-testid="button-save">
                       <Save className="w-4 h-4" />
-                      Save Version
+                      {t.studio.saveVersion}
                     </Button>
                     <Button variant="outline" size="sm" className="gap-2" data-testid="button-share">
                       <Share2 className="w-4 h-4" />
@@ -424,9 +426,9 @@ export default function StudioPage() {
                     <CheckCircle className="w-3 h-3" />
                     <span>Seed: <code className="font-mono bg-muted px-1 rounded">{result.seed}</code></span>
                     <span className="mx-2">|</span>
-                    <span>{result.metadata?.blockCount} blocks</span>
+                    <span>{result.metadata?.blockCount} {t.studio.blocksUsed}</span>
                     <span className="mx-2">|</span>
-                    <span>{result.metadata?.filterCount} filters applied</span>
+                    <span>{result.metadata?.filterCount} {t.studio.filtersApplied}</span>
                   </div>
                 </CardContent>
               </Card>

@@ -1,20 +1,22 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/theme-provider";
+import { useI18n, LanguageToggle } from "@/lib/i18n";
 import { Moon, Sun, Zap, Menu, X } from "lucide-react";
 import { useState } from "react";
 
-const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/studio", label: "Studio" },
-  { href: "/library", label: "Library" },
-  { href: "/history", label: "History" },
-];
-
 export function Header() {
   const { theme, toggleTheme } = useTheme();
+  const { t } = useI18n();
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const navItems = [
+    { href: "/", label: t.nav.home },
+    { href: "/studio", label: t.nav.studio },
+    { href: "/library", label: t.nav.library },
+    { href: "/history", label: t.nav.history },
+  ];
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-16 border-b border-border bg-background/80 backdrop-blur-md">
@@ -41,6 +43,7 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <LanguageToggle />
           <Button
             size="icon"
             variant="ghost"

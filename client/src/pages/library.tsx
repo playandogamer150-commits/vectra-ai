@@ -6,6 +6,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useI18n } from "@/lib/i18n";
 import type { PromptBlueprint } from "@shared/schema";
 import { Search, ArrowRight, Layers, Grid3X3, Camera, Tv, Palette, Gamepad2, Frame, Monitor } from "lucide-react";
 
@@ -22,6 +23,7 @@ const categoryIcons: Record<string, React.ElementType> = {
 const categories = ["all", "aesthetic", "layout", "surveillance", "retro", "gaming", "fashion", "ui"];
 
 export default function LibraryPage() {
+  const { t } = useI18n();
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
 
@@ -40,8 +42,8 @@ export default function LibraryPage() {
     <div className="min-h-screen pt-16">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2" data-testid="text-library-title">Blueprint Library</h1>
-          <p className="text-muted-foreground">Explore pre-built prompt templates for any creative need</p>
+          <h1 className="text-3xl font-semibold mb-2" data-testid="text-library-title">{t.library.title}</h1>
+          <p className="text-muted-foreground">{t.library.subtitle}</p>
         </div>
 
         <div className="sticky top-16 z-40 bg-background/80 backdrop-blur-md -mx-4 md:-mx-8 px-4 md:px-8 py-4 border-b border-border mb-8">
@@ -49,7 +51,7 @@ export default function LibraryPage() {
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search blueprints..."
+                placeholder={t.library.searchPlaceholder}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-10"
@@ -65,7 +67,7 @@ export default function LibraryPage() {
                   onClick={() => setActiveCategory(cat)}
                   data-testid={`button-category-${cat}`}
                 >
-                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  {cat === "all" ? t.library.allCategories : cat.charAt(0).toUpperCase() + cat.slice(1)}
                 </Button>
               ))}
             </div>
@@ -90,8 +92,7 @@ export default function LibraryPage() {
         ) : filteredBlueprints?.length === 0 ? (
           <div className="text-center py-16">
             <Layers className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No blueprints found</h3>
-            <p className="text-muted-foreground mb-4">Try adjusting your search or category filter</p>
+            <h3 className="text-lg font-medium mb-2">{t.library.noResults}</h3>
             <Button variant="outline" onClick={() => { setSearch(""); setActiveCategory("all"); }}>
               Clear filters
             </Button>
@@ -119,14 +120,14 @@ export default function LibraryPage() {
                       {blueprint.description}
                     </p>
                     <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-                      <span>{(blueprint.blocks as string[])?.length || 0} blocks</span>
+                      <span>{(blueprint.blocks as string[])?.length || 0} {t.library.blocks}</span>
                       <span>{(blueprint.constraints as string[])?.length || 0} constraints</span>
                     </div>
                   </CardContent>
                   <CardFooter>
                     <Link href={`/studio?blueprint=${blueprint.id}`} className="w-full">
                       <Button variant="outline" className="w-full gap-2" data-testid={`button-use-blueprint-${blueprint.id}`}>
-                        Use Blueprint
+                        {t.library.useBlueprint}
                         <ArrowRight className="w-4 h-4" />
                       </Button>
                     </Link>

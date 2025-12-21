@@ -2,61 +2,63 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useI18n } from "@/lib/i18n";
 import { Zap, Repeat, Sliders, Check, ArrowRight, Sparkles, Layers, Target } from "lucide-react";
 
-const features = [
-  {
-    icon: Layers,
-    title: "Infinite Blueprints",
-    description: "Pre-built templates for any creative need - from pixel art to cinematic shots",
-  },
-  {
-    icon: Repeat,
-    title: "Reproducible Results",
-    description: "Seed-based generation ensures you can recreate any prompt exactly",
-  },
-  {
-    icon: Sliders,
-    title: "Filter Precision",
-    description: "Fine-tune aesthetics, camera styles, and temporal effects with granular filters",
-  },
-];
-
-const pricingPlans = [
-  {
-    name: "Free",
-    price: "$0",
-    period: "forever",
-    features: [
-      "3 generations per day",
-      "3 filter slots",
-      "Basic blueprints",
-      "Copy prompt text",
-    ],
-    notIncluded: ["Export JSON", "Save versions", "Advanced presets", "Priority support"],
-    cta: "Get Started",
-    variant: "outline" as const,
-  },
-  {
-    name: "Pro",
-    price: "$12",
-    period: "per month",
-    badge: "Popular",
-    features: [
-      "Unlimited generations",
-      "All premium filters",
-      "All blueprints & presets",
-      "Export JSON with metadata",
-      "Save & version prompts",
-      "Priority support",
-    ],
-    notIncluded: [],
-    cta: "Upgrade to Pro",
-    variant: "default" as const,
-  },
-];
-
 export default function LandingPage() {
+  const { t } = useI18n();
+
+  const features = [
+    {
+      icon: Layers,
+      title: t.landing.feature1Title,
+      description: t.landing.feature1Desc,
+    },
+    {
+      icon: Sliders,
+      title: t.landing.feature2Title,
+      description: t.landing.feature2Desc,
+    },
+    {
+      icon: Repeat,
+      title: t.landing.feature3Title,
+      description: t.landing.feature3Desc,
+    },
+  ];
+
+  const pricingPlans = [
+    {
+      name: t.landing.free,
+      price: "$0",
+      period: t.landing.freePriceMonth,
+      features: [
+        t.landing.freeFeature1,
+        t.landing.freeFeature2,
+        t.landing.freeFeature3,
+        t.landing.freeFeature4,
+      ],
+      notIncluded: [],
+      cta: t.landing.startFree,
+      variant: "outline" as const,
+    },
+    {
+      name: t.landing.pro,
+      price: "$12",
+      period: t.landing.proPriceMonth,
+      badge: "Popular",
+      features: [
+        t.landing.proFeature1,
+        t.landing.proFeature2,
+        t.landing.proFeature3,
+        t.landing.proFeature4,
+        t.landing.proFeature5,
+      ],
+      notIncluded: [],
+      cta: t.landing.upgradePro,
+      variant: "default" as const,
+    },
+  ];
+
   return (
     <div className="min-h-screen">
       <section className="relative pt-32 pb-24 px-4 md:px-8 overflow-hidden">
@@ -67,29 +69,28 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto text-center relative">
           <Badge variant="secondary" className="mb-6" data-testid="badge-hero">
             <Sparkles className="w-3 h-3 mr-1" />
-            Prompt Engineering Reimagined
+            Prompt Engineering
           </Badge>
           
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6" data-testid="text-hero-title">
-            Forge Production-Grade
-            <span className="text-primary block mt-2">Prompts in Seconds</span>
+            {t.landing.heroTitle}
           </h1>
           
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10" data-testid="text-hero-description">
-            The professional studio for prompt engineers. Combine blueprints, filters, and reproducible seeds to generate infinite variations with precision.
+            {t.landing.heroSubtitle}
           </p>
           
           <div className="flex flex-wrap justify-center gap-4">
             <Link href="/studio">
               <Button size="lg" className="gap-2" data-testid="button-hero-cta">
                 <Zap className="w-4 h-4" />
-                Open Studio
+                {t.landing.getStarted}
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
             <Link href="/library">
               <Button size="lg" variant="outline" data-testid="button-hero-secondary">
-                Browse Blueprints
+                {t.landing.viewLibrary}
               </Button>
             </Link>
           </div>
@@ -100,10 +101,10 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-semibold mb-4" data-testid="text-features-title">
-              Built for Prompt Engineers
+              {t.landing.featuresTitle}
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Every feature designed with production workflows in mind
+              {t.landing.featuresSubtitle}
             </p>
           </div>
           
@@ -129,10 +130,10 @@ export default function LandingPage() {
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-semibold mb-4" data-testid="text-pricing-title">
-              Simple, Transparent Pricing
+              {t.landing.pricingTitle}
             </h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Start free, upgrade when you need more power
+              {t.landing.pricingSubtitle}
             </p>
           </div>
           
@@ -152,7 +153,7 @@ export default function LandingPage() {
                   <CardTitle className="text-2xl">{plan.name}</CardTitle>
                   <div className="mt-4">
                     <span className="text-4xl font-bold">{plan.price}</span>
-                    <span className="text-muted-foreground ml-1">/{plan.period}</span>
+                    <span className="text-muted-foreground ml-1">{plan.period}</span>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -161,12 +162,6 @@ export default function LandingPage() {
                       <li key={feature} className="flex items-center gap-3">
                         <Check className="w-4 h-4 text-primary shrink-0" />
                         <span className="text-sm">{feature}</span>
-                      </li>
-                    ))}
-                    {plan.notIncluded.map((feature) => (
-                      <li key={feature} className="flex items-center gap-3 opacity-50">
-                        <div className="w-4 h-4 shrink-0" />
-                        <span className="text-sm line-through">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -184,15 +179,15 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto text-center">
           <Target className="w-12 h-12 mx-auto mb-6 opacity-80" />
           <h2 className="text-3xl font-semibold mb-4" data-testid="text-cta-title">
-            Ready to Forge Your First Prompt?
+            {t.landing.heroTitle}
           </h2>
           <p className="text-primary-foreground/80 max-w-xl mx-auto mb-8">
-            Join thousands of prompt engineers who use PromptForge to create consistent, production-ready prompts.
+            {t.landing.footer}
           </p>
           <Link href="/studio">
             <Button size="lg" variant="secondary" className="gap-2" data-testid="button-footer-cta">
               <Zap className="w-4 h-4" />
-              Start Creating
+              {t.landing.getStarted}
             </Button>
           </Link>
         </div>
@@ -207,7 +202,7 @@ export default function LandingPage() {
             <span className="font-semibold">PromptForge</span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Built for prompt engineers, by prompt engineers.
+            {t.landing.footer}
           </p>
         </div>
       </footer>
