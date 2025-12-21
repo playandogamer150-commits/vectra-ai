@@ -1,4 +1,4 @@
-import type { ProfileDefinition, BlueprintDefinition, BlockDefinition, FilterDefinition } from "./types";
+import type { ProfileDefinition, BlueprintDefinition, BlockDefinition, FilterDefinition, BaseModelDefinition } from "./types";
 
 export const defaultProfiles: ProfileDefinition[] = [
   {
@@ -208,5 +208,29 @@ export const defaultFilters: FilterDefinition[] = [
       normal: "standard detail level",
       long: "extended detailed description",
     },
+  },
+];
+
+export const defaultBaseModels: BaseModelDefinition[] = [
+  {
+    name: "sdxl_1.0",
+    displayName: "Stable Diffusion XL 1.0",
+    loraFormat: "safetensors",
+    defaultResolution: 1024,
+    isActive: 1,
+  },
+  {
+    name: "flux_pro",
+    displayName: "Flux Pro",
+    loraFormat: "safetensors",
+    defaultResolution: 1024,
+    isActive: 1,
+  },
+  {
+    name: "sd_1.5",
+    displayName: "Stable Diffusion 1.5",
+    loraFormat: "safetensors",
+    defaultResolution: 512,
+    isActive: 1,
   },
 ];

@@ -2,9 +2,10 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { compiler } from "./prompt-engine/compiler";
-import { defaultProfiles, defaultBlueprints, defaultBlocks, defaultFilters } from "./prompt-engine/presets";
+import { defaultProfiles, defaultBlueprints, defaultBlocks, defaultFilters, defaultBaseModels } from "./prompt-engine/presets";
 import { generateRequestSchema } from "@shared/schema";
 import { ZodError } from "zod";
+import { registerLoraRoutes } from "./lora-routes";
 
 async function seedDatabase() {
   const existingProfiles = await storage.getProfiles();
@@ -33,6 +34,10 @@ async function seedDatabase() {
       });
     }
     
+    for (const baseModel of defaultBaseModels) {
+      await storage.createBaseModel(baseModel);
+    }
+    
     console.log("Database seeded successfully!");
   }
 }
@@ -48,6 +53,8 @@ export async function registerRoutes(
   const blocks = await storage.getBlocks();
   const filters = await storage.getFilters();
   compiler.setData(profiles, blueprints, blocks, filters);
+
+  registerLoraRoutes(app);
 
   app.get("/api/profiles", async (_req, res) => {
     try {

@@ -1,13 +1,17 @@
 import { 
   users, llmProfiles, promptBlueprints, promptBlocks, filters, 
   generatedPrompts, promptVersions, rateLimits,
+  loraModels, loraDatasets, loraVersions, loraJobs, userLoraActive, baseModels,
   type User, type InsertUser, type LlmProfile, type InsertLlmProfile,
   type PromptBlueprint, type InsertBlueprint, type PromptBlock, type InsertBlock,
   type Filter, type InsertFilter, type GeneratedPrompt, type InsertGeneratedPrompt,
-  type PromptVersion, type InsertPromptVersion
+  type PromptVersion, type InsertPromptVersion,
+  type LoraModel, type InsertLoraModel, type LoraDataset, type InsertLoraDataset,
+  type LoraVersion, type InsertLoraVersion, type LoraJob, type InsertLoraJob,
+  type UserLoraActive, type BaseModel, type InsertBaseModel
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -39,6 +43,31 @@ export interface IStorage {
   
   checkRateLimit(key: string, limit: number, windowMs: number): Promise<boolean>;
   incrementRateLimit(key: string): Promise<void>;
+  
+  getLoraModels(userId: string): Promise<LoraModel[]>;
+  getLoraModel(id: string): Promise<LoraModel | undefined>;
+  createLoraModel(model: InsertLoraModel): Promise<LoraModel>;
+  
+  getLoraDatasets(loraModelId: string): Promise<LoraDataset[]>;
+  getLoraDataset(id: string): Promise<LoraDataset | undefined>;
+  createLoraDataset(dataset: InsertLoraDataset): Promise<LoraDataset>;
+  updateLoraDataset(id: string, data: Partial<InsertLoraDataset>): Promise<LoraDataset | undefined>;
+  
+  getLoraVersions(loraModelId: string): Promise<LoraVersion[]>;
+  getLoraVersion(id: string): Promise<LoraVersion | undefined>;
+  createLoraVersion(version: InsertLoraVersion): Promise<LoraVersion>;
+  updateLoraVersion(id: string, data: Partial<InsertLoraVersion>): Promise<LoraVersion | undefined>;
+  
+  getLoraJobs(loraVersionId: string): Promise<LoraJob[]>;
+  getLoraJob(id: string): Promise<LoraJob | undefined>;
+  createLoraJob(job: InsertLoraJob): Promise<LoraJob>;
+  updateLoraJob(id: string, data: Partial<InsertLoraJob>): Promise<LoraJob | undefined>;
+  
+  getUserActiveLora(userId: string): Promise<UserLoraActive | undefined>;
+  setUserActiveLora(userId: string, loraVersionId: string, weight: number): Promise<UserLoraActive>;
+  
+  getBaseModels(): Promise<BaseModel[]>;
+  createBaseModel(model: InsertBaseModel): Promise<BaseModel>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -180,6 +209,125 @@ export class DatabaseStorage implements IStorage {
         count: 1,
       });
     }
+  }
+
+  async getLoraModels(userId: string): Promise<LoraModel[]> {
+    return db.select().from(loraModels)
+      .where(eq(loraModels.userId, userId))
+      .orderBy(desc(loraModels.createdAt));
+  }
+
+  async getLoraModel(id: string): Promise<LoraModel | undefined> {
+    const [model] = await db.select().from(loraModels).where(eq(loraModels.id, id));
+    return model || undefined;
+  }
+
+  async createLoraModel(model: InsertLoraModel): Promise<LoraModel> {
+    const [created] = await db.insert(loraModels).values(model).returning();
+    return created;
+  }
+
+  async getLoraDatasets(loraModelId: string): Promise<LoraDataset[]> {
+    return db.select().from(loraDatasets)
+      .where(eq(loraDatasets.loraModelId, loraModelId))
+      .orderBy(desc(loraDatasets.createdAt));
+  }
+
+  async getLoraDataset(id: string): Promise<LoraDataset | undefined> {
+    const [dataset] = await db.select().from(loraDatasets).where(eq(loraDatasets.id, id));
+    return dataset || undefined;
+  }
+
+  async createLoraDataset(dataset: InsertLoraDataset): Promise<LoraDataset> {
+    const [created] = await db.insert(loraDatasets).values(dataset).returning();
+    return created;
+  }
+
+  async updateLoraDataset(id: string, data: Partial<InsertLoraDataset>): Promise<LoraDataset | undefined> {
+    const [updated] = await db.update(loraDatasets)
+      .set(data)
+      .where(eq(loraDatasets.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async getLoraVersions(loraModelId: string): Promise<LoraVersion[]> {
+    return db.select().from(loraVersions)
+      .where(eq(loraVersions.loraModelId, loraModelId))
+      .orderBy(desc(loraVersions.createdAt));
+  }
+
+  async getLoraVersion(id: string): Promise<LoraVersion | undefined> {
+    const [version] = await db.select().from(loraVersions).where(eq(loraVersions.id, id));
+    return version || undefined;
+  }
+
+  async createLoraVersion(version: InsertLoraVersion): Promise<LoraVersion> {
+    const [created] = await db.insert(loraVersions).values(version).returning();
+    return created;
+  }
+
+  async updateLoraVersion(id: string, data: Partial<InsertLoraVersion>): Promise<LoraVersion | undefined> {
+    const [updated] = await db.update(loraVersions)
+      .set(data)
+      .where(eq(loraVersions.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async getLoraJobs(loraVersionId: string): Promise<LoraJob[]> {
+    return db.select().from(loraJobs)
+      .where(eq(loraJobs.loraVersionId, loraVersionId))
+      .orderBy(desc(loraJobs.createdAt));
+  }
+
+  async getLoraJob(id: string): Promise<LoraJob | undefined> {
+    const [job] = await db.select().from(loraJobs).where(eq(loraJobs.id, id));
+    return job || undefined;
+  }
+
+  async createLoraJob(job: InsertLoraJob): Promise<LoraJob> {
+    const [created] = await db.insert(loraJobs).values(job).returning();
+    return created;
+  }
+
+  async updateLoraJob(id: string, data: Partial<InsertLoraJob>): Promise<LoraJob | undefined> {
+    const [updated] = await db.update(loraJobs)
+      .set(data)
+      .where(eq(loraJobs.id, id))
+      .returning();
+    return updated || undefined;
+  }
+
+  async getUserActiveLora(userId: string): Promise<UserLoraActive | undefined> {
+    const [active] = await db.select().from(userLoraActive).where(eq(userLoraActive.userId, userId));
+    return active || undefined;
+  }
+
+  async setUserActiveLora(userId: string, loraVersionId: string, weight: number): Promise<UserLoraActive> {
+    const existing = await this.getUserActiveLora(userId);
+    
+    if (existing) {
+      const [updated] = await db.update(userLoraActive)
+        .set({ loraVersionId, weight, updatedAt: new Date() })
+        .where(eq(userLoraActive.userId, userId))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(userLoraActive)
+        .values({ userId, loraVersionId, weight })
+        .returning();
+      return created;
+    }
+  }
+
+  async getBaseModels(): Promise<BaseModel[]> {
+    return db.select().from(baseModels).where(eq(baseModels.isActive, 1));
+  }
+
+  async createBaseModel(model: InsertBaseModel): Promise<BaseModel> {
+    const [created] = await db.insert(baseModels).values(model).returning();
+    return created;
   }
 }
 

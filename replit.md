@@ -44,6 +44,8 @@ PromptForge is a professional prompt engineering studio with blueprints, filters
 - `ADMIN_OVERRIDE` - Set to "true" to bypass premium limits (development)
 
 ## API Endpoints
+
+### Prompt Generation
 - `GET /api/profiles` - List LLM profiles
 - `GET /api/blueprints` - List prompt blueprints
 - `GET /api/filters` - List available filters
@@ -52,6 +54,20 @@ PromptForge is a professional prompt engineering studio with blueprints, filters
 - `POST /api/save-version` - Save a prompt version
 - `GET /api/prompt/:id` - Get specific prompt
 - `GET /api/prompt/:id/versions` - Get prompt versions
+
+### LoRA Training (Pro-only)
+- `GET /api/lora/models` - List user's LoRA models
+- `GET /api/lora/models/:id` - Get LoRA model with datasets and versions
+- `POST /api/lora/models` - Create new LoRA model
+- `POST /api/lora/dataset/init` - Initialize dataset upload (returns presigned URL)
+- `POST /api/lora/dataset/validate` - Validate uploaded dataset
+- `POST /api/lora/jobs` - Start LoRA training job
+- `GET /api/lora/jobs/:id` - Get training job status
+- `POST /api/lora/webhook` - GPU worker webhook callback
+- `POST /api/lora/activate` - Activate a trained LoRA for prompt generation
+- `GET /api/lora/active` - Get currently active LoRA
+- `DELETE /api/lora/active` - Deactivate LoRA
+- `GET /api/lora/base-models` - List available base models
 
 ## Core Concepts
 
@@ -129,5 +145,31 @@ Add to `server/prompt-engine/presets.ts`:
 }
 ```
 
+## LoRA Training Infrastructure
+
+### Database Tables
+- `lora_models` - User's LoRA model projects
+- `lora_datasets` - Training datasets with quality reports
+- `lora_versions` - Trained versions with params and artifacts
+- `lora_jobs` - Training job status and progress
+- `user_lora_active` - Currently active LoRA per user
+- `base_models` - Supported base models (SDXL, Flux, SD1.5)
+
+### Architecture
+- **Storage Abstraction**: `server/lib/storage-provider.ts` supports S3/R2/local
+- **HMAC Security**: `server/lib/hmac.ts` for webhook authentication
+- **Rate Limiting**: `server/lib/rate-limiter.ts` (5 jobs/hr, 100 webhooks/min, 10 uploads/hr)
+- **Compiler Integration**: LoRA blocks are injected via `compiler.setActiveLora()`
+
+### GPU Worker Contract
+Workers receive signed payloads with:
+- `jobId`: Unique job identifier
+- `datasetUrl`: Presigned URL for training images
+- `params`: Training parameters (steps, learning rate, resolution, rank)
+- `callbackUrl`: Webhook URL for progress updates
+
+Workers must sign responses with HMAC and include `X-Signature` + `X-Timestamp` headers.
+
 ## Recent Changes
+- 2024-12-21: Added LoRA training infrastructure (routes, storage, compiler integration)
 - 2024-12-21: Initial MVP release with full prompt generation workflow

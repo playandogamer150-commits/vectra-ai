@@ -1,0 +1,114 @@
+VOCÊ É UM PRINCIPAL ENGINEER + SECURITY ARCHITECT.
+Estamos evoluindo o app PromptForge (Next.js App Router + TS) para adicionar um sistema REAL de treinamento de LoRA (personalização/clone do próprio usuário) e integrar automaticamente o LoRA ao Prompt Compiler.
+
+OBJETIVO:
+Adicionar um módulo "LoRA Studio" com:
+- upload e validação de dataset (fotos do usuário)
+- criação e acompanhamento de jobs de treino (GPU externo, NÃO no Replit)
+- armazenamento/versionamento de artefatos LoRA
+- ativação do LoRA no Prompt Compiler (injeção automática no prompt final)
+- segurança e governança (auditoria, rate limit, consentimento)
+
+PRINCÍPIO ARQUITETURAL:
+Replit = CONTROL PLANE (UI + API + DB + auth + filas leves)
+Treino = GPU WORKER externo (provider pluggable).
+NÃO tentar treinar no Replit. Isso é anti-padrão.
+
+STACK (obrigatória):
+- Next.js (App Router), TypeScript
+- Tailwind
+- Postgres + Drizzle + migrations
+- Zod validação em TODOS endpoints
+- Auth.js (NextAuth) já existente
+- Sentry (via env)
+- Rate limit por user/IP para rotas sensíveis
+
+INTEGRAÇÃO COM SYSTEM PROMPT CORE:
+O PromptForge tem SYSTEM_PROMPT_CORE e LLM Profiles com base_prompt obrigatório.
+Ao ativar um LoRA, o Prompt Compiler deve injetar um "LORA_BLOCK" após base_prompt + SYSTEM_PROMPT_CORE respeitando preferred_order do profile.
+
+REQUISITOS FUNCIONAIS:
+1) LoRA Studio UI:
+   - página /lora com:
+     - criar LoRA (nome, descrição)
+     - iniciar upload do dataset (10-30 imagens)
+     - rodar validação (qualidade/variedade/duplicados)
+     - configurar treino (base model, steps, lr, resolution, rank)
+     - iniciar job de treino
+     - ver status e logs
+     - ativar versão
+2) Dataset validation (sem GPU):
+   - checar contagem mínima/máxima
+   - checar tamanho/resolução mínima
+   - detectar duplicados (hash perceptual simples ou hashing + heurística)
+   - gerar relatório de qualidade (json)
+   - bloquear treino se muito ruim
+3) Orquestração de job:
+   - suportar provider "WEBHOOK_WORKER" (nosso GPU worker externo)
+   - Control Plane cria job com payload e assina com HMAC (secret)
+   - Control Plane expõe /api/lora/webhook para receber status/resultado do worker
+4) Storage:
+   - usar storage externo via URLs presigned (S3/R2). No MVP, permitir fallback local DEV.
+   - salvar dataset zip e artefato LoRA (.safetensors) + checksum
+5) Versionamento:
+   - cada treino cria uma lora_version com params + dataset_hash + artifact_url
+   - ativar uma versão por user/org
+6) Segurança:
+   - exigir consentimento explícito (checkbox) no UI antes de treinar: “tenho direitos sobre estas imagens”
+   - limitar treino por plano (Free: sem treino; Pro: X jobs/mês)
+   - rate limit /api/lora/jobs e /api/lora/webhook
+   - webhook autenticado por HMAC (X-Signature) e timestamp
+   - logs/auditoria
+
+MODELO DE DADOS (Drizzle):
+Criar tabelas:
+- lora_models (id, user_id, name, description, created_at)
+- lora_datasets (id, user_id, lora_model_id, dataset_url, dataset_hash, image_count, quality_report_json, created_at)
+- lora_versions (id, lora_model_id, base_model, params_json, dataset_hash, artifact_url, checksum, preview_images_json, created_at)
+- lora_jobs (id, lora_version_id, provider, status, external_job_id, logs_url, error, started_at, finished_at, created_at)
+- user_lora_active (user_id PK, lora_version_id, weight, updated_at)
+
+ROTAS:
+- POST /api/lora/models (create)
+- POST /api/lora/dataset/init (retorna upload_url + dataset_id)
+- POST /api/lora/dataset/validate (dataset_id -> quality_report)
+- POST /api/lora/jobs (cria job, chama worker/provider)
+- GET  /api/lora/jobs/:id
+- POST /api/lora/webhook (status updates + artifact link)
+- POST /api/lora/activate (set active version + weight)
+
+GPU WORKER (SPEC, sem implementar completo aqui):
+Documentar no README o contrato:
+- endpoint do worker: WORKER_URL
+- payload: dataset_url, params, callback_url, job_id, hmac
+- worker deve: baixar dataset, treinar LoRA, subir artifact, chamar webhook com artifact_url + checksum + logs_url
+
+PROMPT COMPILER:
+- Ler user_lora_active e, se existir, injetar LORA_BLOCK conforme profile:
+  Ex: SDXL/Flux: "<lora:{name}:{weight}>"
+- Garantir determinismo e evitar que usuário edite prompt final diretamente.
+
+ENTREGA EM ETAPAS:
+1) Migrations + seeds (exemplo: base models disponíveis)
+2) API rotas com Zod + rate limit + HMAC webhook
+3) UI /lora funcional
+4) Integração compiler (ativa LoRA)
+5) README com env vars e contrato do worker
+
+ENV VARS:
+- DATABASE_URL
+- STORAGE_PROVIDER (s3|r2|local)
+- STORAGE_BUCKET, STORAGE_REGION, STORAGE_ACCESS_KEY, STORAGE_SECRET_KEY (ou equivalentes)
+- WORKER_URL (GPU worker)
+- WORKER_HMAC_SECRET
+- SENTRY_DSN (opcional)
+- PLAN_PRO_OVERRIDE (opcional)
+
+REGRAS:
+- Código tipado e limpo
+- Nada de simulação: apenas orquestração real e contratos reais
+- Não criar microservices
+- Segurança primeiro
+- Sempre retornar erros com códigos corretos e mensagens claras
+
+COMECE agora exibindo um checklist de execução e em seguida implemente as migrations + rotas base.

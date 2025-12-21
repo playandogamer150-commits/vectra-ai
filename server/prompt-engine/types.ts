@@ -54,3 +54,11 @@ export interface BlueprintDefinition {
   constraints: string[];
   previewDescription?: string;
 }
+
+export interface BaseModelDefinition {
+  name: string;
+  displayName: string;
+  loraFormat: string;
+  defaultResolution: number;
+  isActive: number;
+}

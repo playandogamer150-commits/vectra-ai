@@ -1,10 +1,12 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, jsonb, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, jsonb, timestamp, pgEnum, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const userPlanEnum = pgEnum("user_plan", ["free", "pro"]);
 export const blockTypeEnum = pgEnum("block_type", ["style", "camera", "layout", "constraint", "postfx", "subject"]);
+export const loraJobStatusEnum = pgEnum("lora_job_status", ["pending", "processing", "completed", "failed", "cancelled"]);
+export const loraProviderEnum = pgEnum("lora_provider", ["webhook_worker", "replicate", "runpod"]);
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -98,8 +100,86 @@ export const rateLimits = pgTable("rate_limits", {
   count: integer("count").default(0).notNull(),
 });
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const loraModels = pgTable("lora_models", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  consentGiven: integer("consent_given").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const loraDatasets = pgTable("lora_datasets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  loraModelId: varchar("lora_model_id").notNull(),
+  datasetUrl: text("dataset_url"),
+  datasetHash: text("dataset_hash"),
+  imageCount: integer("image_count").default(0).notNull(),
+  qualityReport: jsonb("quality_report").$type<{
+    valid: boolean;
+    imageCount: number;
+    minResolution: { width: number; height: number };
+    duplicatesFound: number;
+    issues: string[];
+    score: number;
+  }>(),
+  status: text("status").default("pending").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const loraVersions = pgTable("lora_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  loraModelId: varchar("lora_model_id").notNull(),
+  baseModel: text("base_model").notNull(),
+  params: jsonb("params").$type<{
+    steps: number;
+    learningRate: number;
+    resolution: number;
+    rank: number;
+    networkAlpha?: number;
+  }>().notNull(),
+  datasetHash: text("dataset_hash").notNull(),
+  artifactUrl: text("artifact_url"),
+  checksum: text("checksum"),
+  previewImages: jsonb("preview_images").$type<string[]>().default([]),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const loraJobs = pgTable("lora_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  loraVersionId: varchar("lora_version_id").notNull(),
+  provider: loraProviderEnum("provider").default("webhook_worker").notNull(),
+  status: loraJobStatusEnum("status").default("pending").notNull(),
+  externalJobId: text("external_job_id"),
+  logsUrl: text("logs_url"),
+  error: text("error"),
+  startedAt: timestamp("started_at"),
+  finishedAt: timestamp("finished_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const userLoraActive = pgTable("user_lora_active", {
+  userId: varchar("user_id").primaryKey(),
+  loraVersionId: varchar("lora_version_id").notNull(),
+  weight: real("weight").default(0.8).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const baseModels = pgTable("base_models", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  loraFormat: text("lora_format").notNull(),
+  defaultResolution: integer("default_resolution").default(1024).notNull(),
+  isActive: integer("is_active").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const usersRelations = relations(users, ({ many, one }) => ({
   generatedPrompts: many(generatedPrompts),
+  loraModels: many(loraModels),
+  activeLora: one(userLoraActive, { fields: [users.id], references: [userLoraActive.userId] }),
 }));
 
 export const generatedPromptsRelations = relations(generatedPrompts, ({ one, many }) => ({
@@ -111,6 +191,31 @@ export const generatedPromptsRelations = relations(generatedPrompts, ({ one, man
 
 export const promptVersionsRelations = relations(promptVersions, ({ one }) => ({
   generatedPrompt: one(generatedPrompts, { fields: [promptVersions.generatedPromptId], references: [generatedPrompts.id] }),
+}));
+
+export const loraModelsRelations = relations(loraModels, ({ one, many }) => ({
+  user: one(users, { fields: [loraModels.userId], references: [users.id] }),
+  datasets: many(loraDatasets),
+  versions: many(loraVersions),
+}));
+
+export const loraDatasetsRelations = relations(loraDatasets, ({ one }) => ({
+  user: one(users, { fields: [loraDatasets.userId], references: [users.id] }),
+  loraModel: one(loraModels, { fields: [loraDatasets.loraModelId], references: [loraModels.id] }),
+}));
+
+export const loraVersionsRelations = relations(loraVersions, ({ one, many }) => ({
+  loraModel: one(loraModels, { fields: [loraVersions.loraModelId], references: [loraModels.id] }),
+  jobs: many(loraJobs),
+}));
+
+export const loraJobsRelations = relations(loraJobs, ({ one }) => ({
+  loraVersion: one(loraVersions, { fields: [loraJobs.loraVersionId], references: [loraVersions.id] }),
+}));
+
+export const userLoraActiveRelations = relations(userLoraActive, ({ one }) => ({
+  user: one(users, { fields: [userLoraActive.userId], references: [users.id] }),
+  loraVersion: one(loraVersions, { fields: [userLoraActive.loraVersionId], references: [loraVersions.id] }),
 }));
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -175,3 +280,90 @@ export type InsertGeneratedPrompt = z.infer<typeof insertGeneratedPromptSchema>;
 export type PromptVersion = typeof promptVersions.$inferSelect;
 export type InsertPromptVersion = z.infer<typeof insertPromptVersionSchema>;
 export type GenerateRequest = z.infer<typeof generateRequestSchema>;
+
+export const insertLoraModelSchema = createInsertSchema(loraModels).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertLoraDatasetSchema = createInsertSchema(loraDatasets).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertLoraVersionSchema = createInsertSchema(loraVersions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertLoraJobSchema = createInsertSchema(loraJobs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertBaseModelSchema = createInsertSchema(baseModels).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const createLoraModelRequestSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+  consent: z.boolean().refine(val => val === true, {
+    message: "You must confirm that you have rights to use these images",
+  }),
+});
+
+export const initDatasetRequestSchema = z.object({
+  loraModelId: z.string().min(1),
+  imageCount: z.number().min(10).max(30),
+});
+
+export const validateDatasetRequestSchema = z.object({
+  datasetId: z.string().min(1),
+});
+
+export const createLoraJobRequestSchema = z.object({
+  loraModelId: z.string().min(1),
+  datasetId: z.string().min(1),
+  baseModel: z.string().min(1),
+  params: z.object({
+    steps: z.number().min(100).max(5000).default(1000),
+    learningRate: z.number().min(0.00001).max(0.01).default(0.0001),
+    resolution: z.number().min(512).max(2048).default(1024),
+    rank: z.number().min(4).max(128).default(32),
+    networkAlpha: z.number().optional(),
+  }),
+});
+
+export const webhookPayloadSchema = z.object({
+  jobId: z.string().min(1),
+  status: z.enum(["processing", "completed", "failed"]),
+  artifactUrl: z.string().url().optional(),
+  checksum: z.string().optional(),
+  logsUrl: z.string().url().optional(),
+  error: z.string().optional(),
+  previewImages: z.array(z.string().url()).optional(),
+});
+
+export const activateLoraRequestSchema = z.object({
+  loraVersionId: z.string().min(1),
+  weight: z.number().min(0).max(1.5).default(0.8),
+});
+
+export type LoraModel = typeof loraModels.$inferSelect;
+export type InsertLoraModel = z.infer<typeof insertLoraModelSchema>;
+export type LoraDataset = typeof loraDatasets.$inferSelect;
+export type InsertLoraDataset = z.infer<typeof insertLoraDatasetSchema>;
+export type LoraVersion = typeof loraVersions.$inferSelect;
+export type InsertLoraVersion = z.infer<typeof insertLoraVersionSchema>;
+export type LoraJob = typeof loraJobs.$inferSelect;
+export type InsertLoraJob = z.infer<typeof insertLoraJobSchema>;
+export type UserLoraActive = typeof userLoraActive.$inferSelect;
+export type BaseModel = typeof baseModels.$inferSelect;
+export type InsertBaseModel = z.infer<typeof insertBaseModelSchema>;
+export type CreateLoraModelRequest = z.infer<typeof createLoraModelRequestSchema>;
+export type InitDatasetRequest = z.infer<typeof initDatasetRequestSchema>;
+export type CreateLoraJobRequest = z.infer<typeof createLoraJobRequestSchema>;
+export type WebhookPayload = z.infer<typeof webhookPayloadSchema>;
+export type ActivateLoraRequest = z.infer<typeof activateLoraRequestSchema>;

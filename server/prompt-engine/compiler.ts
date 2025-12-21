@@ -1,13 +1,20 @@
 import { SYSTEM_PROMPT_CORE } from "./system-prompt";
 import type { CompilerInput, CompilerOutput, BlockDefinition } from "./types";
-import type { LlmProfile, PromptBlueprint, PromptBlock, Filter } from "@shared/schema";
+import type { LlmProfile, PromptBlueprint, PromptBlock, Filter, LoraVersion } from "@shared/schema";
 import { createHash } from "crypto";
+
+export interface LoraContext {
+  version: LoraVersion;
+  weight: number;
+  triggerWord?: string;
+}
 
 export class PromptCompiler {
   private profiles: Map<string, LlmProfile> = new Map();
   private blueprints: Map<string, PromptBlueprint> = new Map();
   private blocks: Map<string, PromptBlock> = new Map();
   private filters: Map<string, Filter> = new Map();
+  private activeLora: LoraContext | null = null;
 
   setData(
     profiles: LlmProfile[],
@@ -19,6 +26,14 @@ export class PromptCompiler {
     this.blueprints = new Map(blueprints.map(b => [b.id, b]));
     this.blocks = new Map(blocks.map(b => [b.key, b]));
     this.filters = new Map(filters.map(f => [f.key, f]));
+  }
+
+  setActiveLora(lora: LoraContext | null) {
+    this.activeLora = lora;
+  }
+
+  getActiveLora(): LoraContext | null {
+    return this.activeLora;
   }
 
   generateSeed(input: CompilerInput): string {
@@ -53,6 +68,13 @@ export class PromptCompiler {
 
     parts.push(profile.basePrompt);
     parts.push(SYSTEM_PROMPT_CORE);
+
+    if (this.activeLora) {
+      const loraBlock = this.buildLoraBlock(this.activeLora);
+      if (loraBlock) {
+        parts.push(loraBlock);
+      }
+    }
 
     if (input.subject) {
       parts.push(`Subject: ${input.subject}`);
@@ -194,6 +216,24 @@ export class PromptCompiler {
     }
 
     return conflicts;
+  }
+
+  private buildLoraBlock(lora: LoraContext): string | null {
+    const triggerWord = lora.triggerWord || "lora_style";
+    const weight = Math.max(0, Math.min(2, lora.weight));
+    const params = lora.version.params as { steps?: number; rank?: number } | null;
+    
+    let loraBlock = `<lora:${triggerWord}:${weight.toFixed(2)}>`;
+    
+    if (params?.rank && params.rank >= 32) {
+      loraBlock += " (trained with high capacity adapter)";
+    }
+    
+    if (!lora.version.artifactUrl) {
+      loraBlock += " [pending training completion]";
+    }
+    
+    return `LoRA Style Enhancement: ${loraBlock}`;
   }
 
   private calculateScore(prompt: string, input: CompilerInput, warnings: string[]): number {
