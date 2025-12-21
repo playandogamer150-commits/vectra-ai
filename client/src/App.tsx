@@ -10,6 +10,7 @@ import LandingPage from "@/pages/landing";
 import StudioPage from "@/pages/studio";
 import LibraryPage from "@/pages/library";
 import HistoryPage from "@/pages/history";
+import LoraStudioPage from "@/pages/lora-studio";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/studio" component={StudioPage} />
       <Route path="/library" component={LibraryPage} />
       <Route path="/history" component={HistoryPage} />
+      <Route path="/lora-studio" component={LoraStudioPage} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -16,6 +16,7 @@ export function Header() {
     { href: "/studio", label: t.nav.studio },
     { href: "/library", label: t.nav.library },
     { href: "/history", label: t.nav.history },
+    { href: "/lora-studio", label: t.nav.loraStudio },
   ];
 
   return (
