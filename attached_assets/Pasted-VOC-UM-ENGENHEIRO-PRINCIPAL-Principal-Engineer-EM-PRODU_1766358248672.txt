@@ -1,0 +1,162 @@
+VOCÊ É UM ENGENHEIRO PRINCIPAL (Principal Engineer) EM PRODUÇÃO.
+Construa uma Web App chamada "PromptForge" (gerador de prompts infinito) com arquitetura de Prompt Compiler + LLM Profiles + Blueprints + Filters + Versionamento + Seeds reproduzíveis.
+NÃO use microservices. Use modular monolith.
+
+STACK (obrigatória):
+- Next.js 15+ (App Router), TypeScript, React
+- Tailwind CSS
+- PostgreSQL (Replit Postgres se disponível; caso não, usar Neon/Supabase com string de conexão)
+- Drizzle ORM (preferível) + migrations
+- Zod para validação
+- Auth: NextAuth (Auth.js) com Email magic link OU GitHub OAuth (o mais simples viável)
+- Observabilidade: Sentry (configurar, mesmo que opcional via env)
+- Rate limit: simples (por IP + userId) usando tabela Postgres "rate_limits" (MVP), com fallback in-memory dev
+
+SEGURANÇA (obrigatório):
+- validação de input com Zod em todos endpoints
+- sanitize output
+- proteção CSRF (padrão Auth.js)
+- rate limit por endpoint de geração
+- logs estruturados
+- NÃO permita “prompt injection”: usuário não edita prompt final diretamente; ele edita componentes (blocks/filters); prompt final é sempre compilado.
+
+CONCEITO CENTRAL:
+O usuário escolhe:
+1) LLM Profile (ex: "higgsfield-nano-banana")
+2) Blueprint (ex: "lookbook_9frame", "cctv_detection", "gothic_car_wrap")
+3) Filters (intensity, ugc_realism, layout_entropy, camera_bias, temporal_style, etc.)
+4) Seed (opcional; se vazio gerar) -> permite reproduzir exatamente o prompt
+5) Campos do assunto (subject, contexto, itens, ambiente, restrições)
+Então o sistema compila e retorna:
+- prompt final (string)
+- metadata (seed, version, profile, blueprint, filters, blocks)
+- score de qualidade (heurística)
+- warnings (ex: prompt muito longo, conflito de filtros)
+
+PROMPT_BASE OBRIGATÓRIO:
+Cada LLM Profile tem base_prompt obrigatório. O prompt final SEMPRE deve começar com base_prompt e seguir uma ordem preferencial de blocos definida no profile.
+
+INTEGRAÇÃO COM SYSTEM PROMPT DO PRODUTO:
+Existe um system prompt global que dita padrões de escrita/estilo e guardrails. Adicione como constante e aplique no compilador.
+Crie um arquivo:
+  /src/core/systemPromptCore.ts
+com:
+  export const SYSTEM_PROMPT_CORE = `COLE_AQUI_O_SYSTEM_PROMPT_QUE_JA_CRIAMOS`;
+O compilador deve inserir SYSTEM_PROMPT_CORE imediatamente após o base_prompt do LLM Profile, antes dos blocos.
+
+MODELO DE DADOS (Postgres):
+Tabelas mínimas:
+- users (se Auth.js precisar)
+- llm_profiles: id, name, base_prompt, preferred_order(json), forbidden_patterns(json), max_length, capabilities(json), created_at
+- prompt_blueprints: id, name, category, description, blocks(json), constraints(json), created_at
+- prompt_blocks: id, key, label, template, type(enum: style|camera|layout|constraint|postfx|subject), created_at
+- filters: id, key, label, schema(json), effect(json), created_at
+- generated_prompts: id, user_id, profile_id, blueprint_id, seed, input(json), filters(json), compiled_prompt(text), metadata(json), score(int), created_at
+- prompt_versions: id, generated_prompt_id, version, compiled_prompt, metadata, created_at
+- rate_limits: id, key, window_start, count
+
+DOMÍNIO (Engine):
+Implemente em /src/core/prompt-engine/:
+- types.ts (tipos TS fortes)
+- validator.ts (Zod schemas)
+- compiler.ts (PromptCompiler)
+- scoring.ts (QualityScorer heurístico)
+- presets.ts (presets iniciais)
+- conflicts.ts (detectar conflitos de filtros)
+- utils.ts (seed, hashing)
+
+PROMPT BLUEPRINTS iniciais:
+Inclua pelo menos 8 blueprints inspirados nos exemplos:
+- minecraft_style_food
+- analog_collage_refrigerator
+- gothic_car_wrap
+- weightless_phone_photo
+- lookbook_9frame
+- cctv_detection
+- ms_paint_screen
+- character_creator_screen
+Cada blueprint referencia blocos (por key) e constraints (ex: no_exact_pose_replication).
+
+FILTERS premium iniciais:
+- aesthetic_intensity: low|medium|high|extreme
+- ugc_realism: phone|ugc|pro|cinematic
+- layout_entropy: strict|balanced|loose
+- camera_bias: iphone|cctv|dslr|camcorder_2000s
+- temporal_style: y2k|2000s_jp_tv|modern|retro_future
+- prompt_length: short|normal|long (respeitando profile.max_length)
+- negativity_guard: reduce|neutral|gritty (sem violar policy; é só tom estético)
+Cada filter deve mapear para alteração de blocos ou templates (não “mexer em tudo”).
+
+ROTAS/API (App Router):
+Crie API routes:
+- POST /api/generate  -> gera prompt (rate limited)
+- GET  /api/profiles  -> lista profiles
+- GET  /api/blueprints -> lista blueprints
+- GET  /api/history -> histórico do usuário
+- POST /api/save-version -> salva versão do prompt gerado
+
+UI (Next.js):
+Páginas:
+- / (Landing) com CTA
+- /studio (Prompt Studio)
+- /library (blueprints e presets)
+- /history (prompts gerados, com replay pelo seed)
+Componentes no Studio:
+- Profile selector
+- Blueprint selector
+- Filter panel (chips + sliders quando aplicável)
+- Input form (subject/context/items/constraints)
+- Seed (textbox + botão "random")
+- Botão "Generate"
+- Output: prompt final + botão copy + export JSON + "Save Version" + "Share link" (share usa id do prompt salvo)
+- Warnings e score
+
+PREMIUM GATING (MVP):
+Crie feature flags por plano:
+- Free: 3 gerações/dia, 3 filtros, sem export JSON, sem salvar versões
+- Pro: ilimitado, todos filtros, export JSON, salvar versões, presets avançados
+Implemente tabela simples "user_plan" ou campo metadata no user.
+Não precisa integração de pagamento agora; faça stub com env ADMIN_OVERRIDE=true.
+
+EXPORT:
+- Export prompt string
+- Export JSON (com full metadata)
+
+QUALIDADE:
+QualityScorer heurístico:
+- penaliza: prompt longo demais, filtros conflitantes, ausência de sujeito, repetição
+- bonifica: presença de constraints úteis, detalhes de câmera/iluminação coerentes, clareza
+
+REPRODUÇÃO:
+Um prompt com seed + input + blueprint + profile + filters deve gerar exatamente o mesmo output.
+
+ENTREGA:
+1) Gere a estrutura do projeto com os arquivos e pastas.
+2) Implemente schema Drizzle + migrations + seed.
+3) Implemente engine e rotas.
+4) Implemente UI funcional.
+5) Inclua README com:
+   - setup env vars
+   - rodar migrations
+   - como adicionar novo LLM Profile
+   - como adicionar blueprint e filtros
+
+ENV VARS:
+- DATABASE_URL=
+- NEXTAUTH_SECRET=
+- NEXTAUTH_URL=
+- GITHUB_ID= (opcional)
+- GITHUB_SECRET= (opcional)
+- SENTRY_DSN= (opcional)
+- ADMIN_OVERRIDE= (opcional)
+
+REGRAS:
+- Sem gambiarras.
+- Tipagem forte.
+- Zod em tudo.
+- Seed determinístico.
+- Sem prompt injection (compilador manda).
+- Modular monolith.
+- Código pronto para produção.
+
+COMECE AGORA gerando o projeto, e mostre um plano de execução em etapas (checklist) antes de escrever muito código.
