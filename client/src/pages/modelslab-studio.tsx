@@ -983,7 +983,7 @@ export default function ModelsLabStudioPage() {
                       data-testid="button-transform-video"
                     >
                       <Video className="w-4 h-4 mr-2" />
-                      {t.modelslab.transformToVideoFull || "Transform to Video with Sora 2"}
+                      {t.modelslab.transformToVideoFull || "Transform to Video with VEO 3.1"}
                     </Button>
                   </div>
                 </div>
@@ -1219,7 +1219,7 @@ export default function ModelsLabStudioPage() {
               {t.modelslab.videoDialogTitle || "Transform to Video"}
             </DialogTitle>
             <DialogDescription>
-              {t.modelslab.videoDialogDescription || "Generate a video from your prompt using Sora 2"}
+              {t.modelslab.videoDialogDescription || "Generate a video from your image using VEO 3.1"}
             </DialogDescription>
           </DialogHeader>
           
@@ -1247,8 +1247,8 @@ export default function ModelsLabStudioPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="4" data-testid="option-video-duration-4">4 {t.modelslab.seconds || "seconds"}</SelectItem>
+                  <SelectItem value="6" data-testid="option-video-duration-6">6 {t.modelslab.seconds || "seconds"}</SelectItem>
                   <SelectItem value="8" data-testid="option-video-duration-8">8 {t.modelslab.seconds || "seconds"}</SelectItem>
-                  <SelectItem value="12" data-testid="option-video-duration-12">12 {t.modelslab.seconds || "seconds"}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1293,7 +1293,7 @@ export default function ModelsLabStudioPage() {
                     onClick={() => {
                       const link = document.createElement("a");
                       link.href = videoResult.output![0];
-                      link.download = `sora2-${Date.now()}.mp4`;
+                      link.download = `veo31-${Date.now()}.mp4`;
                       link.click();
                     }}
                     data-testid="button-download-video"
@@ -1318,9 +1318,9 @@ export default function ModelsLabStudioPage() {
             {/* Cost Info */}
             <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg" data-testid="info-video-cost">
               <p className="font-medium mb-1">{t.modelslab.videoCostInfo || "Cost Information"}</p>
-              <p>{t.modelslab.videoCostDetails || "Video generation costs $0.125 per second."}</p>
+              <p>{t.modelslab.videoCostDetails || "Video generation costs $0.48 per second."}</p>
               <p className="mt-1" data-testid="text-estimated-cost">
-                {t.modelslab.estimatedCost || "Estimated cost"}: ${(parseInt(videoDuration) * 0.125).toFixed(2)}
+                {t.modelslab.estimatedCost || "Estimated cost"}: ${(parseInt(videoDuration) * 0.48).toFixed(2)}
               </p>
             </div>
           </div>

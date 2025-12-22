@@ -713,7 +713,7 @@ export async function registerRoutes(
     }
   });
 
-  // ============ SORA 2 VIDEO GENERATION (IMAGE-TO-VIDEO) ============
+  // ============ VEO 3.1 IMAGE-TO-VIDEO GENERATION ============
   app.post("/api/sora2/generate", async (req, res) => {
     try {
       const { prompt, aspectRatio, duration, imageUrl } = req.body;
@@ -727,52 +727,42 @@ export async function registerRoutes(
         return res.status(500).json({ error: "ModelsLab API key not configured" });
       }
       
-      // Calculate dimensions based on aspect ratio
-      // 9:16 portrait -> 720x1280, 16:9 landscape -> 1280x720
-      const dimensionMap: Record<string, { width: number; height: number }> = {
-        "9:16": { width: 720, height: 1280 },
-        "16:9": { width: 1280, height: 720 },
-      };
-      const dimensions = dimensionMap[aspectRatio] || { width: 1280, height: 720 };
+      // VEO 3.1 uses aspect_ratio format
+      const validRatios = ["9:16", "16:9"];
+      const selectedRatio = validRatios.includes(aspectRatio) ? aspectRatio : "16:9";
       
-      // Calculate num_frames based on duration (assume 7 fps for SVD)
-      const durationSeconds = parseInt(duration) || 4;
-      const numFrames = Math.min(durationSeconds * 7, 50); // SVD max is around 50 frames
+      // VEO 3.1 valid durations: 4, 6, 8 seconds (default 8)
+      const validDurations = ["4", "6", "8"];
+      const selectedDuration = validDurations.includes(duration) ? duration : "8";
       
       const requestBody = {
         key: apiKey,
-        model_id: "svd", // Stable Video Diffusion for image-to-video
+        model_id: "veo-3.1",
         init_image: imageUrl,
-        height: dimensions.height,
-        width: dimensions.width,
-        num_frames: numFrames,
-        num_inference_steps: 20,
-        min_guidance_scale: 1,
-        max_guidance_scale: 3,
-        motion_bucket_id: 40, // Higher motion for more dynamic videos
-        noise_aug_strength: 0.02,
-        base64: false,
-        webhook: null,
-        track_id: null,
+        prompt: prompt || "Cinematic video animation of the scene with natural movement",
+        aspect_ratio: selectedRatio,
+        duration: selectedDuration,
+        generate_audio: false,
+        enhance_prompt: true,
       };
       
-      console.log("Sending to Image-to-Video API:", { 
+      console.log("Sending to VEO 3.1 Image-to-Video API:", { 
         ...requestBody, 
         key: "[REDACTED]"
       });
       
-      const response = await fetch("https://modelslab.com/api/v1/enterprise/video/img2video", {
+      const response = await fetch("https://modelslab.com/api/v7/video-fusion/image-to-video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
       
       const data = await response.json();
-      console.log("Image-to-Video response:", data);
+      console.log("VEO 3.1 Image-to-Video response:", data);
       
       res.json(data);
     } catch (error) {
-      console.error("Error generating video from image:", error);
+      console.error("Error generating video from image with VEO 3.1:", error);
       res.status(500).json({ error: "Failed to generate video" });
     }
   });
