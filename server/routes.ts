@@ -580,10 +580,16 @@ export async function registerRoutes(
         return res.status(500).json({ error: "ModelsLab API key not configured" });
       }
       
-      // Process images - ModelsLab accepts both URLs and base64
-      // For base64, keep the data URL format as ModelsLab supports it
+      // Process images - extract pure base64 from data URLs
       const processedImages = images.map((img: string) => {
         if (typeof img !== 'string') return '';
+        // If it's a data URL, extract just the base64 part
+        if (img.startsWith('data:')) {
+          const base64Match = img.match(/^data:image\/[a-z]+;base64,(.+)$/i);
+          if (base64Match) {
+            return base64Match[1];
+          }
+        }
         return img;
       }).filter((img: string) => img.length > 0);
       
@@ -591,16 +597,40 @@ export async function registerRoutes(
         return res.status(400).json({ error: "No valid images provided" });
       }
       
-      const response = await fetch("https://modelslab.com/api/v7/images/image-to-image", {
+      // Calculate dimensions based on aspect ratio
+      const getDimensions = (ratio: string) => {
+        switch (ratio) {
+          case "16:9": return { width: 1024, height: 576 };
+          case "9:16": return { width: 576, height: 1024 };
+          case "4:3": return { width: 1024, height: 768 };
+          case "3:4": return { width: 768, height: 1024 };
+          case "3:2": return { width: 1024, height: 683 };
+          case "2:3": return { width: 683, height: 1024 };
+          default: return { width: 1024, height: 1024 };
+        }
+      };
+      
+      const dims = getDimensions(aspectRatio || "1:1");
+      
+      // Use v6 img2img endpoint with base64 images
+      const requestBody = {
+        key: apiKey,
+        model_id: "nano-banana-pro",
+        prompt,
+        init_image: processedImages[0],
+        width: dims.width,
+        height: dims.height,
+        samples: 1,
+        num_inference_steps: 30,
+        guidance_scale: 7.5,
+        strength: 0.75,
+        base64: true,
+      };
+      
+      const response = await fetch("https://modelslab.com/api/v6/images/img2img", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          key: apiKey,
-          model_id: "nano-banana-pro",
-          prompt,
-          init_image: processedImages,
-          aspect_ratio: aspectRatio || "1:1",
-        }),
+        body: JSON.stringify(requestBody),
       });
       
       const data = await response.json();
