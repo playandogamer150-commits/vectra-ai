@@ -613,18 +613,24 @@ export async function registerRoutes(
       const dims = getDimensions(aspectRatio || "1:1");
       
       // Use v6 img2img endpoint with base64 images
+      // Using realistic-vision-51 for photorealistic character consistency
       const requestBody = {
         key: apiKey,
-        model_id: "nano-banana-pro",
+        model_id: "realistic-vision-51",
         prompt,
         init_image: processedImages[0],
-        width: dims.width,
-        height: dims.height,
-        samples: 1,
-        num_inference_steps: 30,
+        width: dims.width.toString(),
+        height: dims.height.toString(),
+        samples: "1",
+        num_inference_steps: "31",
         guidance_scale: 7.5,
-        strength: 0.75,
-        base64: true,
+        strength: 0.7,
+        safety_checker: "no",
+        enhance_prompt: "yes",
+        scheduler: "UniPCMultistepScheduler",
+        seed: null,
+        webhook: null,
+        track_id: null,
       };
       
       const response = await fetch("https://modelslab.com/api/v6/images/img2img", {
