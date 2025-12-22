@@ -176,15 +176,12 @@ export default function ModelsLabStudioPage() {
   // Save preset mutation
   const savePresetMutation = useMutation({
     mutationFn: async (name: string) => {
-      return apiRequest("/api/presets", {
-        method: "POST",
-        body: JSON.stringify({
-          name,
-          filters: activeFilters,
-          profileId: selectedProfile || undefined,
-          blueprintId: selectedBlueprint || undefined,
-          userBlueprintId: selectedUserBlueprint || undefined,
-        }),
+      return apiRequest("POST", "/api/presets", {
+        name,
+        filters: activeFilters,
+        profileId: selectedProfile || undefined,
+        blueprintId: selectedBlueprint || undefined,
+        userBlueprintId: selectedUserBlueprint || undefined,
       });
     },
     onSuccess: () => {
@@ -201,7 +198,7 @@ export default function ModelsLabStudioPage() {
   // Delete preset mutation
   const deletePresetMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/presets/${id}`, { method: "DELETE" });
+      return apiRequest("DELETE", `/api/presets/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/presets"] });
