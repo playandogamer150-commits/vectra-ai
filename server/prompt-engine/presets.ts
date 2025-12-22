@@ -108,6 +108,70 @@ export const defaultBlueprints: BlueprintDefinition[] = [
     constraints: ["no_text_stickers", "raw_story_only"],
     previewDescription: "Selfie autêntica de IG Story",
   },
+  {
+    name: "General UGC Photo",
+    category: "ugc",
+    description: "Fotografia ultra-realista estilo UGC com toque amador autêntico, perfeita para conteúdo de redes sociais",
+    blocks: ["general_ugc_base", "general_ugc_lighting", "general_ugc_camera", "general_ugc_texture", "general_ugc_subject"],
+    constraints: ["authentic_amateur_feel", "no_overprocessing"],
+    previewDescription: "Foto UGC ultra-realista padrão",
+  },
+  {
+    name: "Product Flat Lay",
+    category: "product",
+    description: "Fotografia de produto flat lay com composição organizada, sombras suaves e estética minimalista",
+    blocks: ["flatlay_composition", "product_lighting", "clean_surface", "organized_props"],
+    constraints: ["top_down_angle", "balanced_composition"],
+    previewDescription: "Flat lay de produtos estilizados",
+  },
+  {
+    name: "Neon Cyberpunk Portrait",
+    category: "aesthetic",
+    description: "Retrato estilo cyberpunk com iluminação neon, reflexos urbanos e atmosfera futurista noir",
+    blocks: ["neon_lighting", "cyberpunk_environment", "futuristic_elements", "rain_reflections"],
+    constraints: ["high_contrast_neon", "urban_night_setting"],
+    previewDescription: "Retrato cyberpunk com neons",
+  },
+  {
+    name: "Vintage Film Grain",
+    category: "retro",
+    description: "Estética de filme analógico com grão autêntico, cores desbotadas e vazamentos de luz",
+    blocks: ["film_grain_texture", "vintage_color_grade", "light_leaks", "soft_focus_edges"],
+    constraints: ["analog_authenticity", "no_digital_sharpness"],
+    previewDescription: "Foto analógica vintage",
+  },
+  {
+    name: "Food Photography Pro",
+    category: "product",
+    description: "Fotografia gastronômica profissional com iluminação apetitosa, styling elaborado e foco seletivo",
+    blocks: ["food_hero_shot", "appetizing_lighting", "garnish_styling", "shallow_dof"],
+    constraints: ["fresh_appearance", "color_vibrancy"],
+    previewDescription: "Foto gastronômica profissional",
+  },
+  {
+    name: "Dreamy Soft Glow",
+    category: "aesthetic",
+    description: "Estética sonhadora com brilho suave, tons pastéis e atmosfera etérea romântica",
+    blocks: ["soft_glow_lighting", "pastel_tones", "ethereal_atmosphere", "bokeh_background"],
+    constraints: ["soft_transitions", "gentle_highlights"],
+    previewDescription: "Foto com brilho suave sonhador",
+  },
+  {
+    name: "Street Documentary",
+    category: "documentary",
+    description: "Fotografia de rua documental com momentos candid, luz natural e autenticidade urbana",
+    blocks: ["candid_moment", "street_environment", "natural_light", "documentary_framing"],
+    constraints: ["unposed_authentic", "decisive_moment"],
+    previewDescription: "Fotografia de rua documental",
+  },
+  {
+    name: "Polaroid Instant",
+    category: "retro",
+    description: "Estética de foto instantânea Polaroid com moldura branca, cores ligeiramente desaturadas e textura única",
+    blocks: ["polaroid_frame", "instant_color_cast", "slight_blur", "vintage_saturation"],
+    constraints: ["square_format", "instant_film_look"],
+    previewDescription: "Foto estilo Polaroid instantânea",
+  },
 ];
 
 export const defaultBlocks: BlockDefinition[] = [
@@ -167,6 +231,71 @@ export const defaultBlocks: BlockDefinition[] = [
   { key: "ig_accessory_details", label: "Detalhes Acessórios IG", template: "acessórios casuais conforme apropriado, roupas naturais visíveis nos ombros, fundo interno neutro suavemente desfocado, iluminação ambiente autêntica", type: "subject" },
   { key: "no_text_stickers", label: "Sem Texto/Stickers", template: "sem texto na tela, sem stickers, apenas a selfie crua estilo story", type: "constraint" },
   { key: "raw_story_only", label: "Apenas Story Bruto", template: "captura de story autêntica sem edição, sem filtros aplicados, sem sobreposições", type: "constraint" },
+  
+  // General UGC Photo
+  { key: "general_ugc_base", label: "Base UGC Geral", template: "fotografia ultra-realista estilo conteúdo gerado pelo usuário, qualidade autêntica de smartphone, composição casual natural, sem polimento profissional excessivo", type: "style" },
+  { key: "general_ugc_lighting", label: "Iluminação UGC", template: "iluminação ambiente natural, sem setup profissional, luz do dia ou iluminação interna comum, sombras naturais não controladas", type: "camera" },
+  { key: "general_ugc_camera", label: "Câmera UGC", template: "qualidade de câmera de celular moderna, leve imperfeição de foco, ângulo handheld casual, enquadramento espontâneo", type: "camera" },
+  { key: "general_ugc_texture", label: "Textura UGC", template: "textura de pele natural com poros visíveis, imperfeições autênticas, grão sutil de smartphone, compressão leve de JPEG", type: "postfx" },
+  { key: "general_ugc_subject", label: "Sujeito UGC", template: "{subject}, aparência natural sem maquiagem pesada, expressão genuína relaxada, pose casual não forçada", type: "subject" },
+  { key: "authentic_amateur_feel", label: "Sensação Amadora", template: "estética de foto tirada por pessoa comum, sem direção profissional, momento capturado naturalmente", type: "constraint" },
+  { key: "no_overprocessing", label: "Sem Processamento Excessivo", template: "sem filtros pesados, sem suavização de pele artificial, cores naturais sem saturação exagerada", type: "constraint" },
+  
+  // Product Flat Lay
+  { key: "flatlay_composition", label: "Composição Flat Lay", template: "composição flat lay organizada, visão de cima para baixo, arranjo cuidadoso de elementos", type: "layout" },
+  { key: "product_lighting", label: "Iluminação de Produto", template: "iluminação suave difusa, sombras mínimas, destaque uniforme nos produtos", type: "camera" },
+  { key: "clean_surface", label: "Superfície Limpa", template: "fundo de superfície limpa, textura minimalista, mármore ou madeira clara ou cor sólida", type: "layout" },
+  { key: "organized_props", label: "Props Organizados", template: "acessórios complementares organizados, elementos decorativos sutis, espaço negativo intencional", type: "subject" },
+  { key: "top_down_angle", label: "Ângulo Superior", template: "ângulo de câmera perpendicular à superfície, visão aérea direta", type: "constraint" },
+  { key: "balanced_composition", label: "Composição Equilibrada", template: "equilíbrio visual, simetria ou assimetria intencional, hierarquia clara", type: "constraint" },
+  
+  // Neon Cyberpunk Portrait
+  { key: "neon_lighting", label: "Iluminação Neon", template: "iluminação neon vibrante, cores ciano e magenta, reflexos coloridos na pele e superfícies", type: "camera" },
+  { key: "cyberpunk_environment", label: "Ambiente Cyberpunk", template: "cenário urbano futurista, letreiros holográficos, ruas chuvosas à noite, arquitetura high-tech", type: "layout" },
+  { key: "futuristic_elements", label: "Elementos Futuristas", template: "implantes cibernéticos, óculos tecnológicos, acessórios LED, estética tech-noir", type: "subject" },
+  { key: "rain_reflections", label: "Reflexos de Chuva", template: "superfícies molhadas refletindo neons, poças d'água luminosas, atmosfera úmida", type: "postfx" },
+  { key: "high_contrast_neon", label: "Alto Contraste Neon", template: "contraste dramático entre sombras profundas e luzes neon intensas", type: "constraint" },
+  { key: "urban_night_setting", label: "Cenário Noturno Urbano", template: "ambiente exclusivamente noturno, cidade grande, vielas e becos iluminados", type: "constraint" },
+  
+  // Vintage Film Grain
+  { key: "film_grain_texture", label: "Textura de Grão de Filme", template: "grão de filme analógico autêntico, ruído orgânico, textura Kodak ou Fuji vintage", type: "postfx" },
+  { key: "vintage_color_grade", label: "Gradação Vintage", template: "cores levemente desbotadas, tons sépia sutis, pretos elevados, brancos suavizados", type: "postfx" },
+  { key: "light_leaks", label: "Vazamentos de Luz", template: "vazamentos de luz nas bordas, reflexos de lente vintage, halos suaves", type: "postfx" },
+  { key: "soft_focus_edges", label: "Bordas com Foco Suave", template: "bordas levemente suavizadas, foco central nítido com fall-off suave", type: "postfx" },
+  { key: "analog_authenticity", label: "Autenticidade Analógica", template: "aparência genuína de filme de 35mm, sem efeitos digitais artificiais", type: "constraint" },
+  { key: "no_digital_sharpness", label: "Sem Nitidez Digital", template: "evitar nitidez excessiva, manter suavidade orgânica de filme", type: "constraint" },
+  
+  // Food Photography Pro
+  { key: "food_hero_shot", label: "Hero Shot de Comida", template: "prato principal em destaque, apresentação gastronômica profissional, composição apetitosa", type: "subject" },
+  { key: "appetizing_lighting", label: "Iluminação Apetitosa", template: "iluminação lateral suave, realce de texturas, brilho nos molhos, vapor visível se aplicável", type: "camera" },
+  { key: "garnish_styling", label: "Estilização de Guarnição", template: "guarnições frescas estrategicamente posicionadas, ervas, gotas de molho, elementos decorativos", type: "subject" },
+  { key: "shallow_dof", label: "Profundidade Rasa", template: "profundidade de campo muito rasa, foco seletivo no prato principal, bokeh suave no fundo", type: "camera" },
+  { key: "fresh_appearance", label: "Aparência Fresca", template: "ingredientes com aparência fresca e vibrante, sem elementos murchos ou secos", type: "constraint" },
+  { key: "color_vibrancy", label: "Cores Vibrantes", template: "cores naturais intensificadas, verde das folhas, vermelho dos tomates, amarelo dourado", type: "constraint" },
+  
+  // Dreamy Soft Glow
+  { key: "soft_glow_lighting", label: "Iluminação com Brilho Suave", template: "iluminação difusa etérea, brilho suave ao redor de highlights, atmosfera onírica", type: "camera" },
+  { key: "pastel_tones", label: "Tons Pastéis", template: "paleta de cores pastéis, rosa suave, azul bebê, lavanda, pêssego", type: "postfx" },
+  { key: "ethereal_atmosphere", label: "Atmosfera Etérea", template: "sensação sonhadora e romântica, neblina suave, qualidade mágica", type: "style" },
+  { key: "bokeh_background", label: "Fundo Bokeh", template: "bokeh circular suave no fundo, pontos de luz desfocados, separação do sujeito", type: "postfx" },
+  { key: "soft_transitions", label: "Transições Suaves", template: "transições graduais entre tons, sem contrastes abruptos", type: "constraint" },
+  { key: "gentle_highlights", label: "Highlights Suaves", template: "destaques luminosos gentis, sem estouros de branco", type: "constraint" },
+  
+  // Street Documentary
+  { key: "candid_moment", label: "Momento Candid", template: "momento espontâneo capturado, pessoa não posando, ação natural em andamento", type: "subject" },
+  { key: "street_environment", label: "Ambiente de Rua", template: "cenário urbano autêntico, rua movimentada, arquitetura da cidade, elementos urbanos", type: "layout" },
+  { key: "natural_light", label: "Luz Natural", template: "iluminação natural disponível, luz do sol ou sombra, sem flash ou iluminação artificial", type: "camera" },
+  { key: "documentary_framing", label: "Enquadramento Documental", template: "enquadramento estilo fotojornalismo, composição dinâmica, captura do momento decisivo", type: "camera" },
+  { key: "unposed_authentic", label: "Não Posado Autêntico", template: "sujeito completamente inconsciente da câmera, sem direção", type: "constraint" },
+  { key: "decisive_moment", label: "Momento Decisivo", template: "captura do instante perfeito, ação congelada no momento certo", type: "constraint" },
+  
+  // Polaroid Instant
+  { key: "polaroid_frame", label: "Moldura Polaroid", template: "moldura branca característica de Polaroid, formato quadrado da imagem, bordas da foto instantânea", type: "layout" },
+  { key: "instant_color_cast", label: "Cast de Cor Instantânea", template: "cast de cor característico de filme instantâneo, tons levemente esverdeados ou azulados", type: "postfx" },
+  { key: "slight_blur", label: "Leve Desfoque", template: "suave imperfeição de foco típica de Polaroid, nitidez reduzida", type: "postfx" },
+  { key: "vintage_saturation", label: "Saturação Vintage", template: "saturação ligeiramente reduzida, cores desbotadas nostálgicas", type: "postfx" },
+  { key: "square_format", label: "Formato Quadrado", template: "proporção 1:1 quadrada, composição adaptada ao formato", type: "constraint" },
+  { key: "instant_film_look", label: "Look de Filme Instantâneo", template: "textura e aparência autêntica de foto instantânea revelada", type: "constraint" },
 ];
 
 export const defaultFilters: FilterDefinition[] = [
