@@ -144,6 +144,25 @@ export async function registerRoutes(
       const latestFilters = await storage.getFilters();
       compiler.setData(latestProfiles, latestBlueprints, latestBlocks, latestFilters);
 
+      // Handle user blueprints - convert to virtual system blueprint format
+      let effectiveBlueprintId = validated.blueprintId || "";
+      if (validated.userBlueprintId) {
+        const userBlueprint = await storage.getUserBlueprint(validated.userBlueprintId);
+        if (!userBlueprint) {
+          return res.status(400).json({ error: "User blueprint not found" });
+        }
+        // Register user blueprint in compiler as a virtual system blueprint
+        compiler.registerUserBlueprint({
+          id: userBlueprint.id,
+          name: userBlueprint.name,
+          description: userBlueprint.description || "",
+          category: userBlueprint.category,
+          blocks: userBlueprint.blocks as string[],
+          constraints: userBlueprint.constraints as string[],
+        });
+        effectiveBlueprintId = userBlueprint.id;
+      }
+
       // Always reset LoRA state before each request to prevent leaking between requests
       compiler.setActiveLora(null);
       
@@ -167,7 +186,7 @@ export async function registerRoutes(
 
       const compileInput = {
         profileId: validated.profileId,
-        blueprintId: validated.blueprintId,
+        blueprintId: effectiveBlueprintId,
         filters: validated.filters,
         seed: validated.seed || "",
         subject: validated.subject,

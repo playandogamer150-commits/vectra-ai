@@ -134,6 +134,27 @@ export class PromptCompiler {
     return this.activeLora;
   }
 
+  registerUserBlueprint(blueprint: {
+    id: string;
+    name: string;
+    description: string;
+    category: string;
+    blocks: string[];
+    constraints: string[];
+  }) {
+    const virtualBlueprint: PromptBlueprint = {
+      id: blueprint.id,
+      name: blueprint.name,
+      description: blueprint.description,
+      category: blueprint.category,
+      blocks: blueprint.blocks,
+      constraints: blueprint.constraints,
+      createdAt: new Date(),
+      previewDescription: null,
+    };
+    this.blueprints.set(blueprint.id, virtualBlueprint);
+  }
+
   profileSupportsLoraInjection(profileId: string): boolean {
     const profile = this.profiles.get(profileId);
     if (!profile) return false;

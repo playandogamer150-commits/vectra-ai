@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/lib/i18n";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -55,11 +56,29 @@ interface GeneratedPromptWithCharacterPack extends GeneratedPrompt {
 
 type FilterValue = Record<string, string>;
 
+interface UserBlueprint {
+  id: string;
+  userId: string;
+  name: string;
+  description: string | null;
+  category: string;
+  tags: string[];
+  blocks: string[];
+  constraints: Record<string, unknown>;
+  compatibleProfiles: string[];
+  version: number;
+  isActive: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function StudioPage() {
   const { toast } = useToast();
   const { t } = useI18n();
   const [selectedProfile, setSelectedProfile] = useState<string>("");
   const [selectedBlueprint, setSelectedBlueprint] = useState<string>("");
+  const [selectedUserBlueprint, setSelectedUserBlueprint] = useState<string>("");
+  const [blueprintTab, setBlueprintTab] = useState<"system" | "custom">("system");
   const [activeFilters, setActiveFilters] = useState<FilterValue>({});
   const [seed, setSeed] = useState<string>("");
   const [subject, setSubject] = useState("");
@@ -110,11 +129,17 @@ export default function StudioPage() {
     queryKey: ["/api/lora/trained"],
   });
 
+  const { data: userBlueprints, isLoading: loadingUserBlueprints } = useQuery<UserBlueprint[]>({
+    queryKey: ["/api/user-blueprints"],
+  });
+
   const generateMutation = useMutation({
     mutationFn: async () => {
+      const isUserBlueprint = blueprintTab === "custom" && selectedUserBlueprint;
       const res = await apiRequest("POST", "/api/generate", {
         profileId: selectedProfile,
-        blueprintId: selectedBlueprint,
+        blueprintId: isUserBlueprint ? undefined : selectedBlueprint,
+        userBlueprintId: isUserBlueprint ? selectedUserBlueprint : undefined,
         filters: activeFilters,
         seed: seed || undefined,
         subject,
@@ -168,7 +193,10 @@ export default function StudioPage() {
     setActiveFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  const canGenerate = selectedProfile && selectedBlueprint;
+  const canGenerate = selectedProfile && (
+    (blueprintTab === "system" && selectedBlueprint) || 
+    (blueprintTab === "custom" && selectedUserBlueprint)
+  );
 
   return (
     <div className="min-h-screen pt-16">
@@ -227,39 +255,101 @@ export default function StudioPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {loadingBlueprints ? (
-                  <div className="space-y-2">
-                    <Skeleton className="h-20 w-full" />
-                    <Skeleton className="h-20 w-full" />
-                  </div>
-                ) : (
-                  <ScrollArea className="h-[280px] pr-4">
-                    <div className="space-y-2">
-                      {blueprints?.map((blueprint) => (
-                        <button
-                          key={blueprint.id}
-                          onClick={() => setSelectedBlueprint(blueprint.id)}
-                          className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                            selectedBlueprint === blueprint.id
-                              ? "border-primary bg-primary/5"
-                              : "border-border hover-elevate"
-                          }`}
-                          data-testid={`button-blueprint-${blueprint.id}`}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-sm">{blueprint.name}</span>
-                            <Badge variant="secondary" className="text-xs">
-                              {blueprint.category}
-                            </Badge>
-                          </div>
-                          <div className="text-xs text-muted-foreground line-clamp-2">
-                            {blueprint.description}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                )}
+                <Tabs value={blueprintTab} onValueChange={(v) => setBlueprintTab(v as "system" | "custom")}>
+                  <TabsList className="w-full grid grid-cols-2">
+                    <TabsTrigger value="system" className="text-xs" data-testid="tab-system-blueprints">
+                      {t.blueprintBuilder?.systemBlueprints || "System"}
+                    </TabsTrigger>
+                    <TabsTrigger value="custom" className="text-xs" data-testid="tab-custom-blueprints">
+                      {t.blueprintBuilder?.myBlueprints || "My"}
+                      {userBlueprints && userBlueprints.length > 0 && (
+                        <Badge variant="secondary" className="ml-1 text-xs px-1">{userBlueprints.length}</Badge>
+                      )}
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="system" className="mt-2">
+                    {loadingBlueprints ? (
+                      <div className="space-y-2">
+                        <Skeleton className="h-20 w-full" />
+                        <Skeleton className="h-20 w-full" />
+                      </div>
+                    ) : (
+                      <ScrollArea className="h-[240px] pr-4">
+                        <div className="space-y-2">
+                          {blueprints?.map((blueprint) => (
+                            <button
+                              key={blueprint.id}
+                              onClick={() => {
+                                setSelectedBlueprint(blueprint.id);
+                                setSelectedUserBlueprint("");
+                              }}
+                              className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                                selectedBlueprint === blueprint.id && blueprintTab === "system"
+                                  ? "border-primary bg-primary/5"
+                                  : "border-border hover-elevate"
+                              }`}
+                              data-testid={`button-blueprint-${blueprint.id}`}
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium text-sm">{blueprint.name}</span>
+                                <Badge variant="secondary" className="text-xs">
+                                  {blueprint.category}
+                                </Badge>
+                              </div>
+                              <div className="text-xs text-muted-foreground line-clamp-2">
+                                {blueprint.description}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="custom" className="mt-2">
+                    {loadingUserBlueprints ? (
+                      <div className="space-y-2">
+                        <Skeleton className="h-20 w-full" />
+                      </div>
+                    ) : userBlueprints && userBlueprints.length > 0 ? (
+                      <ScrollArea className="h-[240px] pr-4">
+                        <div className="space-y-2">
+                          {userBlueprints.map((blueprint) => (
+                            <button
+                              key={blueprint.id}
+                              onClick={() => {
+                                setSelectedUserBlueprint(blueprint.id);
+                                setSelectedBlueprint("");
+                              }}
+                              className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                                selectedUserBlueprint === blueprint.id && blueprintTab === "custom"
+                                  ? "border-primary bg-primary/5"
+                                  : "border-border hover-elevate"
+                              }`}
+                              data-testid={`button-user-blueprint-${blueprint.id}`}
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium text-sm">{blueprint.name}</span>
+                                <Badge variant="secondary" className="text-xs">
+                                  {blueprint.category}
+                                </Badge>
+                              </div>
+                              <div className="text-xs text-muted-foreground line-clamp-2">
+                                {blueprint.description || "No description"}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground text-sm">
+                        <p>{t.blueprintBuilder?.noUserBlueprints || "No custom blueprints"}</p>
+                        <p className="text-xs mt-1">{t.blueprintBuilder?.createFirstHint || "Create one in the Library"}</p>
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
 

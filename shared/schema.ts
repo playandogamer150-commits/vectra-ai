@@ -307,7 +307,8 @@ export const insertPromptVersionSchema = createInsertSchema(promptVersions).omit
 
 export const generateRequestSchema = z.object({
   profileId: z.string().min(1),
-  blueprintId: z.string().min(1),
+  blueprintId: z.string().optional(),
+  userBlueprintId: z.string().optional(),
   filters: z.record(z.string(), z.string()).optional().default({}),
   seed: z.string().optional(),
   subject: z.string().optional().default(""),
@@ -318,6 +319,8 @@ export const generateRequestSchema = z.object({
   loraVersionId: z.string().optional(),
   loraWeight: z.number().min(0).max(2).optional().default(1),
   targetPlatform: z.string().optional(),
+}).refine(data => data.blueprintId || data.userBlueprintId, {
+  message: "Either blueprintId or userBlueprintId is required",
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
