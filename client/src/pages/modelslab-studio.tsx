@@ -1,15 +1,23 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/lib/i18n";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, ImagePlus, Sparkles, X, Download, ExternalLink, Upload, Clipboard } from "lucide-react";
+import type { LlmProfile, PromptBlueprint, Filter } from "@shared/schema";
+import { 
+  Loader2, ImagePlus, Sparkles, X, Download, ExternalLink, Upload, Clipboard,
+  ChevronDown, ChevronUp, Layers, SlidersHorizontal, Wand2, RefreshCw
+} from "lucide-react";
 
 interface ModelsLabResponse {
   status: string;
@@ -27,25 +35,71 @@ interface UploadedImage {
   name: string;
 }
 
+interface UserBlueprint {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string;
+  blocks: string[];
+}
+
+interface GeneratedPromptResult {
+  compiledPrompt: string;
+  seed: string;
+}
+
+type FilterValue = Record<string, string>;
+
 export default function ModelsLabStudioPage() {
   const { toast } = useToast();
   const { t } = useI18n();
   
-  const [prompt, setPrompt] = useState("");
+  // Image state
   const [images, setImages] = useState<UploadedImage[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Prompt state
+  const [prompt, setPrompt] = useState("");
   const [aspectRatio, setAspectRatio] = useState("1:1");
+  
+  // Prompt Engine state
+  const [usePromptEngine, setUsePromptEngine] = useState(false);
+  const [selectedProfile, setSelectedProfile] = useState<string>("");
+  const [selectedBlueprint, setSelectedBlueprint] = useState<string>("");
+  const [selectedUserBlueprint, setSelectedUserBlueprint] = useState<string>("");
+  const [blueprintTab, setBlueprintTab] = useState<"system" | "custom">("system");
+  const [activeFilters, setActiveFilters] = useState<FilterValue>({});
+  const [seed, setSeed] = useState<string>("");
+  const [subject, setSubject] = useState("");
+  
+  // Result state
   const [result, setResult] = useState<ModelsLabResponse | null>(null);
   const [isPolling, setIsPolling] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const dropZoneRef = useRef<HTMLDivElement>(null);
 
+  // Queries for Prompt Engine
+  const { data: profiles, isLoading: loadingProfiles } = useQuery<LlmProfile[]>({
+    queryKey: ["/api/profiles"],
+  });
+
+  const { data: blueprints, isLoading: loadingBlueprints } = useQuery<PromptBlueprint[]>({
+    queryKey: ["/api/blueprints"],
+  });
+
+  const { data: filters, isLoading: loadingFilters } = useQuery<Filter[]>({
+    queryKey: ["/api/filters"],
+  });
+
+  const { data: userBlueprints, isLoading: loadingUserBlueprints } = useQuery<UserBlueprint[]>({
+    queryKey: ["/api/user-blueprints"],
+  });
+
+  // File processing
   const processFile = useCallback(async (file: File): Promise<UploadedImage | null> => {
     if (!file.type.startsWith('image/')) {
       toast({
         title: t.modelslab.error,
-        description: t.modelslab.invalidFileType || "Invalid file type. Only images allowed.",
+        description: t.modelslab.invalidFileType,
         variant: "destructive",
       });
       return null;
@@ -54,7 +108,7 @@ export default function ModelsLabStudioPage() {
     if (file.size > 10 * 1024 * 1024) {
       toast({
         title: t.modelslab.error,
-        description: t.modelslab.fileTooLarge || "File too large. Max 10MB.",
+        description: t.modelslab.fileTooLarge,
         variant: "destructive",
       });
       return null;
@@ -82,17 +136,15 @@ export default function ModelsLabStudioPage() {
 
     if (fileArray.length > remainingSlots) {
       toast({
-        title: t.modelslab.warning || "Warning",
-        description: t.modelslab.maxImagesReached || `Only ${remainingSlots} more images can be added.`,
+        title: t.modelslab.warning,
+        description: t.modelslab.maxImagesReached,
       });
     }
 
     const newImages: UploadedImage[] = [];
     for (const file of filesToProcess) {
       const processed = await processFile(file);
-      if (processed) {
-        newImages.push(processed);
-      }
+      if (processed) newImages.push(processed);
     }
 
     if (newImages.length > 0) {
@@ -115,9 +167,7 @@ export default function ModelsLabStudioPage() {
     for (const item of Array.from(items)) {
       if (item.type.startsWith('image/')) {
         const file = item.getAsFile();
-        if (file) {
-          imageFiles.push(file);
-        }
+        if (file) imageFiles.push(file);
       }
     }
 
@@ -145,7 +195,6 @@ export default function ModelsLabStudioPage() {
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       addImages(e.dataTransfer.files);
     }
@@ -155,7 +204,39 @@ export default function ModelsLabStudioPage() {
     setImages(prev => prev.filter(img => img.id !== id));
   };
 
-  const generateMutation = useMutation({
+  // Prompt Engine mutation
+  const generatePromptMutation = useMutation({
+    mutationFn: async () => {
+      const isUserBlueprint = blueprintTab === "custom" && selectedUserBlueprint;
+      const res = await apiRequest("POST", "/api/generate", {
+        profileId: selectedProfile,
+        blueprintId: isUserBlueprint ? undefined : selectedBlueprint,
+        userBlueprintId: isUserBlueprint ? selectedUserBlueprint : undefined,
+        filters: activeFilters,
+        seed: seed || undefined,
+        subject,
+      });
+      return res.json() as Promise<GeneratedPromptResult>;
+    },
+    onSuccess: (data) => {
+      setPrompt(data.compiledPrompt);
+      setSeed(data.seed);
+      toast({ 
+        title: t.modelslab.promptGenerated || "Prompt generated",
+        description: t.modelslab.promptApplied || "Prompt applied to the textarea" 
+      });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: t.modelslab.error, 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  // Image generation mutation
+  const generateImageMutation = useMutation({
     mutationFn: async () => {
       if (images.length === 0) {
         throw new Error(t.modelslab.noImages);
@@ -220,7 +301,7 @@ export default function ModelsLabStudioPage() {
           setIsPolling(false);
           toast({
             title: t.modelslab.error,
-            description: t.modelslab.timeout || "Generation timed out. Please try again.",
+            description: t.modelslab.timeout,
             variant: "destructive",
           });
         } else if (data.status === "error") {
@@ -244,11 +325,24 @@ export default function ModelsLabStudioPage() {
     poll();
   };
 
+  const handleFilterChange = (key: string, value: string) => {
+    setActiveFilters((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleRandomSeed = () => {
+    setSeed(Math.random().toString(36).substring(2, 10));
+  };
+
+  const canGeneratePrompt = selectedProfile && (
+    (blueprintTab === "system" && selectedBlueprint) || 
+    (blueprintTab === "custom" && selectedUserBlueprint)
+  );
+
   const aspectRatios = [
     "1:1", "9:16", "2:3", "3:4", "4:5", "5:4", "4:3", "3:2", "16:9", "21:9"
   ];
 
-  const isGenerating = generateMutation.isPending || isPolling;
+  const isGeneratingImage = generateImageMutation.isPending || isPolling;
 
   return (
     <div className="min-h-screen bg-background pt-20 pb-12">
@@ -264,25 +358,17 @@ export default function ModelsLabStudioPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Input Panel */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ImagePlus className="w-5 h-5" />
-                {t.modelslab.inputTitle}
-              </CardTitle>
-              <CardDescription>{t.modelslab.inputDescription}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Image Upload Area */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>{t.modelslab.referenceImages || "Reference Images"}</Label>
-                  <Badge variant="secondary" className="text-xs">
-                    {images.length}/14
-                  </Badge>
-                </div>
-                
-                {/* Hidden file input */}
+          <div className="space-y-6">
+            {/* Image Upload */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ImagePlus className="w-5 h-5" />
+                  {t.modelslab.referenceImages}
+                </CardTitle>
+                <CardDescription>{t.modelslab.inputDescription}</CardDescription>
+              </CardHeader>
+              <CardContent>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -293,9 +379,13 @@ export default function ModelsLabStudioPage() {
                   data-testid="input-file-upload"
                 />
                 
-                {/* Drop zone / Upload area */}
+                <div className="flex items-center justify-between mb-3">
+                  <Badge variant="secondary" className="text-xs">
+                    {images.length}/14
+                  </Badge>
+                </div>
+                
                 <div
-                  ref={dropZoneRef}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
@@ -313,64 +403,248 @@ export default function ModelsLabStudioPage() {
                   {images.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-8 text-center">
                       <Upload className="w-10 h-10 text-muted-foreground mb-3" />
-                      <p className="text-sm font-medium">
-                        {t.modelslab.dropOrClick || "Drop images here or click to upload"}
-                      </p>
+                      <p className="text-sm font-medium">{t.modelslab.dropOrClick}</p>
                       <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                         <Clipboard className="w-3 h-3" />
-                        {t.modelslab.pasteHint || "You can also paste images (Ctrl+V)"}
+                        {t.modelslab.pasteHint}
                       </p>
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {/* Image thumbnails grid */}
-                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                      <div className="grid grid-cols-4 gap-2">
                         {images.map((img) => (
                           <div
                             key={img.id}
                             className="relative group aspect-square rounded-md overflow-hidden border bg-muted"
-                            data-testid={`thumbnail-${img.id}`}
                           >
-                            <img
-                              src={img.dataUrl}
-                              alt={img.name}
-                              className="w-full h-full object-cover"
-                            />
+                            <img src={img.dataUrl} alt={img.name} className="w-full h-full object-cover" />
                             <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeImage(img.id);
-                              }}
+                              onClick={(e) => { e.stopPropagation(); removeImage(img.id); }}
                               className="absolute top-1 right-1 p-1 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity"
-                              data-testid={`button-remove-${img.id}`}
+                              data-testid={`button-remove-image-${img.id}`}
                             >
                               <X className="w-3 h-3" />
                             </button>
                           </div>
                         ))}
-                        
-                        {/* Add more button in grid */}
                         {images.length < 14 && (
-                          <div
-                            className="aspect-square rounded-md border-2 border-dashed border-muted-foreground/25 flex items-center justify-center hover:border-primary/50 transition-colors"
-                          >
+                          <div className="aspect-square rounded-md border-2 border-dashed border-muted-foreground/25 flex items-center justify-center">
                             <ImagePlus className="w-6 h-6 text-muted-foreground" />
                           </div>
                         )}
                       </div>
-                      
-                      <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
-                        <Clipboard className="w-3 h-3" />
-                        {t.modelslab.pasteHint || "Paste images with Ctrl+V"}
-                      </p>
                     </div>
                   )}
                 </div>
-              </div>
+              </CardContent>
+            </Card>
 
-              {/* Prompt */}
-              <div className="space-y-2">
-                <Label>{t.modelslab.prompt}</Label>
+            {/* Prompt Engine */}
+            <Card>
+              <Collapsible open={usePromptEngine} onOpenChange={setUsePromptEngine}>
+                <CardHeader className="pb-3">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full" data-testid="button-toggle-prompt-engine">
+                    <CardTitle className="flex items-center gap-2">
+                      <Wand2 className="w-5 h-5" />
+                      {t.modelslab.promptEngine || "Prompt Engine"}
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={usePromptEngine ? "default" : "secondary"} data-testid="badge-prompt-engine-status">
+                        {usePromptEngine ? t.modelslab.enabled || "Enabled" : t.modelslab.disabled || "Disabled"}
+                      </Badge>
+                      {usePromptEngine ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </div>
+                  </CollapsibleTrigger>
+                  <CardDescription>
+                    {t.modelslab.promptEngineDescription || "Use blueprints, filters and profiles to generate professional prompts"}
+                  </CardDescription>
+                </CardHeader>
+                
+                <CollapsibleContent>
+                  <CardContent className="space-y-4 pt-0">
+                    {/* Profile Selector */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+                        <Sparkles className="w-3 h-3" />
+                        {t.studio?.llmProfile || "LLM Profile"}
+                      </Label>
+                      {loadingProfiles ? (
+                        <Skeleton className="h-10 w-full" />
+                      ) : (
+                        <Select value={selectedProfile} onValueChange={setSelectedProfile}>
+                          <SelectTrigger data-testid="select-profile">
+                            <SelectValue placeholder={t.modelslab.selectProfile || "Select profile..."} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {profiles?.map((profile) => (
+                              <SelectItem key={profile.id} value={profile.id}>
+                                {profile.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+
+                    {/* Blueprint Selector */}
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+                        <Layers className="w-3 h-3" />
+                        {t.studio?.blueprint || "Blueprint"}
+                      </Label>
+                      <Tabs value={blueprintTab} onValueChange={(v) => setBlueprintTab(v as "system" | "custom")}>
+                        <TabsList className="w-full grid grid-cols-2">
+                          <TabsTrigger value="system" className="text-xs" data-testid="tab-system-blueprints">
+                            {t.blueprintBuilder?.systemBlueprints || "System"}
+                          </TabsTrigger>
+                          <TabsTrigger value="custom" className="text-xs" data-testid="tab-custom-blueprints">
+                            {t.blueprintBuilder?.myBlueprints || "My"}
+                            {userBlueprints && userBlueprints.length > 0 && (
+                              <Badge variant="secondary" className="ml-1 text-xs px-1">{userBlueprints.length}</Badge>
+                            )}
+                          </TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="system" className="mt-2">
+                          {loadingBlueprints ? (
+                            <Skeleton className="h-10 w-full" />
+                          ) : (
+                            <Select value={selectedBlueprint} onValueChange={(v) => { setSelectedBlueprint(v); setSelectedUserBlueprint(""); }}>
+                              <SelectTrigger data-testid="select-blueprint">
+                                <SelectValue placeholder={t.modelslab.selectBlueprint || "Select blueprint..."} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {blueprints?.map((bp) => (
+                                  <SelectItem key={bp.id} value={bp.id}>
+                                    <span className="flex items-center gap-2">
+                                      {bp.name}
+                                      <Badge variant="outline" className="text-xs">{bp.category}</Badge>
+                                    </span>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </TabsContent>
+                        
+                        <TabsContent value="custom" className="mt-2">
+                          {loadingUserBlueprints ? (
+                            <Skeleton className="h-10 w-full" />
+                          ) : userBlueprints && userBlueprints.length > 0 ? (
+                            <Select value={selectedUserBlueprint} onValueChange={(v) => { setSelectedUserBlueprint(v); setSelectedBlueprint(""); }}>
+                              <SelectTrigger data-testid="select-user-blueprint">
+                                <SelectValue placeholder={t.modelslab.selectBlueprint || "Select blueprint..."} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {userBlueprints.map((bp) => (
+                                  <SelectItem key={bp.id} value={bp.id}>
+                                    {bp.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <p className="text-sm text-muted-foreground text-center py-2">
+                              {t.blueprintBuilder?.noUserBlueprints || "No custom blueprints"}
+                            </p>
+                          )}
+                        </TabsContent>
+                      </Tabs>
+                    </div>
+
+                    {/* Filters */}
+                    {!loadingFilters && filters && filters.length > 0 && (
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
+                          <SlidersHorizontal className="w-3 h-3" />
+                          {t.studio?.filters || "Filters"}
+                        </Label>
+                        <ScrollArea className="h-[150px]">
+                          <div className="space-y-3 pr-4">
+                            {filters.map((filter) => (
+                              <div key={filter.key} className="space-y-1">
+                                <Label className="text-xs">{filter.label}</Label>
+                                <Select
+                                  value={activeFilters[filter.key] || ""}
+                                  onValueChange={(value) => handleFilterChange(filter.key, value)}
+                                >
+                                  <SelectTrigger className="h-8" data-testid={`select-filter-${filter.key}`}>
+                                    <SelectValue placeholder="Select..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {filter.schema.options?.map((option: string) => (
+                                      <SelectItem key={option} value={option}>
+                                        {option}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            ))}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                    )}
+
+                    {/* Subject Input */}
+                    <div className="space-y-2">
+                      <Label className="text-xs">{t.studio?.subject || "Subject"}</Label>
+                      <Textarea
+                        value={subject}
+                        onChange={(e) => setSubject(e.target.value)}
+                        placeholder={t.studio?.subjectPlaceholder || "Main subject of the image..."}
+                        rows={2}
+                        data-testid="textarea-subject"
+                      />
+                    </div>
+
+                    {/* Seed */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <Label className="text-xs">{t.studio?.seed || "Seed"}</Label>
+                        <input
+                          type="text"
+                          value={seed}
+                          onChange={(e) => setSeed(e.target.value)}
+                          placeholder={t.studio?.seedPlaceholder || "Random seed..."}
+                          className="w-full h-8 px-3 text-sm rounded-md border bg-background"
+                          data-testid="input-seed"
+                        />
+                      </div>
+                      <Button size="icon" variant="outline" onClick={handleRandomSeed} className="mt-5" data-testid="button-random-seed">
+                        <RefreshCw className="w-4 h-4" />
+                      </Button>
+                    </div>
+
+                    {/* Generate Prompt Button */}
+                    <Button
+                      onClick={() => generatePromptMutation.mutate()}
+                      disabled={!canGeneratePrompt || generatePromptMutation.isPending}
+                      className="w-full"
+                      variant="secondary"
+                      data-testid="button-generate-prompt"
+                    >
+                      {generatePromptMutation.isPending ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <Wand2 className="w-4 h-4 mr-2" />
+                      )}
+                      {t.modelslab.generatePrompt || "Generate Prompt"}
+                    </Button>
+                  </CardContent>
+                </CollapsibleContent>
+              </Collapsible>
+            </Card>
+
+            {/* Manual Prompt & Generation */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5" />
+                  {t.modelslab.prompt}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <Textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
@@ -378,46 +652,42 @@ export default function ModelsLabStudioPage() {
                   rows={4}
                   data-testid="textarea-prompt"
                 />
-              </div>
 
-              {/* Aspect Ratio */}
-              <div className="space-y-2">
-                <Label>{t.modelslab.aspectRatio}</Label>
-                <Select value={aspectRatio} onValueChange={setAspectRatio}>
-                  <SelectTrigger data-testid="select-aspect-ratio">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {aspectRatios.map((ratio) => (
-                      <SelectItem key={ratio} value={ratio}>
-                        {ratio}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                <div className="space-y-2">
+                  <Label>{t.modelslab.aspectRatio}</Label>
+                  <Select value={aspectRatio} onValueChange={setAspectRatio}>
+                    <SelectTrigger data-testid="select-aspect-ratio">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {aspectRatios.map((ratio) => (
+                        <SelectItem key={ratio} value={ratio}>{ratio}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              {/* Generate Button */}
-              <Button
-                onClick={() => generateMutation.mutate()}
-                disabled={isGenerating || !prompt.trim() || images.length === 0}
-                className="w-full"
-                data-testid="button-generate"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {isPolling ? t.modelslab.processing : t.modelslab.generating}
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    {t.modelslab.generate}
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
+                <Button
+                  onClick={() => generateImageMutation.mutate()}
+                  disabled={isGeneratingImage || !prompt.trim() || images.length === 0}
+                  className="w-full"
+                  data-testid="button-generate"
+                >
+                  {isGeneratingImage ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      {isPolling ? t.modelslab.processing : t.modelslab.generating}
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      {t.modelslab.generate}
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Output Panel */}
           <Card>
@@ -444,7 +714,6 @@ export default function ModelsLabStudioPage() {
                           size="icon"
                           variant="secondary"
                           onClick={() => window.open(imageUrl, "_blank")}
-                          data-testid={`button-open-image-${index}`}
                         >
                           <ExternalLink className="w-4 h-4" />
                         </Button>
@@ -457,7 +726,6 @@ export default function ModelsLabStudioPage() {
                             link.download = `modelslab-${Date.now()}.png`;
                             link.click();
                           }}
-                          data-testid={`button-download-image-${index}`}
                         >
                           <Download className="w-4 h-4" />
                         </Button>
@@ -474,7 +742,7 @@ export default function ModelsLabStudioPage() {
               ) : (
                 <div className="h-64 flex items-center justify-center border border-dashed rounded-lg">
                   <p className="text-muted-foreground text-center">
-                    {isGenerating ? (
+                    {isGeneratingImage ? (
                       <span className="flex items-center gap-2">
                         <Loader2 className="w-5 h-5 animate-spin" />
                         {t.modelslab.waitingResult}
