@@ -760,23 +760,14 @@ export async function registerRoutes(
         return res.status(500).json({ error: "ModelsLab API key not configured" });
       }
       
-      // VEO 3.1 uses aspect_ratio format
-      const validRatios = ["9:16", "16:9"];
-      const selectedRatio = validRatios.includes(aspectRatio) ? aspectRatio : "16:9";
-      
-      // VEO 3.1 valid durations: 4, 6, 8 seconds (default 8)
-      const validDurations = ["4", "6", "8"];
-      const selectedDuration = validDurations.includes(duration) ? duration : "8";
-      
+      // VEO 3.1 Fast - simpler API with fewer parameters
+      // Only supports: model_id, init_image, prompt, negative_prompt, key
       const requestBody = {
         key: apiKey,
-        model_id: "veo-3.1",
+        model_id: "veo-3.1-fast",
         init_image: imageUrl,
         prompt: prompt || "Cinematic video animation of the scene with natural movement",
-        aspect_ratio: selectedRatio,
-        duration: selectedDuration,
-        generate_audio: false,
-        enhance_prompt: true,
+        negative_prompt: null,
       };
       
       console.log("Sending to VEO 3.1 Image-to-Video API:", { 

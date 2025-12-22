@@ -124,8 +124,6 @@ export default function ModelsLabStudioPage() {
   // Video generation state (Sora 2)
   const [showVideoDialog, setShowVideoDialog] = useState(false);
   const [selectedImageForVideo, setSelectedImageForVideo] = useState<string>("");
-  const [videoDuration, setVideoDuration] = useState<string>("4");
-  const [videoAspectRatio, setVideoAspectRatio] = useState<string>("16:9");
   const [videoResult, setVideoResult] = useState<Sora2Response | null>(null);
   const [isPollingVideo, setIsPollingVideo] = useState(false);
 
@@ -211,13 +209,11 @@ export default function ModelsLabStudioPage() {
     },
   });
 
-  // Video generation mutation (Image-to-Video)
+  // Video generation mutation (Image-to-Video with VEO 3.1 Fast)
   const generateVideoMutation = useMutation({
     mutationFn: async (imageUrl: string) => {
       const response = await apiRequest("POST", "/api/sora2/generate", {
-        prompt: prompt || "Cinematic video of the scene",
-        aspectRatio: videoAspectRatio,
-        duration: videoDuration,
+        prompt: prompt || "Cinematic video of the scene with smooth natural motion",
         imageUrl, // Pass the reference image URL for image-to-video
       });
       return await response.json() as Sora2Response;
@@ -1238,33 +1234,9 @@ export default function ModelsLabStudioPage() {
               </div>
             )}
 
-            {/* Duration Selection */}
-            <div className="space-y-2">
-              <Label>{t.modelslab.videoDuration || "Duration"}</Label>
-              <Select value={videoDuration} onValueChange={setVideoDuration}>
-                <SelectTrigger data-testid="select-video-duration">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="4" data-testid="option-video-duration-4">4 {t.modelslab.seconds || "seconds"}</SelectItem>
-                  <SelectItem value="6" data-testid="option-video-duration-6">6 {t.modelslab.seconds || "seconds"}</SelectItem>
-                  <SelectItem value="8" data-testid="option-video-duration-8">8 {t.modelslab.seconds || "seconds"}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Aspect Ratio Selection */}
-            <div className="space-y-2">
-              <Label>{t.modelslab.videoAspectRatio || "Aspect Ratio"}</Label>
-              <Select value={videoAspectRatio} onValueChange={setVideoAspectRatio}>
-                <SelectTrigger data-testid="select-video-aspect">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="16:9" data-testid="option-video-aspect-16-9">{t.modelslab.landscape || "Landscape"} (16:9)</SelectItem>
-                  <SelectItem value="9:16" data-testid="option-video-aspect-9-16">{t.modelslab.portrait || "Portrait"} (9:16)</SelectItem>
-                </SelectContent>
-              </Select>
+            {/* Video Specs Info */}
+            <div className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg">
+              <p>{t.modelslab.videoSpecs || "VEO 3.1 Fast generates 8-second videos at 720p/1080p with 24fps."}</p>
             </div>
 
             {/* Video Result */}
@@ -1318,9 +1290,9 @@ export default function ModelsLabStudioPage() {
             {/* Cost Info */}
             <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg" data-testid="info-video-cost">
               <p className="font-medium mb-1">{t.modelslab.videoCostInfo || "Cost Information"}</p>
-              <p>{t.modelslab.videoCostDetails || "Video generation costs $0.48 per second."}</p>
+              <p>{t.modelslab.videoCostDetails || "Video generation costs $0.24 per second."}</p>
               <p className="mt-1" data-testid="text-estimated-cost">
-                {t.modelslab.estimatedCost || "Estimated cost"}: ${(parseInt(videoDuration) * 0.48).toFixed(2)}
+                {t.modelslab.estimatedCost || "Estimated cost"}: ${(8 * 0.24).toFixed(2)}
               </p>
             </div>
           </div>
