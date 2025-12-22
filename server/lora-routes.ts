@@ -6,6 +6,7 @@ import { loraJobRateLimiter, webhookRateLimiter, datasetUploadRateLimiter } from
 import {
   createLoraModelRequestSchema,
   initDatasetRequestSchema,
+  commitDatasetRequestSchema,
   validateDatasetRequestSchema,
   createLoraJobRequestSchema,
   webhookPayloadSchema,
@@ -106,15 +107,18 @@ export function registerLoraRoutes(app: Express) {
         status: "pending",
       });
       
-      const datasetKey = `datasets/${userId}/${dataset.id}/images.zip`;
-      const { uploadUrl, publicUrl } = await storageProvider.getPresignedUploadUrl(datasetKey);
+      const uploadUrls: Array<{ filename: string; uploadUrl: string; storageKey: string }> = [];
       
-      await storage.updateLoraDataset(dataset.id, { datasetUrl: publicUrl });
+      for (const filename of validated.filenames) {
+        const sanitizedFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const storageKey = `datasets/${userId}/${dataset.id}/${Date.now()}_${sanitizedFilename}`;
+        const { uploadUrl } = await storageProvider.getPresignedUploadUrl(storageKey);
+        uploadUrls.push({ filename, uploadUrl, storageKey });
+      }
       
       res.status(201).json({
         datasetId: dataset.id,
-        uploadUrl,
-        publicUrl,
+        uploadUrls,
       });
     } catch (error) {
       if (error instanceof ZodError) {
@@ -122,6 +126,54 @@ export function registerLoraRoutes(app: Express) {
       }
       console.error("Error initializing dataset:", error);
       res.status(500).json({ error: "Failed to initialize dataset" });
+    }
+  });
+
+  app.post("/api/lora/dataset/commit", checkLoraPermission, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const validated = commitDatasetRequestSchema.parse(req.body);
+      
+      const dataset = await storage.getLoraDataset(validated.datasetId);
+      if (!dataset) {
+        return res.status(404).json({ error: "Dataset not found" });
+      }
+      
+      if (dataset.userId !== userId) {
+        return res.status(403).json({ error: "Unauthorized" });
+      }
+      
+      if (dataset.status !== "pending") {
+        return res.status(400).json({ error: "Dataset already committed" });
+      }
+      
+      const items = validated.items.map(item => ({
+        datasetId: validated.datasetId,
+        storageKey: item.storageKey,
+        sha256: item.sha256,
+        width: item.width,
+        height: item.height,
+        filename: item.filename,
+      }));
+      
+      await storage.createDatasetItems(items);
+      
+      await storage.updateLoraDataset(validated.datasetId, {
+        imageCount: items.length,
+        status: "uploaded",
+      });
+      
+      res.json({ 
+        success: true, 
+        datasetId: validated.datasetId,
+        imageCount: items.length,
+      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ error: "Invalid request", details: error.errors });
+      }
+      console.error("Error committing dataset:", error);
+      res.status(500).json({ error: "Failed to commit dataset" });
     }
   });
 
@@ -139,6 +191,7 @@ export function registerLoraRoutes(app: Express) {
         imageCount: dataset.imageCount,
         minResolution: { width: 512, height: 512 },
         duplicatesFound: 0,
+        varietyScore: 80,
         issues: [] as string[],
         score: 85,
       };
@@ -344,7 +397,13 @@ export function registerLoraRoutes(app: Express) {
         return res.status(403).json({ error: "Unauthorized" });
       }
       
-      const active = await storage.setUserActiveLora(userId, validated.loraVersionId, validated.weight);
+      const active = await storage.setUserActiveLora(
+        userId, 
+        version.loraModelId, 
+        validated.loraVersionId, 
+        validated.weight,
+        validated.targetPlatform
+      );
       
       res.json(active);
     } catch (error) {
@@ -378,7 +437,7 @@ export function registerLoraRoutes(app: Express) {
   app.delete("/api/lora/active", checkLoraPermission, async (req, res) => {
     try {
       const userId = getUserId(req);
-      
+      await storage.clearUserActiveLora(userId);
       res.json({ success: true, message: "LoRA deactivated" });
     } catch (error) {
       console.error("Error deactivating LoRA:", error);

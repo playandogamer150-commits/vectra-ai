@@ -1,14 +1,14 @@
 import { 
   users, llmProfiles, promptBlueprints, promptBlocks, filters, 
   generatedPrompts, promptVersions, rateLimits,
-  loraModels, loraDatasets, loraVersions, loraJobs, userLoraActive, baseModels,
+  loraModels, loraDatasets, loraDatasetItems, loraVersions, loraJobs, userLoraActive, baseModels,
   type User, type InsertUser, type LlmProfile, type InsertLlmProfile,
   type PromptBlueprint, type InsertBlueprint, type PromptBlock, type InsertBlock,
   type Filter, type InsertFilter, type GeneratedPrompt, type InsertGeneratedPrompt,
   type PromptVersion, type InsertPromptVersion,
   type LoraModel, type InsertLoraModel, type LoraDataset, type InsertLoraDataset,
   type LoraVersion, type InsertLoraVersion, type LoraJob, type InsertLoraJob,
-  type UserLoraActive, type BaseModel, type InsertBaseModel
+  type UserLoraActive, type BaseModel, type InsertBaseModel, type LoraDatasetItem
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -64,7 +64,12 @@ export interface IStorage {
   updateLoraJob(id: string, data: Partial<InsertLoraJob>): Promise<LoraJob | undefined>;
   
   getUserActiveLora(userId: string): Promise<UserLoraActive | undefined>;
-  setUserActiveLora(userId: string, loraVersionId: string, weight: number): Promise<UserLoraActive>;
+  setUserActiveLora(userId: string, loraModelId: string, loraVersionId: string, weight: number, targetPlatform?: string): Promise<UserLoraActive>;
+  clearUserActiveLora(userId: string): Promise<void>;
+  
+  getDatasetItems(datasetId: string): Promise<LoraDatasetItem[]>;
+  createDatasetItem(item: { datasetId: string; storageKey: string; sha256: string; width: number; height: number; filename?: string }): Promise<LoraDatasetItem>;
+  createDatasetItems(items: Array<{ datasetId: string; storageKey: string; sha256: string; width: number; height: number; filename?: string }>): Promise<LoraDatasetItem[]>;
   
   getBaseModels(): Promise<BaseModel[]>;
   createBaseModel(model: InsertBaseModel): Promise<BaseModel>;
@@ -304,21 +309,39 @@ export class DatabaseStorage implements IStorage {
     return active || undefined;
   }
 
-  async setUserActiveLora(userId: string, loraVersionId: string, weight: number): Promise<UserLoraActive> {
+  async setUserActiveLora(userId: string, loraModelId: string, loraVersionId: string, weight: number, targetPlatform?: string): Promise<UserLoraActive> {
     const existing = await this.getUserActiveLora(userId);
     
     if (existing) {
       const [updated] = await db.update(userLoraActive)
-        .set({ loraVersionId, weight, updatedAt: new Date() })
+        .set({ loraModelId, loraVersionId, weight, targetPlatform: targetPlatform || null, updatedAt: new Date() })
         .where(eq(userLoraActive.userId, userId))
         .returning();
       return updated;
     } else {
       const [created] = await db.insert(userLoraActive)
-        .values({ userId, loraVersionId, weight })
+        .values({ userId, loraModelId, loraVersionId, weight, targetPlatform: targetPlatform || null })
         .returning();
       return created;
     }
+  }
+
+  async clearUserActiveLora(userId: string): Promise<void> {
+    await db.delete(userLoraActive).where(eq(userLoraActive.userId, userId));
+  }
+
+  async getDatasetItems(datasetId: string): Promise<LoraDatasetItem[]> {
+    return db.select().from(loraDatasetItems).where(eq(loraDatasetItems.datasetId, datasetId));
+  }
+
+  async createDatasetItem(item: { datasetId: string; storageKey: string; sha256: string; width: number; height: number; filename?: string }): Promise<LoraDatasetItem> {
+    const [created] = await db.insert(loraDatasetItems).values(item).returning();
+    return created;
+  }
+
+  async createDatasetItems(items: Array<{ datasetId: string; storageKey: string; sha256: string; width: number; height: number; filename?: string }>): Promise<LoraDatasetItem[]> {
+    if (items.length === 0) return [];
+    return db.insert(loraDatasetItems).values(items).returning();
   }
 
   async getBaseModels(): Promise<BaseModel[]> {

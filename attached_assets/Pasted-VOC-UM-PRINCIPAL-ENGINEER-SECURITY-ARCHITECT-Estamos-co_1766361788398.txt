@@ -1,0 +1,93 @@
+VOCÊ É UM PRINCIPAL ENGINEER + SECURITY ARCHITECT.
+Estamos corrigindo e evoluindo o "LoRA Studio" no PromptForge (Next.js App Router + TS).
+
+PROBLEMA ATUAL:
+A UI mostra "Conjunto de Dados" mas não permite upload real. Além disso, o dropdown "Modelo Base" está conceitualmente errado: Sora/Veo/Grok NÃO são modelos treináveis por LoRA. Precisamos separar:
+- TARGET PLATFORM (Sora/Veo/Grok) => para gerar prompts e exportar "Character Pack"
+- TRAINABLE BASE MODEL (Flux/SDXL/etc) => apenas para treino LoRA no GPU Worker
+
+OBJETIVO:
+Implementar um fluxo REAL para treinar identidade do usuário (20 fotos do rosto em vários ângulos) e usar isso no PromptForge:
+1) Upload dataset (20 fotos) funcionando de verdade
+2) Validação (contagem, resolução, duplicados, variedade)
+3) Criação de job de treino (GPU worker externo) com base treinável (Flux/SDXL)
+4) Versionamento do artefato e ativação
+5) Integração no Prompt Compiler:
+   - Se o profile suportar LoRA (Flux/SDXL pipeline): injetar bloco <lora:name:weight>
+   - Se o profile for Target Platform proprietária (Sora/Veo/Grok): não injetar LoRA; gerar e exportar um "Character Pack" (prompt + instruções + imagens referência) com sintaxe apropriada
+
+STACK:
+- Next.js, TS, Tailwind, shadcn/ui
+- Postgres + Drizzle + migrations
+- Zod validação em TODAS rotas
+- Storage: S3/R2 via presigned URLs (fallback local em dev)
+- Rate limit endpoints de upload/job
+- Webhook HMAC para GPU worker
+
+MUDANÇAS DE UI (LoRA Studio):
+- Trocar "Modelo Base" por:
+  A) "Target Platform" (dropdown):
+     - Sora 2 Pro Max, Sora 2, Sora 2 Pro, Veo 3.1 Fast, Veo 3.1, Grok 3
+     (isso define o profile de geração e export)
+  B) "Trainable Base Model" (dropdown, só para treino):
+     - Flux (dev/schnell), SDXL (ou lista suportada pelo worker)
+- Dataset uploader REAL:
+  - suportar selecionar múltiplas imagens (drag&drop)
+  - mostrar progresso e lista de arquivos
+  - exigir 20 imagens (mínimo 15, recomendado 20-30)
+  - botão "Validar dataset"
+  - bloquear "Iniciar treino" até validação OK
+
+BACKEND (rotas obrigatórias):
+- POST /api/lora/datasets/init
+  -> cria dataset no DB e retorna uploadUrls presigned para N arquivos OU endpoint multipart
+- POST /api/lora/datasets/commit
+  -> recebe lista de arquivos enviados (keys) e persiste dataset_items
+- POST /api/lora/datasets/validate
+  -> valida: count, resolution min, duplicates (hash), gera quality_report
+- POST /api/lora/jobs
+  -> cria lora_version + job e dispara worker com payload assinado (HMAC)
+- POST /api/lora/webhook
+  -> recebe status + artifact_url + checksum + logs_url, atualiza DB
+- POST /api/lora/activate
+  -> ativa versão e define weight padrão
+
+BANCO DE DADOS (Drizzle):
+Adicionar/ajustar tabelas:
+- lora_models (id, user_id, name, description, created_at)
+- lora_datasets (id, user_id, lora_model_id, status, dataset_hash, image_count, quality_report_json, created_at)
+- lora_dataset_items (id, dataset_id, storage_key, sha256, width, height, created_at)
+- lora_versions (id, lora_model_id, trainable_base_model, params_json, dataset_hash, artifact_url, checksum, created_at)
+- lora_jobs (id, lora_version_id, provider, status, external_job_id, logs_url, error, started_at, finished_at)
+- user_identity_active (user_id PK, lora_model_id, lora_version_id, weight, target_platform, updated_at)
+
+PROMPT COMPILER:
+- Ler identity ativa do usuário.
+- Se profile.capabilities.supports_lora_injection = true:
+  - inserir LORA_BLOCK no lugar correto
+- Se profile é Target Platform (Sora/Veo/Grok):
+  - não inserir LORA_BLOCK
+  - gerar metadata "character_pack" para export:
+     - prompt final
+     - instruções de uso
+     - lista de imagens referência (dataset thumbs)
+     - parâmetros recomendados
+
+QUALIDADE E ESCALA:
+- Upload deve suportar chunk/multipart quando arquivo grande
+- Jobs devem ser idempotentes (retry seguro)
+- Webhook autenticado com timestamp + HMAC para evitar replay
+- Observabilidade: logs estruturados + Sentry
+
+ENTREGA:
+1) Primeiro, corrija o UI: dois dropdowns (Target Platform + Trainable Base Model) + uploader real
+2) Depois, implemente rotas e tabelas novas
+3) Em seguida, conecte validação e bloqueio de treino
+4) Por fim, integre compiler e export "Character Pack"
+
+NÃO:
+- Não fingir upload.
+- Não afirmar que Sora/Veo/Grok treinam LoRA.
+- Não permitir treino sem consentimento.
+
+COMECE mostrando plano e depois implemente o uploader com rotas /datasets/init + /datasets/commit.

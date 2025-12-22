@@ -121,10 +121,22 @@ export const loraDatasets = pgTable("lora_datasets", {
     imageCount: number;
     minResolution: { width: number; height: number };
     duplicatesFound: number;
+    varietyScore: number;
     issues: string[];
     score: number;
   }>(),
   status: text("status").default("pending").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const loraDatasetItems = pgTable("lora_dataset_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  datasetId: varchar("dataset_id").notNull(),
+  storageKey: text("storage_key").notNull(),
+  sha256: text("sha256").notNull(),
+  width: integer("width").notNull(),
+  height: integer("height").notNull(),
+  filename: text("filename"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -161,8 +173,10 @@ export const loraJobs = pgTable("lora_jobs", {
 
 export const userLoraActive = pgTable("user_lora_active", {
   userId: varchar("user_id").primaryKey(),
+  loraModelId: varchar("lora_model_id").notNull(),
   loraVersionId: varchar("lora_version_id").notNull(),
   weight: real("weight").default(0.8).notNull(),
+  targetPlatform: text("target_platform"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
@@ -199,9 +213,14 @@ export const loraModelsRelations = relations(loraModels, ({ one, many }) => ({
   versions: many(loraVersions),
 }));
 
-export const loraDatasetsRelations = relations(loraDatasets, ({ one }) => ({
+export const loraDatasetsRelations = relations(loraDatasets, ({ one, many }) => ({
   user: one(users, { fields: [loraDatasets.userId], references: [users.id] }),
   loraModel: one(loraModels, { fields: [loraDatasets.loraModelId], references: [loraModels.id] }),
+  items: many(loraDatasetItems),
+}));
+
+export const loraDatasetItemsRelations = relations(loraDatasetItems, ({ one }) => ({
+  dataset: one(loraDatasets, { fields: [loraDatasetItems.datasetId], references: [loraDatasets.id] }),
 }));
 
 export const loraVersionsRelations = relations(loraVersions, ({ one, many }) => ({
@@ -316,7 +335,19 @@ export const createLoraModelRequestSchema = z.object({
 
 export const initDatasetRequestSchema = z.object({
   loraModelId: z.string().min(1),
-  imageCount: z.number().min(10).max(30),
+  imageCount: z.number().min(15).max(50),
+  filenames: z.array(z.string()).min(15).max(50),
+});
+
+export const commitDatasetRequestSchema = z.object({
+  datasetId: z.string().min(1),
+  items: z.array(z.object({
+    storageKey: z.string().min(1),
+    sha256: z.string().min(1),
+    width: z.number().min(256).max(4096),
+    height: z.number().min(256).max(4096),
+    filename: z.string().optional(),
+  })).min(15).max(50),
 });
 
 export const validateDatasetRequestSchema = z.object({
@@ -349,6 +380,7 @@ export const webhookPayloadSchema = z.object({
 export const activateLoraRequestSchema = z.object({
   loraVersionId: z.string().min(1),
   weight: z.number().min(0).max(1.5).default(0.8),
+  targetPlatform: z.string().optional(),
 });
 
 export type LoraModel = typeof loraModels.$inferSelect;
@@ -362,8 +394,10 @@ export type InsertLoraJob = z.infer<typeof insertLoraJobSchema>;
 export type UserLoraActive = typeof userLoraActive.$inferSelect;
 export type BaseModel = typeof baseModels.$inferSelect;
 export type InsertBaseModel = z.infer<typeof insertBaseModelSchema>;
+export type LoraDatasetItem = typeof loraDatasetItems.$inferSelect;
 export type CreateLoraModelRequest = z.infer<typeof createLoraModelRequestSchema>;
 export type InitDatasetRequest = z.infer<typeof initDatasetRequestSchema>;
+export type CommitDatasetRequest = z.infer<typeof commitDatasetRequestSchema>;
 export type CreateLoraJobRequest = z.infer<typeof createLoraJobRequestSchema>;
 export type WebhookPayload = z.infer<typeof webhookPayloadSchema>;
 export type ActivateLoraRequest = z.infer<typeof activateLoraRequestSchema>;

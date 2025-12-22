@@ -7,7 +7,23 @@ export interface LoraContext {
   version: LoraVersion;
   weight: number;
   triggerWord?: string;
+  modelName?: string;
 }
+
+export interface CharacterPackOutput {
+  promptWithoutLora: string;
+  characterInstructions: string;
+  referenceImagesCount: number;
+  recommendedParams: {
+    aspectRatio: string;
+    duration?: number;
+    style?: string;
+  };
+  targetPlatform: string;
+}
+
+const LORA_SUPPORTING_PROFILES = ["flux", "sdxl", "stable_diffusion", "sd1.5", "sd_1.5"];
+const TARGET_PLATFORM_PROFILES = ["sora", "veo", "grok"];
 
 export class PromptCompiler {
   private profiles: Map<string, LlmProfile> = new Map();
@@ -34,6 +50,55 @@ export class PromptCompiler {
 
   getActiveLora(): LoraContext | null {
     return this.activeLora;
+  }
+
+  profileSupportsLoraInjection(profileId: string): boolean {
+    const profile = this.profiles.get(profileId);
+    if (!profile) return false;
+    const profileName = profile.name.toLowerCase().replace(/[\s.-]+/g, "_");
+    return LORA_SUPPORTING_PROFILES.some(id => profileName.includes(id));
+  }
+
+  isTargetPlatformProfile(targetPlatform: string): boolean {
+    const normalized = targetPlatform.toLowerCase();
+    return TARGET_PLATFORM_PROFILES.some(id => normalized.includes(id));
+  }
+
+  generateCharacterPack(input: CompilerInput, targetPlatform: string): CharacterPackOutput | null {
+    if (!this.activeLora) return null;
+
+    const output = this.compile(input);
+    const lora = this.activeLora;
+    const modelName = lora.modelName || "Custom Identity";
+    
+    let platformInstructions = "";
+    let recommendedParams: CharacterPackOutput["recommendedParams"] = { aspectRatio: "16:9" };
+
+    if (targetPlatform.startsWith("sora")) {
+      platformInstructions = `For Sora: Use this prompt with your uploaded reference images. ` +
+        `The character "${modelName}" should maintain consistent appearance across all frames. ` +
+        `Upload the reference images as "character reference" in Sora's interface.`;
+      recommendedParams = { aspectRatio: "16:9", duration: 10, style: "cinematic" };
+    } else if (targetPlatform.startsWith("veo")) {
+      platformInstructions = `For Veo: Include these reference images as visual anchors. ` +
+        `Describe the character "${modelName}" in your prompt for consistency. ` +
+        `Use Veo's subject reference feature to maintain identity.`;
+      recommendedParams = { aspectRatio: "16:9", duration: 8, style: "photorealistic" };
+    } else if (targetPlatform.startsWith("grok")) {
+      platformInstructions = `For Grok: Describe the character "${modelName}" with specific visual details. ` +
+        `Reference the attached images for appearance consistency.`;
+      recommendedParams = { aspectRatio: "1:1" };
+    }
+
+    const previewImages = (lora.version.previewImages as string[]) || [];
+
+    return {
+      promptWithoutLora: output.compiledPrompt,
+      characterInstructions: platformInstructions,
+      referenceImagesCount: previewImages.length || 20,
+      recommendedParams,
+      targetPlatform,
+    };
   }
 
   generateSeed(input: CompilerInput): string {
@@ -69,7 +134,7 @@ export class PromptCompiler {
     parts.push(profile.basePrompt);
     parts.push(SYSTEM_PROMPT_CORE);
 
-    if (this.activeLora) {
+    if (this.activeLora && this.profileSupportsLoraInjection(input.profileId)) {
       const loraBlock = this.buildLoraBlock(this.activeLora);
       if (loraBlock) {
         parts.push(loraBlock);
