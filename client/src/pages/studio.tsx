@@ -64,7 +64,7 @@ interface UserBlueprint {
   category: string;
   tags: string[];
   blocks: string[];
-  constraints: Record<string, unknown>;
+  constraints: string[];
   compatibleProfiles: string[];
   version: number;
   isActive: number;

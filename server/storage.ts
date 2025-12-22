@@ -79,8 +79,8 @@ export interface IStorage {
   // User Blueprints
   getUserBlueprints(userId: string): Promise<UserBlueprint[]>;
   getUserBlueprint(id: string): Promise<UserBlueprint | undefined>;
-  createUserBlueprint(blueprint: InsertUserBlueprint, blocks: string[], constraints: Record<string, unknown>): Promise<{ blueprint: UserBlueprint; version: UserBlueprintVersion }>;
-  updateUserBlueprint(id: string, userId: string, data: Partial<InsertUserBlueprint>, blocks?: string[], constraints?: Record<string, unknown>): Promise<{ blueprint: UserBlueprint; version: UserBlueprintVersion } | undefined>;
+  createUserBlueprint(blueprint: InsertUserBlueprint, blocks: string[], constraints: string[]): Promise<{ blueprint: UserBlueprint; version: UserBlueprintVersion }>;
+  updateUserBlueprint(id: string, userId: string, data: Partial<InsertUserBlueprint>, blocks?: string[], constraints?: string[]): Promise<{ blueprint: UserBlueprint; version: UserBlueprintVersion } | undefined>;
   deleteUserBlueprint(id: string, userId: string): Promise<boolean>;
   getUserBlueprintVersions(blueprintId: string): Promise<UserBlueprintVersion[]>;
   getUserBlueprintLatestVersion(blueprintId: string): Promise<UserBlueprintVersion | undefined>;
@@ -380,7 +380,7 @@ export class DatabaseStorage implements IStorage {
   async createUserBlueprint(
     blueprint: InsertUserBlueprint, 
     blocks: string[], 
-    constraints: Record<string, unknown>
+    constraints: string[]
   ): Promise<{ blueprint: UserBlueprint; version: UserBlueprintVersion }> {
     const [created] = await db.insert(userBlueprints).values(blueprint).returning();
     
@@ -399,7 +399,7 @@ export class DatabaseStorage implements IStorage {
     userId: string, 
     data: Partial<InsertUserBlueprint>,
     blocks?: string[],
-    constraints?: Record<string, unknown>
+    constraints?: string[]
   ): Promise<{ blueprint: UserBlueprint; version: UserBlueprintVersion } | undefined> {
     const existing = await this.getUserBlueprint(id);
     if (!existing || existing.userId !== userId) return undefined;
@@ -417,7 +417,7 @@ export class DatabaseStorage implements IStorage {
         blueprintId: id,
         version: newVersion,
         blocks: blocks || latestVersion?.blocks || [],
-        constraints: constraints || latestVersion?.constraints || {},
+        constraints: constraints || latestVersion?.constraints || [],
       }).returning();
       
       return { blueprint: updated, version };

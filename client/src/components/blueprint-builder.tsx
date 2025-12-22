@@ -33,7 +33,7 @@ interface UserBlueprintData {
   category: string;
   tags: string[];
   blocks: string[];
-  constraints: Record<string, unknown>;
+  constraints: string[];
   compatibleProfiles: string[];
 }
 
@@ -104,7 +104,7 @@ export function BlueprintBuilder({ open, onOpenChange, editData, onSuccess }: Bl
         category,
         blocks: selectedBlocks,
         tags,
-        constraints: {},
+        constraints: [],
         compatibleProfiles,
       });
       return res.json();

@@ -210,7 +210,7 @@ export const userBlueprintVersions = pgTable("user_blueprint_versions", {
   blueprintId: varchar("blueprint_id").notNull(),
   version: integer("version").notNull(),
   blocks: jsonb("blocks").$type<string[]>().notNull(),
-  constraints: jsonb("constraints").$type<Record<string, unknown>>().default({}),
+  constraints: jsonb("constraints").$type<string[]>().default([]),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -460,7 +460,7 @@ export const createUserBlueprintRequestSchema = z.object({
   category: z.string().min(1),
   tags: z.array(z.string()).default([]),
   blocks: z.array(z.string()).min(1),
-  constraints: z.record(z.string(), z.unknown()).default({}),
+  constraints: z.array(z.string()).default([]),
   compatibleProfiles: z.array(z.string()).default([]),
 });
 
@@ -470,7 +470,7 @@ export const updateUserBlueprintRequestSchema = z.object({
   category: z.string().min(1).optional(),
   tags: z.array(z.string()).optional(),
   blocks: z.array(z.string()).min(1).optional(),
-  constraints: z.record(z.string(), z.unknown()).optional(),
+  constraints: z.array(z.string()).optional(),
   compatibleProfiles: z.array(z.string()).optional(),
 });
 

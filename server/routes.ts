@@ -151,14 +151,19 @@ export async function registerRoutes(
         if (!userBlueprint) {
           return res.status(400).json({ error: "User blueprint not found" });
         }
+        // Get the latest version to access blocks and constraints
+        const latestVersion = await storage.getUserBlueprintLatestVersion(validated.userBlueprintId);
+        if (!latestVersion) {
+          return res.status(400).json({ error: "User blueprint has no versions" });
+        }
         // Register user blueprint in compiler as a virtual system blueprint
         compiler.registerUserBlueprint({
           id: userBlueprint.id,
           name: userBlueprint.name,
           description: userBlueprint.description || "",
           category: userBlueprint.category,
-          blocks: userBlueprint.blocks as string[],
-          constraints: userBlueprint.constraints as string[],
+          blocks: latestVersion.blocks as string[],
+          constraints: latestVersion.constraints as string[],
         });
         effectiveBlueprintId = userBlueprint.id;
       }
@@ -315,7 +320,7 @@ export async function registerRoutes(
           return {
             ...bp,
             blocks: latestVersion?.blocks || [],
-            constraints: latestVersion?.constraints || {},
+            constraints: latestVersion?.constraints || [],
           };
         })
       );
@@ -345,7 +350,7 @@ export async function registerRoutes(
       res.json({
         ...blueprint,
         blocks: latestVersion?.blocks || [],
-        constraints: latestVersion?.constraints || {},
+        constraints: latestVersion?.constraints || [],
       });
     } catch (error) {
       console.error("Error fetching user blueprint:", error);
