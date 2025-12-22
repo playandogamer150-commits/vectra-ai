@@ -171,5 +171,11 @@ Workers receive signed payloads with:
 Workers must sign responses with HMAC and include `X-Signature` + `X-Timestamp` headers.
 
 ## Recent Changes
+- 2024-12-22: Added Character Pack generation for non-LoRA platforms (Sora/Veo/Grok)
+- 2024-12-22: Implemented profileSupportsLoraInjection() for conditional LoRA syntax injection
+- 2024-12-22: Added dual-dropdown architecture: Target Platform (for export) vs Trainable Base Model (for training)
+- 2024-12-22: Added lora_dataset_items table for individual file tracking with SHA256 hashes
+- 2024-12-22: Added real dataset upload workflow: init → presigned URLs → commit → validate
+- 2024-12-22: Added Portuguese translations for new LoRA Studio fields
 - 2024-12-21: Added LoRA training infrastructure (routes, storage, compiler integration)
 - 2024-12-21: Initial MVP release with full prompt generation workflow
