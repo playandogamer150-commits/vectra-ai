@@ -18,10 +18,21 @@ import { queryClient } from "@/lib/queryClient";
 import { 
   Loader2, ImagePlus, Sparkles, X, Download, ExternalLink, Upload, Clipboard,
   ChevronDown, ChevronUp, Layers, SlidersHorizontal, Wand2, RefreshCw, Heart,
-  Save, Trash2, FolderOpen, BookmarkPlus
+  Save, Trash2, FolderOpen, BookmarkPlus, Video, Play
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 interface ModelsLabResponse {
+  status: string;
+  generationTime?: number;
+  id?: number;
+  output?: string[];
+  fetch_result?: string;
+  eta?: number;
+  message?: string;
+}
+
+interface Sora2Response {
   status: string;
   generationTime?: number;
   id?: number;
@@ -110,6 +121,14 @@ export default function ModelsLabStudioPage() {
   const [presetName, setPresetName] = useState("");
   const [showPresetDialog, setShowPresetDialog] = useState(false);
 
+  // Video generation state (Sora 2)
+  const [showVideoDialog, setShowVideoDialog] = useState(false);
+  const [selectedImageForVideo, setSelectedImageForVideo] = useState<string>("");
+  const [videoDuration, setVideoDuration] = useState<string>("4");
+  const [videoAspectRatio, setVideoAspectRatio] = useState<string>("16:9");
+  const [videoResult, setVideoResult] = useState<Sora2Response | null>(null);
+  const [isPollingVideo, setIsPollingVideo] = useState(false);
+
   // Save image mutation
   const saveImageMutation = useMutation({
     mutationFn: async (imageData: { imageUrl: string; prompt: string }) => {
@@ -191,6 +210,81 @@ export default function ModelsLabStudioPage() {
       toast({ title: t.modelslab.presetDeleted || "Preset deleted" });
     },
   });
+
+  // Video generation mutation (Sora 2)
+  const generateVideoMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/sora2/generate", {
+        prompt: prompt || "Cinematic video of the scene",
+        aspectRatio: videoAspectRatio,
+        duration: videoDuration,
+      });
+      return await response.json() as Sora2Response;
+    },
+    onSuccess: (data) => {
+      setVideoResult(data);
+      if (data.status === "processing" && data.fetch_result) {
+        setIsPollingVideo(true);
+        pollVideoStatus(data.fetch_result);
+      } else if (data.output && data.output.length > 0) {
+        toast({ title: t.modelslab.videoGenerated || "Video generated successfully!" });
+        setShowVideoDialog(false);
+      }
+    },
+    onError: (error) => {
+      toast({ 
+        title: t.modelslab.videoError || "Video generation failed", 
+        description: String(error),
+        variant: "destructive" 
+      });
+    },
+  });
+
+  // Poll video status
+  const pollVideoStatus = async (fetchUrl: string) => {
+    let attempts = 0;
+    const maxAttempts = 60; // 5 minutes max
+    
+    const poll = async () => {
+      if (attempts >= maxAttempts) {
+        setIsPollingVideo(false);
+        toast({ 
+          title: t.modelslab.videoTimeout || "Video generation timed out", 
+          variant: "destructive" 
+        });
+        return;
+      }
+      
+      try {
+        const response = await apiRequest("POST", "/api/sora2/status", { fetchUrl });
+        const data = await response.json() as Sora2Response;
+        
+        setVideoResult(data);
+        
+        if (data.status === "success" && data.output && data.output.length > 0) {
+          setIsPollingVideo(false);
+          toast({ title: t.modelslab.videoGenerated || "Video generated successfully!" });
+        } else if (data.status === "failed") {
+          setIsPollingVideo(false);
+          toast({ 
+            title: t.modelslab.videoFailed || "Video generation failed", 
+            variant: "destructive" 
+          });
+        } else {
+          attempts++;
+          setTimeout(poll, 5000); // Poll every 5 seconds
+        }
+      } catch (error) {
+        setIsPollingVideo(false);
+        toast({ 
+          title: t.modelslab.videoError || "Error checking video status", 
+          variant: "destructive" 
+        });
+      }
+    };
+    
+    poll();
+  };
 
   // Load preset function
   const loadPreset = (preset: FilterPreset) => {
@@ -852,6 +946,18 @@ export default function ModelsLabStudioPage() {
                         >
                           <Download className="w-4 h-4" />
                         </Button>
+                        <Button
+                          size="icon"
+                          variant="secondary"
+                          onClick={() => {
+                            setSelectedImageForVideo(imageUrl);
+                            setShowVideoDialog(true);
+                          }}
+                          title={t.modelslab.transformToVideo || "Transform to Video"}
+                          data-testid={`button-video-${index}`}
+                        >
+                          <Video className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -861,6 +967,24 @@ export default function ModelsLabStudioPage() {
                       {t.modelslab.generatedIn} {result.generationTime.toFixed(2)}s
                     </p>
                   )}
+                  
+                  {/* Transform to Video CTA */}
+                  <div className="pt-4 border-t">
+                    <Button
+                      onClick={() => {
+                        if (result.output && result.output.length > 0) {
+                          setSelectedImageForVideo(result.output[0]);
+                          setShowVideoDialog(true);
+                        }
+                      }}
+                      className="w-full"
+                      variant="outline"
+                      data-testid="button-transform-video"
+                    >
+                      <Video className="w-4 h-4 mr-2" />
+                      {t.modelslab.transformToVideoFull || "Transform to Video with Sora 2"}
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="h-64 flex items-center justify-center border border-dashed rounded-lg">
@@ -1084,6 +1208,153 @@ export default function ModelsLabStudioPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Video Generation Dialog */}
+      <Dialog open={showVideoDialog} onOpenChange={setShowVideoDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Video className="w-5 h-5" />
+              {t.modelslab.videoDialogTitle || "Transform to Video"}
+            </DialogTitle>
+            <DialogDescription>
+              {t.modelslab.videoDialogDescription || "Generate a video from your prompt using Sora 2"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {/* Preview Image */}
+            {selectedImageForVideo && (
+              <div className="relative rounded-lg overflow-hidden border">
+                <img 
+                  src={selectedImageForVideo} 
+                  alt="Preview" 
+                  className="w-full h-32 object-cover"
+                />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <Play className="w-8 h-8 text-white/80" />
+                </div>
+              </div>
+            )}
+
+            {/* Duration Selection */}
+            <div className="space-y-2">
+              <Label>{t.modelslab.videoDuration || "Duration"}</Label>
+              <Select value={videoDuration} onValueChange={setVideoDuration}>
+                <SelectTrigger data-testid="select-video-duration">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="4" data-testid="option-video-duration-4">4 {t.modelslab.seconds || "seconds"}</SelectItem>
+                  <SelectItem value="8" data-testid="option-video-duration-8">8 {t.modelslab.seconds || "seconds"}</SelectItem>
+                  <SelectItem value="12" data-testid="option-video-duration-12">12 {t.modelslab.seconds || "seconds"}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Aspect Ratio Selection */}
+            <div className="space-y-2">
+              <Label>{t.modelslab.videoAspectRatio || "Aspect Ratio"}</Label>
+              <Select value={videoAspectRatio} onValueChange={setVideoAspectRatio}>
+                <SelectTrigger data-testid="select-video-aspect">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="16:9" data-testid="option-video-aspect-16-9">{t.modelslab.landscape || "Landscape"} (16:9)</SelectItem>
+                  <SelectItem value="9:16" data-testid="option-video-aspect-9-16">{t.modelslab.portrait || "Portrait"} (9:16)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Video Result */}
+            {videoResult?.output && videoResult.output.length > 0 && (
+              <div className="space-y-2">
+                <Label>{t.modelslab.videoResult || "Generated Video"}</Label>
+                <video 
+                  src={videoResult.output[0]} 
+                  controls 
+                  className="w-full rounded-lg border"
+                  data-testid="video-result"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(videoResult.output![0], "_blank")}
+                    data-testid="button-open-video"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    {t.modelslab.openVideo || "Open"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const link = document.createElement("a");
+                      link.href = videoResult.output![0];
+                      link.download = `sora2-${Date.now()}.mp4`;
+                      link.click();
+                    }}
+                    data-testid="button-download-video"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    {t.modelslab.downloadVideo || "Download"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Processing Status */}
+            {isPollingVideo && (
+              <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm">
+                  {t.modelslab.videoProcessing || "Generating video... This may take a few minutes."}
+                </span>
+              </div>
+            )}
+
+            {/* Cost Info */}
+            <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg" data-testid="info-video-cost">
+              <p className="font-medium mb-1">{t.modelslab.videoCostInfo || "Cost Information"}</p>
+              <p>{t.modelslab.videoCostDetails || "Video generation costs $0.125 per second."}</p>
+              <p className="mt-1" data-testid="text-estimated-cost">
+                {t.modelslab.estimatedCost || "Estimated cost"}: ${(parseInt(videoDuration) * 0.125).toFixed(2)}
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowVideoDialog(false);
+                setVideoResult(null);
+              }}
+              data-testid="button-cancel-video"
+            >
+              {t.modelslab.cancel || "Cancel"}
+            </Button>
+            <Button
+              onClick={() => generateVideoMutation.mutate()}
+              disabled={generateVideoMutation.isPending || isPollingVideo}
+              data-testid="button-confirm-video"
+            >
+              {generateVideoMutation.isPending || isPollingVideo ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  {t.modelslab.generatingVideo || "Generating..."}
+                </>
+              ) : (
+                <>
+                  <Video className="w-4 h-4 mr-2" />
+                  {t.modelslab.generateVideo || "Generate Video"}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
