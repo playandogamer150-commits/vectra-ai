@@ -1236,8 +1236,7 @@ export default function ModelsLabStudioPage() {
 
             {/* Video Specs Info */}
             <div className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg space-y-1">
-              <p>{t.modelslab.videoSpecs || "VEO 3.1 Fast generates 8-second videos at 720p/1080p with 24fps."}</p>
-              <p className="text-xs opacity-75">{t.modelslab.videoUpscaleNote || "Images are automatically upscaled for optimal video quality."}</p>
+              <p>{t.modelslab.videoSpecs || "Generates ~5 second videos at 18fps from your image."}</p>
             </div>
 
             {/* Video Result */}
@@ -1266,7 +1265,7 @@ export default function ModelsLabStudioPage() {
                     onClick={() => {
                       const link = document.createElement("a");
                       link.href = videoResult.output![0];
-                      link.download = `veo31-${Date.now()}.mp4`;
+                      link.download = `video-${Date.now()}.mp4`;
                       link.click();
                     }}
                     data-testid="button-download-video"
@@ -1290,11 +1289,7 @@ export default function ModelsLabStudioPage() {
 
             {/* Cost Info */}
             <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg" data-testid="info-video-cost">
-              <p className="font-medium mb-1">{t.modelslab.videoCostInfo || "Cost Information"}</p>
-              <p>{t.modelslab.videoCostDetails || "Video generation costs $0.24 per second."}</p>
-              <p className="mt-1" data-testid="text-estimated-cost">
-                {t.modelslab.estimatedCost || "Estimated cost"}: ${(8 * 0.24).toFixed(2)}
-              </p>
+              <p>{t.modelslab.videoCostNote || "Video generation may take 1-3 minutes to complete."}</p>
             </div>
           </div>
 
