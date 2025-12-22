@@ -788,6 +788,11 @@ export default function LoraStudioPage() {
                               <span className="text-sm text-muted-foreground">
                                 {(version.params as { steps?: number })?.steps || 0} steps
                               </span>
+                              {version.artifactUrl ? (
+                                <Badge variant="default" className="bg-green-600">{t.loraStudio.completed}</Badge>
+                              ) : (
+                                <Badge variant="outline" className="animate-pulse">{t.loraStudio.training}</Badge>
+                              )}
                             </div>
                             {version.artifactUrl && (
                               <div className="flex items-center gap-2">

@@ -21,6 +21,11 @@ const FREE_LORA_JOBS = 0;
 const PRO_LORA_JOBS = 10;
 
 function getUserId(req: Request): string {
+  // In development mode, use a fixed user ID for consistent experience
+  const isDev = process.env.NODE_ENV === "development";
+  if (isDev) {
+    return "dev_user";
+  }
   return req.ip || "anonymous";
 }
 
@@ -328,9 +333,38 @@ export function registerLoraRoutes(app: Express) {
           });
         }
       } else {
-        await storage.updateLoraJob(job.id, {
-          error: "No worker configured - job in mock mode",
-        });
+        // Development mode: Simulate training completion
+        const isDev = process.env.NODE_ENV === "development" || !WORKER_URL;
+        
+        if (isDev) {
+          // Start simulated training and complete immediately (dev mode)
+          await storage.updateLoraJob(job.id, {
+            status: "processing",
+            startedAt: new Date(),
+            error: null,
+          });
+          
+          // Simulate training completion immediately for better dev UX
+          const mockArtifactUrl = `simulated://lora/${version.id}/model.safetensors`;
+          
+          await storage.updateLoraJob(job.id, {
+            status: "completed",
+            finishedAt: new Date(),
+            error: null,
+          });
+          
+          await storage.updateLoraVersion(version.id, {
+            artifactUrl: mockArtifactUrl,
+            checksum: createHash("sha256").update(version.id).digest("hex"),
+            previewImages: [],
+          });
+          
+          console.log(`[LoRA] Simulated training completed for version ${version.id}`);
+        } else {
+          await storage.updateLoraJob(job.id, {
+            error: "No worker configured - job in mock mode",
+          });
+        }
       }
       
       res.status(201).json({ job, version });
