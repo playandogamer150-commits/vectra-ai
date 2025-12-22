@@ -282,6 +282,8 @@ export const generateRequestSchema = z.object({
   items: z.string().optional().default(""),
   environment: z.string().optional().default(""),
   restrictions: z.string().optional().default(""),
+  loraVersionId: z.string().optional(),
+  loraWeight: z.number().min(0).max(2).optional().default(1),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

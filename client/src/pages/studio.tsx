@@ -9,15 +9,21 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/lib/i18n";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { LlmProfile, PromptBlueprint, Filter, GeneratedPrompt } from "@shared/schema";
+import type { LlmProfile, PromptBlueprint, Filter, GeneratedPrompt, LoraModel, LoraVersion } from "@shared/schema";
 import { 
   Zap, Copy, Download, Save, Share2, RefreshCw, AlertTriangle, 
   CheckCircle, ChevronDown, ChevronUp, Gauge, Layers, SlidersHorizontal,
-  Sparkles, FileText
+  Sparkles, FileText, Wand2, X
 } from "lucide-react";
+
+interface TrainedLora {
+  model: LoraModel;
+  versions: LoraVersion[];
+}
 
 type FilterValue = Record<string, string>;
 
@@ -35,6 +41,7 @@ export default function StudioPage() {
   const [restrictions, setRestrictions] = useState("");
   const [showFilters, setShowFilters] = useState(true);
   const [result, setResult] = useState<GeneratedPrompt | null>(null);
+  const [selectedLora, setSelectedLora] = useState<{ versionId: string; weight: number } | null>(null);
 
   const { data: profiles, isLoading: loadingProfiles } = useQuery<LlmProfile[]>({
     queryKey: ["/api/profiles"],
@@ -46,6 +53,10 @@ export default function StudioPage() {
 
   const { data: filters, isLoading: loadingFilters } = useQuery<Filter[]>({
     queryKey: ["/api/filters"],
+  });
+
+  const { data: trainedLoras, isLoading: loadingLoras } = useQuery<TrainedLora[]>({
+    queryKey: ["/api/lora/trained"],
   });
 
   const generateMutation = useMutation({
@@ -60,6 +71,8 @@ export default function StudioPage() {
         items,
         environment,
         restrictions,
+        loraVersionId: selectedLora?.versionId,
+        loraWeight: selectedLora?.weight,
       });
       return res.json();
     },
@@ -194,6 +207,89 @@ export default function StudioPage() {
                       ))}
                     </div>
                   </ScrollArea>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* LoRA Model Selector */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-2">
+                  <Wand2 className="w-4 h-4" />
+                  {t.studio.loraModel || "LoRA Model"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {loadingLoras ? (
+                  <Skeleton className="h-16 w-full" />
+                ) : trainedLoras && trainedLoras.length > 0 ? (
+                  <>
+                    <ScrollArea className="h-[160px] pr-4">
+                      <div className="space-y-2">
+                        {trainedLoras.map((lora) => (
+                          lora.versions.map((version) => (
+                            <button
+                              key={version.id}
+                              onClick={() => setSelectedLora(
+                                selectedLora?.versionId === version.id 
+                                  ? null 
+                                  : { versionId: version.id, weight: 1 }
+                              )}
+                              className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                                selectedLora?.versionId === version.id
+                                  ? "border-primary bg-primary/5"
+                                  : "border-border hover-elevate"
+                              }`}
+                              data-testid={`button-lora-${version.id}`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-medium text-sm">{lora.model.name}</span>
+                                <Badge variant="secondary" className="text-xs">
+                                  {version.baseModel}
+                                </Badge>
+                              </div>
+                              {lora.model.description && (
+                                <div className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                                  {lora.model.description}
+                                </div>
+                              )}
+                            </button>
+                          ))
+                        ))}
+                      </div>
+                    </ScrollArea>
+                    
+                    {selectedLora && (
+                      <div className="space-y-2 pt-2 border-t">
+                        <div className="flex items-center justify-between gap-2">
+                          <Label className="text-xs text-muted-foreground">
+                            {t.loraStudio?.weight || "Weight"}: {selectedLora.weight.toFixed(2)}
+                          </Label>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setSelectedLora(null)}
+                            data-testid="button-clear-lora"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <Slider
+                          value={[selectedLora.weight]}
+                          onValueChange={([value]) => setSelectedLora({ ...selectedLora, weight: value })}
+                          min={0}
+                          max={2}
+                          step={0.1}
+                          data-testid="slider-lora-weight"
+                        />
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground text-sm">
+                    <p>{t.studio.noTrainedLoras || "No trained LoRAs available"}</p>
+                    <p className="text-xs mt-1">{t.studio.trainLoraHint || "Train a LoRA in the LoRA Studio"}</p>
+                  </div>
                 )}
               </CardContent>
             </Card>

@@ -142,6 +142,27 @@ export async function registerRoutes(
       const latestFilters = await storage.getFilters();
       compiler.setData(latestProfiles, latestBlueprints, latestBlocks, latestFilters);
 
+      // Always reset LoRA state before each request to prevent leaking between requests
+      compiler.setActiveLora(null);
+      
+      // Activate LoRA if provided and valid
+      if (validated.loraVersionId) {
+        const loraVersion = await storage.getLoraVersion(validated.loraVersionId);
+        if (!loraVersion) {
+          return res.status(400).json({ error: "LoRA version not found" });
+        }
+        if (!loraVersion.artifactUrl) {
+          return res.status(400).json({ error: "LoRA version not trained yet" });
+        }
+        const loraModel = await storage.getLoraModel(loraVersion.loraModelId);
+        compiler.setActiveLora({
+          version: loraVersion,
+          weight: validated.loraWeight || 1,
+          triggerWord: loraModel?.name?.toLowerCase().replace(/\s+/g, "_") || "custom_style",
+          modelName: loraModel?.name || "Custom Model",
+        });
+      }
+
       const result = compiler.compile({
         profileId: validated.profileId,
         blueprintId: validated.blueprintId,

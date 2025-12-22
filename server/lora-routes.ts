@@ -47,6 +47,32 @@ export function registerLoraRoutes(app: Express) {
     }
   });
 
+  // Get all trained LoRA versions for use in prompt generation
+  app.get("/api/lora/trained", async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const models = await storage.getLoraModels(userId);
+      
+      const trainedLoras = await Promise.all(
+        models.map(async (model) => {
+          const versions = await storage.getLoraVersions(model.id);
+          const trainedVersions = versions.filter(v => v.artifactUrl);
+          if (trainedVersions.length === 0) return null;
+          
+          return {
+            model,
+            versions: trainedVersions,
+          };
+        })
+      );
+      
+      res.json(trainedLoras.filter(Boolean));
+    } catch (error) {
+      console.error("Error fetching trained LoRAs:", error);
+      res.status(500).json({ error: "Failed to fetch trained LoRAs" });
+    }
+  });
+
   app.get("/api/lora/models/:id", async (req, res) => {
     try {
       const model = await storage.getLoraModel(req.params.id);
