@@ -152,11 +152,11 @@ export const defaultBlocks: BlockDefinition[] = [
   { key: "stat_display", label: "Stat Display", template: "character stats, attribute values, skill numbers", type: "layout" },
   
   // IG Realistic UGC blocks
-  { key: "ig_story_base", label: "IG Story Base", template: "9:16 ultra-realistic handheld vertical selfie, shot in authentic IG-story style, slight motion blur, soft lo-fi texture, warm indoor lighting", type: "style" },
-  { key: "ig_framing_selfie", label: "IG Framing Selfie", template: "vertical close-up selfie filling most of the story frame, camera very close to the face, imperfect handheld angle, playful pose, relaxed confident expression, direct eye contact with the camera", type: "camera" },
-  { key: "ig_story_aesthetic", label: "IG Story Aesthetic", template: "IG-story realism, gentle exposure drifting, shallow depth of field, subtle grain, slightly over-smoothed iPhone edges, no cinematic polish", type: "postfx" },
-  { key: "ig_appearance_neutral", label: "IG Appearance Neutral", template: "no specific facial features, natural loose hair, minimal or optional makeup, identity should follow reference image provided", type: "subject" },
-  { key: "ig_accessory_details", label: "IG Accessory Details", template: "delicate gold rings on fingers, AirPods optional, shoulders framed with minimal white tank top, neutral indoor background softly out of focus", type: "subject" },
+  { key: "ig_story_base", label: "IG Story Base", template: "9:16 ultra-realistic handheld vertical selfie, shot in authentic IG-story style, slight motion blur, soft lo-fi texture, warm indoor lighting, photorealistic skin texture, natural imperfections", type: "style" },
+  { key: "ig_framing_selfie", label: "IG Framing Selfie", template: "vertical close-up selfie filling most of the story frame, camera very close to the face, imperfect handheld angle, casual relaxed pose, natural confident expression, direct eye contact with the camera", type: "camera" },
+  { key: "ig_story_aesthetic", label: "IG Story Aesthetic", template: "IG-story realism, gentle exposure drifting, shallow depth of field, subtle grain, slightly over-smoothed smartphone edges, no cinematic polish, authentic phone camera quality", type: "postfx" },
+  { key: "ig_appearance_neutral", label: "IG Appearance Neutral", template: "photorealistic person, natural skin texture with pores and subtle imperfections, identity and features determined by reference image only, no stylization", type: "subject" },
+  { key: "ig_accessory_details", label: "IG Accessory Details", template: "casual accessories as appropriate, natural clothing visible at shoulders, neutral indoor background softly out of focus, authentic ambient lighting", type: "subject" },
   { key: "no_text_stickers", label: "No Text/Stickers", template: "no text on screen, no stickers, only the raw story-style selfie", type: "constraint" },
   { key: "raw_story_only", label: "Raw Story Only", template: "authentic unedited story capture, no filters applied, no overlays", type: "constraint" },
 ];
