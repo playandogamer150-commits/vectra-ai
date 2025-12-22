@@ -691,6 +691,103 @@ export async function registerRoutes(
     }
   });
 
+  // ============ SORA 2 VIDEO GENERATION ============
+  app.post("/api/sora2/generate", async (req, res) => {
+    try {
+      const { prompt, aspectRatio, duration } = req.body;
+      
+      if (!prompt) {
+        return res.status(400).json({ error: "Prompt is required" });
+      }
+      
+      const apiKey = process.env.MODELSLAB_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "ModelsLab API key not configured" });
+      }
+      
+      // Sora 2 valid durations: 4, 8, 12 seconds
+      const validDurations = ["4", "8", "12"];
+      const selectedDuration = validDurations.includes(duration) ? duration : "4";
+      
+      // Sora 2 valid aspect ratios: 9:16, 16:9
+      const validRatios = ["9:16", "16:9"];
+      const selectedRatio = validRatios.includes(aspectRatio) ? aspectRatio : "16:9";
+      
+      const requestBody = {
+        key: apiKey,
+        model_id: "sora-2",
+        prompt,
+        aspect_ratio: selectedRatio,
+        duration: selectedDuration,
+      };
+      
+      console.log("Sending to Sora 2:", { 
+        ...requestBody, 
+        key: "[REDACTED]"
+      });
+      
+      const response = await fetch("https://modelslab.com/api/v7/video-fusion/text-to-video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+      
+      const data = await response.json();
+      console.log("Sora 2 response:", data);
+      
+      res.json(data);
+    } catch (error) {
+      console.error("Error generating video with Sora 2:", error);
+      res.status(500).json({ error: "Failed to generate video" });
+    }
+  });
+
+  app.post("/api/sora2/status", async (req, res) => {
+    try {
+      const { fetchUrl } = req.body;
+      
+      if (!fetchUrl) {
+        return res.status(400).json({ error: "Fetch URL is required" });
+      }
+      
+      // Validate URL is from trusted ModelsLab domain
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(fetchUrl);
+      } catch {
+        return res.status(400).json({ error: "Invalid URL format" });
+      }
+      
+      const isAllowedHost = ALLOWED_MODELSLAB_HOSTS.some(
+        host => parsedUrl.hostname === host || parsedUrl.hostname.endsWith(`.${host}`)
+      );
+      
+      if (!isAllowedHost) {
+        console.warn(`Blocked SSRF attempt to: ${parsedUrl.hostname}`);
+        return res.status(403).json({ error: "URL not from trusted ModelsLab domain" });
+      }
+      
+      const apiKey = process.env.MODELSLAB_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "ModelsLab API key not configured" });
+      }
+      
+      const response = await fetch(fetchUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: apiKey,
+        }),
+      });
+      
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error checking Sora 2 status:", error);
+      res.status(500).json({ error: "Failed to check video status" });
+    }
+  });
+
   // ============ SAVED IMAGES (Gallery) ============
   app.get("/api/gallery", async (_req, res) => {
     try {
