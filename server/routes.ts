@@ -713,13 +713,13 @@ export async function registerRoutes(
     }
   });
 
-  // ============ SORA 2 VIDEO GENERATION ============
+  // ============ SORA 2 VIDEO GENERATION (IMAGE-TO-VIDEO) ============
   app.post("/api/sora2/generate", async (req, res) => {
     try {
-      const { prompt, aspectRatio, duration } = req.body;
+      const { prompt, aspectRatio, duration, imageUrl } = req.body;
       
-      if (!prompt) {
-        return res.status(400).json({ error: "Prompt is required" });
+      if (!imageUrl) {
+        return res.status(400).json({ error: "Image URL is required for video generation" });
       }
       
       const apiKey = process.env.MODELSLAB_API_KEY;
@@ -727,43 +727,52 @@ export async function registerRoutes(
         return res.status(500).json({ error: "ModelsLab API key not configured" });
       }
       
-      // Sora 2 valid durations: 4, 8, 12 seconds
-      const validDurations = ["4", "8", "12"];
-      const selectedDuration = validDurations.includes(duration) ? duration : "4";
-      
-      // Sora 2 requires resolution format, not ratio format
-      // Convert 9:16 -> 720x1280 (portrait), 16:9 -> 1280x720 (landscape)
-      const aspectRatioMap: Record<string, string> = {
-        "9:16": "720x1280",
-        "16:9": "1280x720",
+      // Calculate dimensions based on aspect ratio
+      // 9:16 portrait -> 720x1280, 16:9 landscape -> 1280x720
+      const dimensionMap: Record<string, { width: number; height: number }> = {
+        "9:16": { width: 720, height: 1280 },
+        "16:9": { width: 1280, height: 720 },
       };
-      const selectedResolution = aspectRatioMap[aspectRatio] || "1280x720";
+      const dimensions = dimensionMap[aspectRatio] || { width: 1280, height: 720 };
+      
+      // Calculate num_frames based on duration (assume 7 fps for SVD)
+      const durationSeconds = parseInt(duration) || 4;
+      const numFrames = Math.min(durationSeconds * 7, 50); // SVD max is around 50 frames
       
       const requestBody = {
         key: apiKey,
-        model_id: "sora-2",
-        prompt,
-        aspect_ratio: selectedResolution,
-        duration: selectedDuration,
+        model_id: "svd", // Stable Video Diffusion for image-to-video
+        init_image: imageUrl,
+        height: dimensions.height,
+        width: dimensions.width,
+        num_frames: numFrames,
+        num_inference_steps: 20,
+        min_guidance_scale: 1,
+        max_guidance_scale: 3,
+        motion_bucket_id: 40, // Higher motion for more dynamic videos
+        noise_aug_strength: 0.02,
+        base64: false,
+        webhook: null,
+        track_id: null,
       };
       
-      console.log("Sending to Sora 2:", { 
+      console.log("Sending to Image-to-Video API:", { 
         ...requestBody, 
         key: "[REDACTED]"
       });
       
-      const response = await fetch("https://modelslab.com/api/v7/video-fusion/text-to-video", {
+      const response = await fetch("https://modelslab.com/api/v1/enterprise/video/img2video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
       
       const data = await response.json();
-      console.log("Sora 2 response:", data);
+      console.log("Image-to-Video response:", data);
       
       res.json(data);
     } catch (error) {
-      console.error("Error generating video with Sora 2:", error);
+      console.error("Error generating video from image:", error);
       res.status(500).json({ error: "Failed to generate video" });
     }
   });

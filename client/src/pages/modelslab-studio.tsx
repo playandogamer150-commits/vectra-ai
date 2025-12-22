@@ -211,13 +211,14 @@ export default function ModelsLabStudioPage() {
     },
   });
 
-  // Video generation mutation (Sora 2)
+  // Video generation mutation (Image-to-Video)
   const generateVideoMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (imageUrl: string) => {
       const response = await apiRequest("POST", "/api/sora2/generate", {
         prompt: prompt || "Cinematic video of the scene",
         aspectRatio: videoAspectRatio,
         duration: videoDuration,
+        imageUrl, // Pass the reference image URL for image-to-video
       });
       return await response.json() as Sora2Response;
     },
@@ -1336,8 +1337,8 @@ export default function ModelsLabStudioPage() {
               {t.modelslab.cancel || "Cancel"}
             </Button>
             <Button
-              onClick={() => generateVideoMutation.mutate()}
-              disabled={generateVideoMutation.isPending || isPollingVideo}
+              onClick={() => selectedImageForVideo && generateVideoMutation.mutate(selectedImageForVideo)}
+              disabled={generateVideoMutation.isPending || isPollingVideo || !selectedImageForVideo}
               data-testid="button-confirm-video"
             >
               {generateVideoMutation.isPending || isPollingVideo ? (
