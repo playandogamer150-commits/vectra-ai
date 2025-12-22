@@ -731,15 +731,19 @@ export async function registerRoutes(
       const validDurations = ["4", "8", "12"];
       const selectedDuration = validDurations.includes(duration) ? duration : "4";
       
-      // Sora 2 valid aspect ratios: 9:16, 16:9
-      const validRatios = ["9:16", "16:9"];
-      const selectedRatio = validRatios.includes(aspectRatio) ? aspectRatio : "16:9";
+      // Sora 2 requires resolution format, not ratio format
+      // Convert 9:16 -> 720x1280 (portrait), 16:9 -> 1280x720 (landscape)
+      const aspectRatioMap: Record<string, string> = {
+        "9:16": "720x1280",
+        "16:9": "1280x720",
+      };
+      const selectedResolution = aspectRatioMap[aspectRatio] || "1280x720";
       
       const requestBody = {
         key: apiKey,
         model_id: "sora-2",
         prompt,
-        aspect_ratio: selectedRatio,
+        aspect_ratio: selectedResolution,
         duration: selectedDuration,
       };
       
@@ -904,15 +908,19 @@ export async function registerRoutes(
 
   app.post("/api/presets", async (req, res) => {
     try {
+      console.log("Creating preset with body:", JSON.stringify(req.body, null, 2));
       const validated = createFilterPresetRequestSchema.parse(req.body);
+      console.log("Validated preset:", JSON.stringify(validated, null, 2));
       const preset = await storage.createFilterPreset({
         ...validated,
         userId: DEV_USER_ID,
         isDefault: validated.isDefault ? 1 : 0,
       });
+      console.log("Created preset:", JSON.stringify(preset, null, 2));
       res.status(201).json(preset);
     } catch (error) {
       if (error instanceof ZodError) {
+        console.error("Zod validation error:", JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ error: "Invalid request", details: error.errors });
       }
       console.error("Error creating preset:", error);
