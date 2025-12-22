@@ -48,6 +48,28 @@ async function seedDatabase() {
     }
     
     console.log("Database seeded successfully!");
+  } else {
+    // Sync missing blueprints
+    const existingBlueprints = await storage.getBlueprints();
+    const existingBlueprintNames = new Set(existingBlueprints.map(b => b.name));
+    
+    for (const blueprint of defaultBlueprints) {
+      if (!existingBlueprintNames.has(blueprint.name)) {
+        console.log(`Adding missing blueprint: ${blueprint.name}`);
+        await storage.createBlueprint(blueprint);
+      }
+    }
+    
+    // Sync missing blocks
+    const existingBlocks = await storage.getBlocks();
+    const existingBlockKeys = new Set(existingBlocks.map(b => b.key));
+    
+    for (const block of defaultBlocks) {
+      if (!existingBlockKeys.has(block.key)) {
+        console.log(`Adding missing block: ${block.key}`);
+        await storage.createBlock(block);
+      }
+    }
   }
 }
 
