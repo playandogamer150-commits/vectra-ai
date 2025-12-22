@@ -625,18 +625,51 @@ export async function registerRoutes(
       const validRatios = ["1:1", "9:16", "2:3", "3:4", "4:5", "5:4", "4:3", "3:2", "16:9", "21:9"];
       const selectedRatio = validRatios.includes(aspectRatio) ? aspectRatio : "1:1";
       
+      // Calculate dimensions for 720p+ resolution based on aspect ratio (VEO 3.1 requires 720p minimum)
+      const getDimensions = (ratio: string): { width: string; height: string } => {
+        switch (ratio) {
+          case "16:9":
+            return { width: "1280", height: "720" };
+          case "9:16":
+            return { width: "720", height: "1280" };
+          case "4:3":
+            return { width: "1024", height: "768" };
+          case "3:4":
+            return { width: "768", height: "1024" };
+          case "3:2":
+            return { width: "1080", height: "720" };
+          case "2:3":
+            return { width: "720", height: "1080" };
+          case "5:4":
+            return { width: "900", height: "720" };
+          case "4:5":
+            return { width: "720", height: "900" };
+          case "21:9":
+            return { width: "1512", height: "648" };
+          case "1:1":
+          default:
+            return { width: "1024", height: "1024" };
+        }
+      };
+      
+      const dimensions = getDimensions(selectedRatio);
+      
       const requestBody = {
         key: apiKey,
         model_id: "nano-banana-pro",
         prompt,
         init_image: processedImages,
         aspect_ratio: selectedRatio,
+        width: dimensions.width,
+        height: dimensions.height,
       };
       
       console.log("Sending to ModelsLab:", { 
         ...requestBody, 
         key: "[REDACTED]",
-        init_image: `[${processedImages.length} images]`
+        init_image: `[${processedImages.length} images]`,
+        width: dimensions.width,
+        height: dimensions.height,
       });
       
       const response = await fetch("https://modelslab.com/api/v7/images/image-to-image", {
