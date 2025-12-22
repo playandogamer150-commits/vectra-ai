@@ -1,0 +1,218 @@
+VOCÊ É UM PRINCIPAL ENGINEER + SOFTWARE ARCHITECT COM EXPERIÊNCIA EM PRODUTOS CRIATIVOS (DESIGN TOOLS).
+Estamos evoluindo o app PromptForge (Next.js App Router + TypeScript) para permitir que usuários CRIEM, EDitem, SALVEM e REUTILIZEM seus próprios BLUEPRINTS de prompt, com uma INTERFACE GRÁFICA PROFISSIONAL (UI), integrada ao Prompt Studio existente.
+
+⚠️ IMPORTANTE:
+Blueprint NÃO é texto livre.
+Blueprint é uma estrutura declarativa composta por blocos, constraints e metadata.
+O usuário NÃO edita o prompt final diretamente.
+
+════════════════════════════
+🎯 OBJETIVO FUNCIONAL
+════════════════════════════
+Implementar um sistema completo de "Blueprints Customizados" com:
+- UI visual para criação e edição
+- Salvamento persistente no banco
+- Versionamento automático
+- Compatibilidade com LLM Profiles
+- Uso direto no Estúdio de Prompts
+- Segurança, escalabilidade e multi-tenant
+
+════════════════════════════
+🧱 CONCEITO DE BLUEPRINT
+════════════════════════════
+Blueprint é um objeto estruturado:
+
+{
+  id,
+  owner_type: "system" | "user",
+  owner_id: user_id | null,
+  name,
+  description,
+  category,
+  tags[],
+  blocks[],                 // keys existentes em prompt_blocks
+  constraints{},            // schema fixo
+  compatible_profiles[],    // ids de LLMProfile
+  version,
+  created_at,
+  updated_at
+}
+
+════════════════════════════
+🗄️ BANCO DE DADOS (Drizzle)
+════════════════════════════
+Criar tabelas:
+
+- user_blueprints (
+    id,
+    user_id,
+    name,
+    description,
+    category,
+    tags_json,
+    blocks_json,
+    constraints_json,
+    compatible_profiles_json,
+    version,
+    is_active,
+    created_at,
+    updated_at
+)
+
+- user_blueprint_versions (
+    id,
+    blueprint_id,
+    version,
+    blocks_json,
+    constraints_json,
+    created_at
+)
+
+Regras:
+- Usuário só acessa seus próprios blueprints
+- Blueprints do sistema continuam read-only
+- Toda edição gera nova versão (version++)
+- Histórico nunca é apagado
+
+════════════════════════════
+🔌 API ROUTES
+════════════════════════════
+- GET    /api/blueprints/system
+- GET    /api/blueprints/user
+- POST   /api/blueprints
+- PATCH  /api/blueprints/:id
+- POST   /api/blueprints/:id/duplicate
+- POST   /api/blueprints/:id/version
+- DELETE /api/blueprints/:id
+
+Todas as rotas:
+- Zod validation
+- ownership check
+- erros claros (403 / 404 / 422)
+
+════════════════════════════
+🎨 UI — INTERFACE GRÁFICA (OBRIGATÓRIA)
+════════════════════════════
+
+STACK DE UI:
+- Tailwind CSS
+- shadcn/ui
+- lucide-react (ícones)
+- Zustand (estado local do builder)
+- TanStack Query (dados)
+
+────────────
+1️⃣ INTEGRAÇÃO NO ESTÚDIO
+────────────
+No painel de "Blueprint" do Estúdio:
+- Adicionar botão: ➕ "Criar Blueprint"
+- Exibir:
+  - Blueprints do sistema
+  - Blueprints do usuário (badge “Custom”)
+
+────────────
+2️⃣ BLUEPRINT BUILDER (MODAL OU DRAWER)
+────────────
+Criar componente visual "Blueprint Builder":
+
+Campos:
+- Nome do Blueprint
+- Descrição curta
+- Categoria (select)
+- Tags (input + chips)
+
+Seção: 🧩 Blocos
+- Lista de blocos disponíveis (prompt_blocks)
+- Multi-select com:
+   - label
+   - descrição
+   - tipo (style, camera, layout, etc)
+- Reordenação por drag & drop (ordem importa)
+
+Seção: ⚙️ Constraints
+- Checkboxes + inputs baseados em schema fixo:
+   - no_exact_pose_replication
+   - preserve_identity
+   - strict_layout
+   - allow_variation_level (slider)
+
+Seção: 🤖 Compatibilidade
+- Multi-select de LLM Profiles
+- Mostrar aviso se nenhum profile for selecionado
+
+Ações:
+- [Salvar Blueprint]
+- [Salvar Nova Versão]
+- [Duplicar]
+- [Cancelar]
+
+────────────
+3️⃣ LIBRARY — “MEUS BLUEPRINTS”
+────────────
+Nova aba na Biblioteca:
+- Lista de blueprints do usuário
+- Mostrar:
+   - Nome
+   - Categoria
+   - Versão
+   - Tags
+- Ações:
+   - Editar
+   - Duplicar
+   - Excluir
+
+────────────
+4️⃣ FEEDBACK DE UX
+────────────
+- Warnings se blueprint não for compatível com o LLM Profile ativo
+- Bloquear geração se incompatível
+- Tooltips explicativos (educacional)
+
+════════════════════════════
+🧠 INTEGRAÇÃO COM PROMPT COMPILER
+════════════════════════════
+O Prompt Compiler deve:
+- Aceitar blueprint do sistema OU do usuário
+- Fluxo fixo:
+   base_prompt
+   SYSTEM_PROMPT_CORE
+   blueprint.blocks
+   filters
+   constraints
+- Validar:
+   blueprint.compatible_profiles inclui profile selecionado
+- Nenhum prompt injection possível
+
+════════════════════════════
+🔐 SEGURANÇA E QUALIDADE
+════════════════════════════
+- Zod em todos inputs
+- Blocks só podem vir de prompt_blocks
+- Constraints seguem schema fixo
+- Multi-tenant seguro (user_id)
+- Sem textarea de prompt final
+- Logs de criação/edição
+
+════════════════════════════
+💎 PREMIUM GATING (PREPARAR)
+════════════════════════════
+- Free:
+   - até 2 blueprints customizados
+- Pro:
+   - ilimitado
+
+Implementar verificação simples no backend (stub).
+
+════════════════════════════
+🚀 ENTREGA
+════════════════════════════
+1) Planejamento técnico (arquivos afetados)
+2) Schema + migrations
+3) APIs
+4) UI do Blueprint Builder
+5) Integração no Estúdio
+6) Integração no Compiler
+7) Aba “Meus Blueprints” na Biblioteca
+
+ANTES DE CODAR:
+Apresente um plano técnico resumido.

@@ -2,16 +2,18 @@ import {
   users, llmProfiles, promptBlueprints, promptBlocks, filters, 
   generatedPrompts, promptVersions, rateLimits,
   loraModels, loraDatasets, loraDatasetItems, loraVersions, loraJobs, userLoraActive, baseModels,
+  userBlueprints, userBlueprintVersions,
   type User, type InsertUser, type LlmProfile, type InsertLlmProfile,
   type PromptBlueprint, type InsertBlueprint, type PromptBlock, type InsertBlock,
   type Filter, type InsertFilter, type GeneratedPrompt, type InsertGeneratedPrompt,
   type PromptVersion, type InsertPromptVersion,
   type LoraModel, type InsertLoraModel, type LoraDataset, type InsertLoraDataset,
   type LoraVersion, type InsertLoraVersion, type LoraJob, type InsertLoraJob,
-  type UserLoraActive, type BaseModel, type InsertBaseModel, type LoraDatasetItem
+  type UserLoraActive, type BaseModel, type InsertBaseModel, type LoraDatasetItem,
+  type UserBlueprint, type InsertUserBlueprint, type UserBlueprintVersion, type InsertUserBlueprintVersion
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -73,6 +75,16 @@ export interface IStorage {
   
   getBaseModels(): Promise<BaseModel[]>;
   createBaseModel(model: InsertBaseModel): Promise<BaseModel>;
+  
+  // User Blueprints
+  getUserBlueprints(userId: string): Promise<UserBlueprint[]>;
+  getUserBlueprint(id: string): Promise<UserBlueprint | undefined>;
+  createUserBlueprint(blueprint: InsertUserBlueprint, blocks: string[], constraints: Record<string, unknown>): Promise<{ blueprint: UserBlueprint; version: UserBlueprintVersion }>;
+  updateUserBlueprint(id: string, userId: string, data: Partial<InsertUserBlueprint>, blocks?: string[], constraints?: Record<string, unknown>): Promise<{ blueprint: UserBlueprint; version: UserBlueprintVersion } | undefined>;
+  deleteUserBlueprint(id: string, userId: string): Promise<boolean>;
+  getUserBlueprintVersions(blueprintId: string): Promise<UserBlueprintVersion[]>;
+  getUserBlueprintLatestVersion(blueprintId: string): Promise<UserBlueprintVersion | undefined>;
+  countUserBlueprints(userId: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -351,6 +363,100 @@ export class DatabaseStorage implements IStorage {
   async createBaseModel(model: InsertBaseModel): Promise<BaseModel> {
     const [created] = await db.insert(baseModels).values(model).returning();
     return created;
+  }
+
+  // User Blueprints
+  async getUserBlueprints(userId: string): Promise<UserBlueprint[]> {
+    return db.select().from(userBlueprints)
+      .where(and(eq(userBlueprints.userId, userId), eq(userBlueprints.isActive, 1)))
+      .orderBy(desc(userBlueprints.updatedAt));
+  }
+
+  async getUserBlueprint(id: string): Promise<UserBlueprint | undefined> {
+    const [blueprint] = await db.select().from(userBlueprints).where(eq(userBlueprints.id, id));
+    return blueprint || undefined;
+  }
+
+  async createUserBlueprint(
+    blueprint: InsertUserBlueprint, 
+    blocks: string[], 
+    constraints: Record<string, unknown>
+  ): Promise<{ blueprint: UserBlueprint; version: UserBlueprintVersion }> {
+    const [created] = await db.insert(userBlueprints).values(blueprint).returning();
+    
+    const [version] = await db.insert(userBlueprintVersions).values({
+      blueprintId: created.id,
+      version: 1,
+      blocks,
+      constraints,
+    }).returning();
+    
+    return { blueprint: created, version };
+  }
+
+  async updateUserBlueprint(
+    id: string, 
+    userId: string, 
+    data: Partial<InsertUserBlueprint>,
+    blocks?: string[],
+    constraints?: Record<string, unknown>
+  ): Promise<{ blueprint: UserBlueprint; version: UserBlueprintVersion } | undefined> {
+    const existing = await this.getUserBlueprint(id);
+    if (!existing || existing.userId !== userId) return undefined;
+
+    const newVersion = existing.version + 1;
+    
+    const [updated] = await db.update(userBlueprints)
+      .set({ ...data, version: newVersion, updatedAt: new Date() })
+      .where(eq(userBlueprints.id, id))
+      .returning();
+
+    if (blocks || constraints) {
+      const latestVersion = await this.getUserBlueprintLatestVersion(id);
+      const [version] = await db.insert(userBlueprintVersions).values({
+        blueprintId: id,
+        version: newVersion,
+        blocks: blocks || latestVersion?.blocks || [],
+        constraints: constraints || latestVersion?.constraints || {},
+      }).returning();
+      
+      return { blueprint: updated, version };
+    }
+
+    const latestVersion = await this.getUserBlueprintLatestVersion(id);
+    return { blueprint: updated, version: latestVersion! };
+  }
+
+  async deleteUserBlueprint(id: string, userId: string): Promise<boolean> {
+    const existing = await this.getUserBlueprint(id);
+    if (!existing || existing.userId !== userId) return false;
+
+    await db.update(userBlueprints)
+      .set({ isActive: 0 })
+      .where(eq(userBlueprints.id, id));
+    
+    return true;
+  }
+
+  async getUserBlueprintVersions(blueprintId: string): Promise<UserBlueprintVersion[]> {
+    return db.select().from(userBlueprintVersions)
+      .where(eq(userBlueprintVersions.blueprintId, blueprintId))
+      .orderBy(desc(userBlueprintVersions.version));
+  }
+
+  async getUserBlueprintLatestVersion(blueprintId: string): Promise<UserBlueprintVersion | undefined> {
+    const [version] = await db.select().from(userBlueprintVersions)
+      .where(eq(userBlueprintVersions.blueprintId, blueprintId))
+      .orderBy(desc(userBlueprintVersions.version))
+      .limit(1);
+    return version || undefined;
+  }
+
+  async countUserBlueprints(userId: string): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` })
+      .from(userBlueprints)
+      .where(and(eq(userBlueprints.userId, userId), eq(userBlueprints.isActive, 1)));
+    return Number(result[0]?.count || 0);
   }
 }
 

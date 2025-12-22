@@ -190,6 +190,30 @@ export const baseModels = pgTable("base_models", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// User Custom Blueprints
+export const userBlueprints = pgTable("user_blueprints", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category").notNull(),
+  tags: jsonb("tags").$type<string[]>().default([]),
+  compatibleProfiles: jsonb("compatible_profiles").$type<string[]>().default([]),
+  version: integer("version").default(1).notNull(),
+  isActive: integer("is_active").default(1).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const userBlueprintVersions = pgTable("user_blueprint_versions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  blueprintId: varchar("blueprint_id").notNull(),
+  version: integer("version").notNull(),
+  blocks: jsonb("blocks").$type<string[]>().notNull(),
+  constraints: jsonb("constraints").$type<Record<string, unknown>>().default({}),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const usersRelations = relations(users, ({ many, one }) => ({
   generatedPrompts: many(generatedPrompts),
   loraModels: many(loraModels),
@@ -235,6 +259,15 @@ export const loraJobsRelations = relations(loraJobs, ({ one }) => ({
 export const userLoraActiveRelations = relations(userLoraActive, ({ one }) => ({
   user: one(users, { fields: [userLoraActive.userId], references: [users.id] }),
   loraVersion: one(loraVersions, { fields: [userLoraActive.loraVersionId], references: [loraVersions.id] }),
+}));
+
+export const userBlueprintsRelations = relations(userBlueprints, ({ one, many }) => ({
+  user: one(users, { fields: [userBlueprints.userId], references: [users.id] }),
+  versions: many(userBlueprintVersions),
+}));
+
+export const userBlueprintVersionsRelations = relations(userBlueprintVersions, ({ one }) => ({
+  blueprint: one(userBlueprints, { fields: [userBlueprintVersions.blueprintId], references: [userBlueprints.id] }),
 }));
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -404,3 +437,43 @@ export type CommitDatasetRequest = z.infer<typeof commitDatasetRequestSchema>;
 export type CreateLoraJobRequest = z.infer<typeof createLoraJobRequestSchema>;
 export type WebhookPayload = z.infer<typeof webhookPayloadSchema>;
 export type ActivateLoraRequest = z.infer<typeof activateLoraRequestSchema>;
+
+// User Blueprint schemas
+export const insertUserBlueprintSchema = createInsertSchema(userBlueprints).omit({
+  id: true,
+  version: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertUserBlueprintVersionSchema = createInsertSchema(userBlueprintVersions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const createUserBlueprintRequestSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+  category: z.string().min(1),
+  tags: z.array(z.string()).default([]),
+  blocks: z.array(z.string()).min(1),
+  constraints: z.record(z.string(), z.unknown()).default({}),
+  compatibleProfiles: z.array(z.string()).default([]),
+});
+
+export const updateUserBlueprintRequestSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).optional(),
+  category: z.string().min(1).optional(),
+  tags: z.array(z.string()).optional(),
+  blocks: z.array(z.string()).min(1).optional(),
+  constraints: z.record(z.string(), z.unknown()).optional(),
+  compatibleProfiles: z.array(z.string()).optional(),
+});
+
+export type UserBlueprint = typeof userBlueprints.$inferSelect;
+export type InsertUserBlueprint = z.infer<typeof insertUserBlueprintSchema>;
+export type UserBlueprintVersion = typeof userBlueprintVersions.$inferSelect;
+export type InsertUserBlueprintVersion = z.infer<typeof insertUserBlueprintVersionSchema>;
+export type CreateUserBlueprintRequest = z.infer<typeof createUserBlueprintRequestSchema>;
+export type UpdateUserBlueprintRequest = z.infer<typeof updateUserBlueprintRequestSchema>;
