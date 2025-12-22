@@ -572,12 +572,23 @@ export async function registerRoutes(
       }
       
       if (!images || !Array.isArray(images) || images.length === 0) {
-        return res.status(400).json({ error: "At least one image URL is required" });
+        return res.status(400).json({ error: "At least one image is required" });
       }
       
       const apiKey = process.env.MODELSLAB_API_KEY;
       if (!apiKey) {
         return res.status(500).json({ error: "ModelsLab API key not configured" });
+      }
+      
+      // Process images - ModelsLab accepts both URLs and base64
+      // For base64, keep the data URL format as ModelsLab supports it
+      const processedImages = images.map((img: string) => {
+        if (typeof img !== 'string') return '';
+        return img;
+      }).filter((img: string) => img.length > 0);
+      
+      if (processedImages.length === 0) {
+        return res.status(400).json({ error: "No valid images provided" });
       }
       
       const response = await fetch("https://modelslab.com/api/v7/images/image-to-image", {
@@ -587,7 +598,7 @@ export async function registerRoutes(
           key: apiKey,
           model_id: "nano-banana-pro",
           prompt,
-          init_image: images,
+          init_image: processedImages,
           aspect_ratio: aspectRatio || "1:1",
         }),
       });

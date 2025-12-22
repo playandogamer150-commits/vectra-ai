@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/lib/i18n";
 import { apiRequest } from "@/lib/queryClient";
-import { Loader2, ImagePlus, Sparkles, X, Download, ExternalLink } from "lucide-react";
+import { Loader2, ImagePlus, Sparkles, X, Download, ExternalLink, Upload, Clipboard } from "lucide-react";
 
 interface ModelsLabResponse {
   status: string;
@@ -22,26 +21,151 @@ interface ModelsLabResponse {
   message?: string;
 }
 
+interface UploadedImage {
+  id: string;
+  dataUrl: string;
+  name: string;
+}
+
 export default function ModelsLabStudioPage() {
   const { toast } = useToast();
   const { t } = useI18n();
   
   const [prompt, setPrompt] = useState("");
-  const [imageUrls, setImageUrls] = useState<string[]>([""]);
+  const [images, setImages] = useState<UploadedImage[]>([]);
   const [aspectRatio, setAspectRatio] = useState("1:1");
   const [result, setResult] = useState<ModelsLabResponse | null>(null);
   const [isPolling, setIsPolling] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
+
+  const processFile = useCallback(async (file: File): Promise<UploadedImage | null> => {
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: t.modelslab.error,
+        description: t.modelslab.invalidFileType || "Invalid file type. Only images allowed.",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: t.modelslab.error,
+        description: t.modelslab.fileTooLarge || "File too large. Max 10MB.",
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        resolve({
+          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          dataUrl,
+          name: file.name,
+        });
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    });
+  }, [toast, t]);
+
+  const addImages = useCallback(async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    const remainingSlots = 14 - images.length;
+    const filesToProcess = fileArray.slice(0, remainingSlots);
+
+    if (fileArray.length > remainingSlots) {
+      toast({
+        title: t.modelslab.warning || "Warning",
+        description: t.modelslab.maxImagesReached || `Only ${remainingSlots} more images can be added.`,
+      });
+    }
+
+    const newImages: UploadedImage[] = [];
+    for (const file of filesToProcess) {
+      const processed = await processFile(file);
+      if (processed) {
+        newImages.push(processed);
+      }
+    }
+
+    if (newImages.length > 0) {
+      setImages(prev => [...prev, ...newImages]);
+    }
+  }, [images.length, processFile, toast, t]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      addImages(e.target.files);
+      e.target.value = '';
+    }
+  };
+
+  const handlePaste = useCallback(async (e: ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageFiles: File[] = [];
+    for (const item of Array.from(items)) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          imageFiles.push(file);
+        }
+      }
+    }
+
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      addImages(imageFiles);
+    }
+  }, [addImages]);
+
+  useEffect(() => {
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [handlePaste]);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      addImages(e.dataTransfer.files);
+    }
+  };
+
+  const removeImage = (id: string) => {
+    setImages(prev => prev.filter(img => img.id !== id));
+  };
 
   const generateMutation = useMutation({
     mutationFn: async () => {
-      const validImages = imageUrls.filter(url => url.trim() !== "");
-      if (validImages.length === 0) {
+      if (images.length === 0) {
         throw new Error(t.modelslab.noImages);
       }
       
+      const imageUrls = images.map(img => img.dataUrl);
+      
       const res = await apiRequest("POST", "/api/modelslab/generate", {
         prompt,
-        images: validImages,
+        images: imageUrls,
         aspectRatio,
       });
       return res.json() as Promise<ModelsLabResponse>;
@@ -75,7 +199,7 @@ export default function ModelsLabStudioPage() {
 
   const pollForResult = async (fetchUrl: string) => {
     let attempts = 0;
-    const maxAttempts = 60; // 5 minutes max
+    const maxAttempts = 60;
     
     const poll = async () => {
       try {
@@ -93,7 +217,6 @@ export default function ModelsLabStudioPage() {
           attempts++;
           setTimeout(poll, 5000);
         } else if (data.status === "processing" && attempts >= maxAttempts) {
-          // Timeout reached
           setIsPolling(false);
           toast({
             title: t.modelslab.error,
@@ -119,24 +242,6 @@ export default function ModelsLabStudioPage() {
     };
     
     poll();
-  };
-
-  const addImageField = () => {
-    if (imageUrls.length < 14) {
-      setImageUrls([...imageUrls, ""]);
-    }
-  };
-
-  const removeImageField = (index: number) => {
-    if (imageUrls.length > 1) {
-      setImageUrls(imageUrls.filter((_, i) => i !== index));
-    }
-  };
-
-  const updateImageUrl = (index: number, value: string) => {
-    const newUrls = [...imageUrls];
-    newUrls[index] = value;
-    setImageUrls(newUrls);
   };
 
   const aspectRatios = [
@@ -168,48 +273,99 @@ export default function ModelsLabStudioPage() {
               <CardDescription>{t.modelslab.inputDescription}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Image URLs */}
+              {/* Image Upload Area */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <Label>{t.modelslab.imageUrls}</Label>
+                  <Label>{t.modelslab.referenceImages || "Reference Images"}</Label>
                   <Badge variant="secondary" className="text-xs">
-                    {imageUrls.filter(u => u.trim()).length}/14
+                    {images.length}/14
                   </Badge>
                 </div>
                 
-                {imageUrls.map((url, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <Input
-                      value={url}
-                      onChange={(e) => updateImageUrl(index, e.target.value)}
-                      placeholder={`${t.modelslab.imagePlaceholder} ${index + 1}`}
-                      data-testid={`input-image-url-${index}`}
-                    />
-                    {imageUrls.length > 1 && (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => removeImageField(index)}
-                        data-testid={`button-remove-image-${index}`}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  data-testid="input-file-upload"
+                />
                 
-                {imageUrls.length < 14 && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={addImageField}
-                    className="w-full"
-                    data-testid="button-add-image"
-                  >
-                    <ImagePlus className="w-4 h-4 mr-2" />
-                    {t.modelslab.addImage}
-                  </Button>
-                )}
+                {/* Drop zone / Upload area */}
+                <div
+                  ref={dropZoneRef}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => images.length < 14 && fileInputRef.current?.click()}
+                  className={`
+                    border-2 border-dashed rounded-lg p-4 transition-colors cursor-pointer
+                    ${isDragging 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-muted-foreground/25 hover:border-primary/50'
+                    }
+                    ${images.length >= 14 ? 'opacity-50 cursor-not-allowed' : ''}
+                  `}
+                  data-testid="dropzone-images"
+                >
+                  {images.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <Upload className="w-10 h-10 text-muted-foreground mb-3" />
+                      <p className="text-sm font-medium">
+                        {t.modelslab.dropOrClick || "Drop images here or click to upload"}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                        <Clipboard className="w-3 h-3" />
+                        {t.modelslab.pasteHint || "You can also paste images (Ctrl+V)"}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {/* Image thumbnails grid */}
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                        {images.map((img) => (
+                          <div
+                            key={img.id}
+                            className="relative group aspect-square rounded-md overflow-hidden border bg-muted"
+                            data-testid={`thumbnail-${img.id}`}
+                          >
+                            <img
+                              src={img.dataUrl}
+                              alt={img.name}
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeImage(img.id);
+                              }}
+                              className="absolute top-1 right-1 p-1 rounded-full bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity"
+                              data-testid={`button-remove-${img.id}`}
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                        
+                        {/* Add more button in grid */}
+                        {images.length < 14 && (
+                          <div
+                            className="aspect-square rounded-md border-2 border-dashed border-muted-foreground/25 flex items-center justify-center hover:border-primary/50 transition-colors"
+                          >
+                            <ImagePlus className="w-6 h-6 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <p className="text-xs text-muted-foreground text-center flex items-center justify-center gap-1">
+                        <Clipboard className="w-3 h-3" />
+                        {t.modelslab.pasteHint || "Paste images with Ctrl+V"}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Prompt */}
@@ -244,7 +400,7 @@ export default function ModelsLabStudioPage() {
               {/* Generate Button */}
               <Button
                 onClick={() => generateMutation.mutate()}
-                disabled={isGenerating || !prompt.trim()}
+                disabled={isGenerating || !prompt.trim() || images.length === 0}
                 className="w-full"
                 data-testid="button-generate"
               >
