@@ -13,10 +13,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/lib/i18n";
 import { apiRequest } from "@/lib/queryClient";
-import type { LlmProfile, PromptBlueprint, Filter } from "@shared/schema";
+import type { LlmProfile, PromptBlueprint, Filter, SavedImage, FilterPreset } from "@shared/schema";
+import { queryClient } from "@/lib/queryClient";
 import { 
   Loader2, ImagePlus, Sparkles, X, Download, ExternalLink, Upload, Clipboard,
-  ChevronDown, ChevronUp, Layers, SlidersHorizontal, Wand2, RefreshCw
+  ChevronDown, ChevronUp, Layers, SlidersHorizontal, Wand2, RefreshCw, Heart,
+  Save, Trash2, FolderOpen, BookmarkPlus
 } from "lucide-react";
 
 interface ModelsLabResponse {
@@ -93,6 +95,117 @@ export default function ModelsLabStudioPage() {
   const { data: userBlueprints, isLoading: loadingUserBlueprints } = useQuery<UserBlueprint[]>({
     queryKey: ["/api/user-blueprints"],
   });
+
+  // Gallery and Presets queries
+  const { data: savedImages, isLoading: loadingSavedImages } = useQuery<SavedImage[]>({
+    queryKey: ["/api/gallery"],
+  });
+
+  const { data: filterPresets, isLoading: loadingPresets } = useQuery<FilterPreset[]>({
+    queryKey: ["/api/presets"],
+  });
+
+  // Gallery state
+  const [showGallery, setShowGallery] = useState(false);
+  const [presetName, setPresetName] = useState("");
+  const [showPresetDialog, setShowPresetDialog] = useState(false);
+
+  // Save image mutation
+  const saveImageMutation = useMutation({
+    mutationFn: async (imageData: { imageUrl: string; prompt: string }) => {
+      return apiRequest("/api/gallery", {
+        method: "POST",
+        body: JSON.stringify({
+          ...imageData,
+          aspectRatio,
+          profileId: selectedProfile || undefined,
+          blueprintId: selectedBlueprint || undefined,
+          userBlueprintId: selectedUserBlueprint || undefined,
+          appliedFilters: activeFilters,
+          seed: seed || undefined,
+        }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/gallery"] });
+      toast({ title: t.modelslab.imageSaved || "Image saved to gallery" });
+    },
+    onError: () => {
+      toast({ title: t.modelslab.error, description: "Failed to save image", variant: "destructive" });
+    },
+  });
+
+  // Toggle favorite mutation
+  const toggleFavoriteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest(`/api/gallery/${id}/favorite`, { method: "PATCH" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/gallery"] });
+    },
+  });
+
+  // Delete image mutation
+  const deleteImageMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest(`/api/gallery/${id}`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/gallery"] });
+      toast({ title: t.modelslab.imageDeleted || "Image deleted" });
+    },
+  });
+
+  // Save preset mutation
+  const savePresetMutation = useMutation({
+    mutationFn: async (name: string) => {
+      return apiRequest("/api/presets", {
+        method: "POST",
+        body: JSON.stringify({
+          name,
+          filters: activeFilters,
+          profileId: selectedProfile || undefined,
+          blueprintId: selectedBlueprint || undefined,
+          userBlueprintId: selectedUserBlueprint || undefined,
+        }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/presets"] });
+      setPresetName("");
+      setShowPresetDialog(false);
+      toast({ title: t.modelslab.presetSaved || "Filter preset saved" });
+    },
+    onError: () => {
+      toast({ title: t.modelslab.error, description: "Failed to save preset", variant: "destructive" });
+    },
+  });
+
+  // Delete preset mutation
+  const deletePresetMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest(`/api/presets/${id}`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/presets"] });
+      toast({ title: t.modelslab.presetDeleted || "Preset deleted" });
+    },
+  });
+
+  // Load preset function
+  const loadPreset = (preset: FilterPreset) => {
+    setActiveFilters(preset.filters as Record<string, string>);
+    if (preset.profileId) setSelectedProfile(preset.profileId);
+    if (preset.blueprintId) {
+      setSelectedBlueprint(preset.blueprintId);
+      setBlueprintTab("system");
+    }
+    if (preset.userBlueprintId) {
+      setSelectedUserBlueprint(preset.userBlueprintId);
+      setBlueprintTab("custom");
+    }
+    toast({ title: t.modelslab.presetLoaded || "Preset loaded" });
+  };
 
   // File processing
   const processFile = useCallback(async (file: File): Promise<UploadedImage | null> => {
@@ -713,6 +826,16 @@ export default function ModelsLabStudioPage() {
                         <Button
                           size="icon"
                           variant="secondary"
+                          onClick={() => saveImageMutation.mutate({ imageUrl, prompt })}
+                          disabled={saveImageMutation.isPending}
+                          data-testid={`button-save-${index}`}
+                          title={t.modelslab.saveToGallery || "Save to gallery"}
+                        >
+                          <Save className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="secondary"
                           onClick={() => window.open(imageUrl, "_blank")}
                         >
                           <ExternalLink className="w-4 h-4" />
@@ -781,6 +904,183 @@ export default function ModelsLabStudioPage() {
                 <p className="font-medium">Nano Banana Pro</p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Gallery Section */}
+        <Card className="mt-6">
+          <CardHeader>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="flex items-center gap-2">
+                <FolderOpen className="w-5 h-5" />
+                {t.modelslab.galleryTitle || "Image Gallery"}
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowGallery(!showGallery)}
+              >
+                {showGallery ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </Button>
+            </div>
+            <CardDescription>{t.modelslab.galleryDescription || "Your saved generated images"}</CardDescription>
+          </CardHeader>
+          {showGallery && (
+            <CardContent>
+              {loadingSavedImages ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {[...Array(4)].map((_, i) => (
+                    <Skeleton key={i} className="aspect-square rounded-lg" />
+                  ))}
+                </div>
+              ) : savedImages && savedImages.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {savedImages.map((img) => (
+                    <div key={img.id} className="relative group aspect-square">
+                      <img
+                        src={img.imageUrl}
+                        alt={img.prompt.slice(0, 50)}
+                        className="w-full h-full object-cover rounded-lg border"
+                        data-testid={`img-gallery-${img.id}`}
+                      />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex flex-col justify-between p-2">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-white"
+                            onClick={() => toggleFavoriteMutation.mutate(img.id)}
+                            data-testid={`button-favorite-${img.id}`}
+                          >
+                            <Heart 
+                              className={`w-4 h-4 ${img.isFavorite ? 'fill-red-500 text-red-500' : ''}`} 
+                            />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-white"
+                            onClick={() => window.open(img.imageUrl, "_blank")}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-white"
+                            onClick={() => deleteImageMutation.mutate(img.id)}
+                            data-testid={`button-delete-gallery-${img.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-white/80 line-clamp-2">{img.prompt}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-32 flex items-center justify-center border border-dashed rounded-lg">
+                  <p className="text-muted-foreground text-sm">{t.modelslab.noSavedImages || "No saved images yet"}</p>
+                </div>
+              )}
+            </CardContent>
+          )}
+        </Card>
+
+        {/* Filter Presets Section */}
+        <Card className="mt-6">
+          <CardHeader>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="flex items-center gap-2">
+                <BookmarkPlus className="w-5 h-5" />
+                {t.modelslab.presetsTitle || "Filter Presets"}
+              </CardTitle>
+              <div className="flex gap-2">
+                {Object.keys(activeFilters).length > 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowPresetDialog(true)}
+                    data-testid="button-save-preset"
+                  >
+                    <Save className="w-4 h-4 mr-1" />
+                    {t.modelslab.savePreset || "Save Preset"}
+                  </Button>
+                )}
+              </div>
+            </div>
+            <CardDescription>{t.modelslab.presetsDescription || "Save and load your filter configurations"}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {showPresetDialog && (
+              <div className="mb-4 p-3 border rounded-lg bg-muted/50">
+                <Label className="text-sm mb-2 block">{t.modelslab.presetName || "Preset Name"}</Label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={presetName}
+                    onChange={(e) => setPresetName(e.target.value)}
+                    className="flex-1 px-3 py-2 text-sm border rounded-md bg-background"
+                    placeholder={t.modelslab.enterPresetName || "Enter preset name..."}
+                    data-testid="input-preset-name"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => presetName.trim() && savePresetMutation.mutate(presetName.trim())}
+                    disabled={!presetName.trim() || savePresetMutation.isPending}
+                    data-testid="button-confirm-save-preset"
+                  >
+                    {savePresetMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t.modelslab.save || "Save"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setShowPresetDialog(false);
+                      setPresetName("");
+                    }}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            {loadingPresets ? (
+              <div className="flex gap-2 flex-wrap">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-8 w-24" />
+                ))}
+              </div>
+            ) : filterPresets && filterPresets.length > 0 ? (
+              <div className="flex gap-2 flex-wrap">
+                {filterPresets.map((preset) => (
+                  <div key={preset.id} className="flex items-center gap-1 group">
+                    <Badge
+                      className="cursor-pointer hover-elevate"
+                      onClick={() => loadPreset(preset)}
+                      data-testid={`badge-preset-${preset.id}`}
+                    >
+                      {preset.name}
+                      <span className="ml-1 text-xs opacity-60">
+                        ({Object.keys(preset.filters as Record<string, string>).length})
+                      </span>
+                    </Badge>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => deletePresetMutation.mutate(preset.id)}
+                      data-testid={`button-delete-preset-${preset.id}`}
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">{t.modelslab.noPresets || "No saved presets. Enable filters and save a preset to get started."}</p>
+            )}
           </CardContent>
         </Card>
       </div>
