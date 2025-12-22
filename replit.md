@@ -171,6 +171,10 @@ Workers receive signed payloads with:
 Workers must sign responses with HMAC and include `X-Signature` + `X-Timestamp` headers.
 
 ## Recent Changes
+- 2024-12-22: Integrated trained LoRA models into Prompt Studio with selector UI and weight slider (0-2)
+- 2024-12-22: Added `/api/lora/trained` endpoint to fetch all trained LoRA versions
+- 2024-12-22: Extended generate endpoint to accept `loraVersionId` and `loraWeight` parameters
+- 2024-12-22: Added 400 error responses for invalid/untrained LoRA versions
 - 2024-12-22: Added Character Pack generation for non-LoRA platforms (Sora/Veo/Grok)
 - 2024-12-22: Implemented profileSupportsLoraInjection() for conditional LoRA syntax injection
 - 2024-12-22: Added dual-dropdown architecture: Target Platform (for export) vs Trainable Base Model (for training)
