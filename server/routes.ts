@@ -580,16 +580,10 @@ export async function registerRoutes(
         return res.status(500).json({ error: "ModelsLab API key not configured" });
       }
       
-      // Process images - extract pure base64 from data URLs
+      // Nano Banana Pro accepts images as URLs or base64 data URLs directly
+      // Keep the full data URL format for base64 images
       const processedImages = images.map((img: string) => {
         if (typeof img !== 'string') return '';
-        // If it's a data URL, extract just the base64 part
-        if (img.startsWith('data:')) {
-          const base64Match = img.match(/^data:image\/[a-z]+;base64,(.+)$/i);
-          if (base64Match) {
-            return base64Match[1];
-          }
-        }
         return img;
       }).filter((img: string) => img.length > 0);
       
@@ -597,43 +591,26 @@ export async function registerRoutes(
         return res.status(400).json({ error: "No valid images provided" });
       }
       
-      // Calculate dimensions based on aspect ratio
-      const getDimensions = (ratio: string) => {
-        switch (ratio) {
-          case "16:9": return { width: 1024, height: 576 };
-          case "9:16": return { width: 576, height: 1024 };
-          case "4:3": return { width: 1024, height: 768 };
-          case "3:4": return { width: 768, height: 1024 };
-          case "3:2": return { width: 1024, height: 683 };
-          case "2:3": return { width: 683, height: 1024 };
-          default: return { width: 1024, height: 1024 };
-        }
-      };
+      // Nano Banana Pro v7 API - supports up to 14 images with multi-image fusion
+      // Valid aspect ratios: 1:1, 9:16, 2:3, 3:4, 4:5, 5:4, 4:3, 3:2, 16:9, 21:9
+      const validRatios = ["1:1", "9:16", "2:3", "3:4", "4:5", "5:4", "4:3", "3:2", "16:9", "21:9"];
+      const selectedRatio = validRatios.includes(aspectRatio) ? aspectRatio : "1:1";
       
-      const dims = getDimensions(aspectRatio || "1:1");
-      
-      // Use v6 img2img endpoint with base64 images
-      // Using realistic-vision-51 for photorealistic character consistency
       const requestBody = {
         key: apiKey,
-        model_id: "realistic-vision-51",
+        model_id: "nano-banana-pro",
         prompt,
-        init_image: processedImages[0],
-        width: dims.width.toString(),
-        height: dims.height.toString(),
-        samples: "1",
-        num_inference_steps: "31",
-        guidance_scale: 7.5,
-        strength: 0.7,
-        safety_checker: "no",
-        enhance_prompt: "yes",
-        scheduler: "UniPCMultistepScheduler",
-        seed: null,
-        webhook: null,
-        track_id: null,
+        init_image: processedImages,
+        aspect_ratio: selectedRatio,
       };
       
-      const response = await fetch("https://modelslab.com/api/v6/images/img2img", {
+      console.log("Sending to ModelsLab:", { 
+        ...requestBody, 
+        key: "[REDACTED]",
+        init_image: `[${processedImages.length} images]`
+      });
+      
+      const response = await fetch("https://modelslab.com/api/v7/images/image-to-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
