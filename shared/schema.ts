@@ -191,6 +191,42 @@ export const baseModels = pgTable("base_models", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Saved Images Gallery
+export const savedImages = pgTable("saved_images", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  imageUrl: text("image_url").notNull(),
+  prompt: text("prompt").notNull(),
+  aspectRatio: text("aspect_ratio").default("1:1").notNull(),
+  profileId: varchar("profile_id"),
+  blueprintId: varchar("blueprint_id"),
+  userBlueprintId: varchar("user_blueprint_id"),
+  appliedFilters: jsonb("applied_filters").$type<Record<string, string>>().default({}),
+  seed: text("seed"),
+  metadata: jsonb("metadata").$type<{
+    width?: number;
+    height?: number;
+    generationTime?: number;
+  }>().default({}),
+  isFavorite: integer("is_favorite").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Filter Presets (saved filter configurations)
+export const filterPresets = pgTable("filter_presets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  name: text("name").notNull(),
+  description: text("description"),
+  filters: jsonb("filters").$type<Record<string, string>>().notNull(),
+  profileId: varchar("profile_id"),
+  blueprintId: varchar("blueprint_id"),
+  userBlueprintId: varchar("user_blueprint_id"),
+  isDefault: integer("is_default").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // User Custom Blueprints
 export const userBlueprints = pgTable("user_blueprints", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -481,3 +517,58 @@ export type UserBlueprintVersion = typeof userBlueprintVersions.$inferSelect;
 export type InsertUserBlueprintVersion = z.infer<typeof insertUserBlueprintVersionSchema>;
 export type CreateUserBlueprintRequest = z.infer<typeof createUserBlueprintRequestSchema>;
 export type UpdateUserBlueprintRequest = z.infer<typeof updateUserBlueprintRequestSchema>;
+
+// Saved Images schemas
+export const insertSavedImageSchema = createInsertSchema(savedImages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const saveImageRequestSchema = z.object({
+  imageUrl: z.string().min(1),
+  prompt: z.string().min(1),
+  aspectRatio: z.string().default("1:1"),
+  profileId: z.string().optional(),
+  blueprintId: z.string().optional(),
+  userBlueprintId: z.string().optional(),
+  appliedFilters: z.record(z.string(), z.string()).optional().default({}),
+  seed: z.string().optional(),
+  metadata: z.object({
+    width: z.number().optional(),
+    height: z.number().optional(),
+    generationTime: z.number().optional(),
+  }).optional().default({}),
+});
+
+export type SavedImage = typeof savedImages.$inferSelect;
+export type InsertSavedImage = z.infer<typeof insertSavedImageSchema>;
+export type SaveImageRequest = z.infer<typeof saveImageRequestSchema>;
+
+// Filter Presets schemas
+export const insertFilterPresetSchema = createInsertSchema(filterPresets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const createFilterPresetRequestSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+  filters: z.record(z.string(), z.string()),
+  profileId: z.string().optional(),
+  blueprintId: z.string().optional(),
+  userBlueprintId: z.string().optional(),
+  isDefault: z.boolean().optional().default(false),
+});
+
+export const updateFilterPresetRequestSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).optional(),
+  filters: z.record(z.string(), z.string()).optional(),
+  isDefault: z.boolean().optional(),
+});
+
+export type FilterPreset = typeof filterPresets.$inferSelect;
+export type InsertFilterPreset = z.infer<typeof insertFilterPresetSchema>;
+export type CreateFilterPresetRequest = z.infer<typeof createFilterPresetRequestSchema>;
+export type UpdateFilterPresetRequest = z.infer<typeof updateFilterPresetRequestSchema>;

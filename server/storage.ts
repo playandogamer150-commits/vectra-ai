@@ -2,7 +2,7 @@ import {
   users, llmProfiles, promptBlueprints, promptBlocks, filters, 
   generatedPrompts, promptVersions, rateLimits,
   loraModels, loraDatasets, loraDatasetItems, loraVersions, loraJobs, userLoraActive, baseModels,
-  userBlueprints, userBlueprintVersions,
+  userBlueprints, userBlueprintVersions, savedImages, filterPresets,
   type User, type InsertUser, type LlmProfile, type InsertLlmProfile,
   type PromptBlueprint, type InsertBlueprint, type PromptBlock, type InsertBlock,
   type Filter, type InsertFilter, type GeneratedPrompt, type InsertGeneratedPrompt,
@@ -10,7 +10,8 @@ import {
   type LoraModel, type InsertLoraModel, type LoraDataset, type InsertLoraDataset,
   type LoraVersion, type InsertLoraVersion, type LoraJob, type InsertLoraJob,
   type UserLoraActive, type BaseModel, type InsertBaseModel, type LoraDatasetItem,
-  type UserBlueprint, type InsertUserBlueprint, type UserBlueprintVersion, type InsertUserBlueprintVersion
+  type UserBlueprint, type InsertUserBlueprint, type UserBlueprintVersion, type InsertUserBlueprintVersion,
+  type SavedImage, type InsertSavedImage, type FilterPreset, type InsertFilterPreset
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -85,6 +86,20 @@ export interface IStorage {
   getUserBlueprintVersions(blueprintId: string): Promise<UserBlueprintVersion[]>;
   getUserBlueprintLatestVersion(blueprintId: string): Promise<UserBlueprintVersion | undefined>;
   countUserBlueprints(userId: string): Promise<number>;
+  
+  // Saved Images
+  getSavedImages(userId: string): Promise<SavedImage[]>;
+  getSavedImage(id: string): Promise<SavedImage | undefined>;
+  createSavedImage(image: InsertSavedImage): Promise<SavedImage>;
+  deleteSavedImage(id: string, userId: string): Promise<boolean>;
+  toggleFavorite(id: string, userId: string): Promise<SavedImage | undefined>;
+  
+  // Filter Presets
+  getFilterPresets(userId: string): Promise<FilterPreset[]>;
+  getFilterPreset(id: string): Promise<FilterPreset | undefined>;
+  createFilterPreset(preset: InsertFilterPreset): Promise<FilterPreset>;
+  updateFilterPreset(id: string, userId: string, data: Partial<InsertFilterPreset>): Promise<FilterPreset | undefined>;
+  deleteFilterPreset(id: string, userId: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -457,6 +472,78 @@ export class DatabaseStorage implements IStorage {
       .from(userBlueprints)
       .where(and(eq(userBlueprints.userId, userId), eq(userBlueprints.isActive, 1)));
     return Number(result[0]?.count || 0);
+  }
+
+  // Saved Images
+  async getSavedImages(userId: string): Promise<SavedImage[]> {
+    return db.select().from(savedImages)
+      .where(eq(savedImages.userId, userId))
+      .orderBy(desc(savedImages.createdAt));
+  }
+
+  async getSavedImage(id: string): Promise<SavedImage | undefined> {
+    const [image] = await db.select().from(savedImages).where(eq(savedImages.id, id));
+    return image || undefined;
+  }
+
+  async createSavedImage(image: InsertSavedImage): Promise<SavedImage> {
+    const [created] = await db.insert(savedImages).values(image).returning();
+    return created;
+  }
+
+  async deleteSavedImage(id: string, userId: string): Promise<boolean> {
+    const existing = await this.getSavedImage(id);
+    if (!existing || existing.userId !== userId) return false;
+
+    await db.delete(savedImages).where(eq(savedImages.id, id));
+    return true;
+  }
+
+  async toggleFavorite(id: string, userId: string): Promise<SavedImage | undefined> {
+    const existing = await this.getSavedImage(id);
+    if (!existing || existing.userId !== userId) return undefined;
+
+    const [updated] = await db.update(savedImages)
+      .set({ isFavorite: existing.isFavorite === 1 ? 0 : 1 })
+      .where(eq(savedImages.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Filter Presets
+  async getFilterPresets(userId: string): Promise<FilterPreset[]> {
+    return db.select().from(filterPresets)
+      .where(eq(filterPresets.userId, userId))
+      .orderBy(desc(filterPresets.createdAt));
+  }
+
+  async getFilterPreset(id: string): Promise<FilterPreset | undefined> {
+    const [preset] = await db.select().from(filterPresets).where(eq(filterPresets.id, id));
+    return preset || undefined;
+  }
+
+  async createFilterPreset(preset: InsertFilterPreset): Promise<FilterPreset> {
+    const [created] = await db.insert(filterPresets).values(preset).returning();
+    return created;
+  }
+
+  async updateFilterPreset(id: string, userId: string, data: Partial<InsertFilterPreset>): Promise<FilterPreset | undefined> {
+    const existing = await this.getFilterPreset(id);
+    if (!existing || existing.userId !== userId) return undefined;
+
+    const [updated] = await db.update(filterPresets)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(filterPresets.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteFilterPreset(id: string, userId: string): Promise<boolean> {
+    const existing = await this.getFilterPreset(id);
+    if (!existing || existing.userId !== userId) return false;
+
+    await db.delete(filterPresets).where(eq(filterPresets.id, id));
+    return true;
   }
 }
 
