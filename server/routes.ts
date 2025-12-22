@@ -746,10 +746,51 @@ export async function registerRoutes(
     }
   });
 
+  // ============ IMAGE UPSCALE ENDPOINT ============
+  app.post("/api/modelslab/upscale", async (req, res) => {
+    try {
+      const { imageUrl, scale = 2 } = req.body;
+      
+      if (!imageUrl) {
+        return res.status(400).json({ error: "Image URL is required" });
+      }
+      
+      const apiKey = process.env.MODELSLAB_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "ModelsLab API key not configured" });
+      }
+      
+      const requestBody = {
+        key: apiKey,
+        url: imageUrl,
+        scale: Math.min(4, Math.max(1, scale)),
+        face_enhance: false,
+      };
+      
+      console.log("Sending to ModelsLab Upscale API:", { ...requestBody, key: "[REDACTED]" });
+      
+      const response = await fetch("https://modelslab.com/api/v1/enterprise/super_resolution", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+      
+      const data = await response.json();
+      console.log("ModelsLab Upscale response:", data);
+      
+      res.json(data);
+    } catch (error) {
+      console.error("Error upscaling image:", error);
+      res.status(500).json({ error: "Failed to upscale image" });
+    }
+  });
+
   // ============ VEO 3.1 IMAGE-TO-VIDEO GENERATION ============
+  // Step 1: Upscale the image first (Nano Banana Pro max 1024px, VEO 3.1 needs 720p+)
+  // Step 2: Then generate video with upscaled image
   app.post("/api/sora2/generate", async (req, res) => {
     try {
-      const { prompt, aspectRatio, duration, imageUrl } = req.body;
+      const { prompt, imageUrl } = req.body;
       
       if (!imageUrl) {
         return res.status(400).json({ error: "Image URL is required for video generation" });
@@ -760,17 +801,82 @@ export async function registerRoutes(
         return res.status(500).json({ error: "ModelsLab API key not configured" });
       }
       
-      // VEO 3.1 Fast - simpler API with fewer parameters
-      // Only supports: model_id, init_image, prompt, negative_prompt, key
+      console.log("=== VEO 3.1 Video Generation Pipeline ===");
+      console.log("Step 1: Upscaling image for VEO 3.1 compatibility...");
+      
+      // Step 1: Upscale the image first (2x scale: 576x1024 -> 1152x2048)
+      const upscaleBody = {
+        key: apiKey,
+        url: imageUrl,
+        scale: 2,
+        face_enhance: true,
+      };
+      
+      console.log("Upscale request:", { ...upscaleBody, key: "[REDACTED]" });
+      
+      const upscaleResponse = await fetch("https://modelslab.com/api/v1/enterprise/super_resolution", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(upscaleBody),
+      });
+      
+      const upscaleData = await upscaleResponse.json();
+      console.log("Upscale response:", upscaleData);
+      
+      // Handle async upscale processing
+      let upscaledImageUrl = imageUrl; // Fallback to original if upscale fails
+      
+      if (upscaleData.status === "success" && upscaleData.output && upscaleData.output.length > 0) {
+        upscaledImageUrl = upscaleData.output[0];
+        console.log("Step 1 SUCCESS: Image upscaled to:", upscaledImageUrl);
+      } else if (upscaleData.status === "processing" && upscaleData.fetch_result) {
+        // Poll for upscale completion (max 30 seconds)
+        console.log("Upscale processing, polling for result...");
+        let attempts = 0;
+        const maxAttempts = 15;
+        
+        while (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          attempts++;
+          
+          try {
+            const fetchResponse = await fetch(upscaleData.fetch_result, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ key: apiKey }),
+            });
+            
+            const fetchData = await fetchResponse.json();
+            console.log(`Upscale poll attempt ${attempts}:`, fetchData.status);
+            
+            if (fetchData.status === "success" && fetchData.output && fetchData.output.length > 0) {
+              upscaledImageUrl = fetchData.output[0];
+              console.log("Step 1 SUCCESS (polled): Image upscaled to:", upscaledImageUrl);
+              break;
+            } else if (fetchData.status === "failed" || fetchData.status === "error") {
+              console.log("Upscale failed, using original image");
+              break;
+            }
+          } catch (pollError) {
+            console.error("Upscale poll error:", pollError);
+          }
+        }
+      } else {
+        console.log("Upscale response unexpected, using original image:", upscaleData);
+      }
+      
+      // Step 2: Generate video with upscaled image
+      console.log("Step 2: Sending upscaled image to VEO 3.1...");
+      
       const requestBody = {
         key: apiKey,
         model_id: "veo-3.1-fast",
-        init_image: imageUrl,
-        prompt: prompt || "Cinematic video animation of the scene with natural movement",
+        init_image: upscaledImageUrl,
+        prompt: prompt || "Cinematic video animation of the scene with natural smooth movement",
         negative_prompt: null,
       };
       
-      console.log("Sending to VEO 3.1 Image-to-Video API:", { 
+      console.log("VEO 3.1 request:", { 
         ...requestBody, 
         key: "[REDACTED]"
       });

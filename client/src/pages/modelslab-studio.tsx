@@ -1235,8 +1235,9 @@ export default function ModelsLabStudioPage() {
             )}
 
             {/* Video Specs Info */}
-            <div className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg">
+            <div className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg space-y-1">
               <p>{t.modelslab.videoSpecs || "VEO 3.1 Fast generates 8-second videos at 720p/1080p with 24fps."}</p>
+              <p className="text-xs opacity-75">{t.modelslab.videoUpscaleNote || "Images are automatically upscaled for optimal video quality."}</p>
             </div>
 
             {/* Video Result */}
