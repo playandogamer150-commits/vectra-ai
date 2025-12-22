@@ -42,6 +42,7 @@ PromptForge is a professional prompt engineering studio with blueprints, filters
 ## Environment Variables
 - `DATABASE_URL` - PostgreSQL connection string (auto-configured)
 - `ADMIN_OVERRIDE` - Set to "true" to bypass premium limits (development)
+- `MODELSLAB_API_KEY` - API key for ModelsLab image generation
 
 ## API Endpoints
 
@@ -54,6 +55,10 @@ PromptForge is a professional prompt engineering studio with blueprints, filters
 - `POST /api/save-version` - Save a prompt version
 - `GET /api/prompt/:id` - Get specific prompt
 - `GET /api/prompt/:id/versions` - Get prompt versions
+
+### ModelsLab Image Generation
+- `POST /api/modelslab/generate` - Generate images using Nano Banana Pro model
+- `POST /api/modelslab/status` - Check async generation status (SSRF-protected)
 
 ### LoRA Training (Pro-only)
 - `GET /api/lora/models` - List user's LoRA models
@@ -172,6 +177,8 @@ Workers receive signed payloads with:
 Workers must sign responses with HMAC and include `X-Signature` + `X-Timestamp` headers.
 
 ## Recent Changes
+- 2024-12-22: Added ModelsLab Nano Banana Pro integration for image generation (Image Studio page)
+- 2024-12-22: Added SSRF protection on ModelsLab status endpoint (only allows trusted domains)
 - 2024-12-22: Added development mode training simulation - training completes instantly in dev
 - 2024-12-22: Fixed user ID handling in development for consistent LoRA visibility
 - 2024-12-22: Added training status badges (Training/Completed) in LoRA Studio UI

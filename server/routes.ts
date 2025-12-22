@@ -562,5 +562,103 @@ export async function registerRoutes(
     }
   });
 
+  // ModelsLab Nano Banana Pro API
+  app.post("/api/modelslab/generate", async (req, res) => {
+    try {
+      const { prompt, images, aspectRatio } = req.body;
+      
+      if (!prompt) {
+        return res.status(400).json({ error: "Prompt is required" });
+      }
+      
+      if (!images || !Array.isArray(images) || images.length === 0) {
+        return res.status(400).json({ error: "At least one image URL is required" });
+      }
+      
+      const apiKey = process.env.MODELSLAB_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "ModelsLab API key not configured" });
+      }
+      
+      const response = await fetch("https://modelslab.com/api/v7/images/image-to-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: apiKey,
+          model_id: "nano-banana-pro",
+          prompt,
+          init_image: images,
+          aspect_ratio: aspectRatio || "1:1",
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === "error") {
+        console.error("ModelsLab error:", data);
+        return res.status(400).json({ error: data.message || "ModelsLab API error" });
+      }
+      
+      res.json(data);
+    } catch (error) {
+      console.error("Error calling ModelsLab API:", error);
+      res.status(500).json({ error: "Failed to generate image" });
+    }
+  });
+
+  // Check generation status (for async generation)
+  // Security: Only allow fetching from trusted ModelsLab domains
+  const ALLOWED_MODELSLAB_HOSTS = [
+    "modelslab.com",
+    "api.modelslab.com",
+    "stablediffusionapi.com",
+  ];
+  
+  app.post("/api/modelslab/status", async (req, res) => {
+    try {
+      const { fetchUrl } = req.body;
+      
+      if (!fetchUrl) {
+        return res.status(400).json({ error: "Fetch URL is required" });
+      }
+      
+      // Validate URL is from trusted ModelsLab domain
+      let parsedUrl: URL;
+      try {
+        parsedUrl = new URL(fetchUrl);
+      } catch {
+        return res.status(400).json({ error: "Invalid URL format" });
+      }
+      
+      const isAllowedHost = ALLOWED_MODELSLAB_HOSTS.some(
+        host => parsedUrl.hostname === host || parsedUrl.hostname.endsWith(`.${host}`)
+      );
+      
+      if (!isAllowedHost) {
+        console.warn(`Blocked SSRF attempt to: ${parsedUrl.hostname}`);
+        return res.status(403).json({ error: "URL not from trusted ModelsLab domain" });
+      }
+      
+      const apiKey = process.env.MODELSLAB_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "ModelsLab API key not configured" });
+      }
+      
+      const response = await fetch(fetchUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: apiKey,
+        }),
+      });
+      
+      const data = await response.json();
+      res.json(data);
+    } catch (error) {
+      console.error("Error checking ModelsLab status:", error);
+      res.status(500).json({ error: "Failed to check status" });
+    }
+  });
+
   return httpServer;
 }
