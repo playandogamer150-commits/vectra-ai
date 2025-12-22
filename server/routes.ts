@@ -3,7 +3,14 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { compiler } from "./prompt-engine/compiler";
 import { defaultProfiles, defaultBlueprints, defaultBlocks, defaultFilters, defaultBaseModels } from "./prompt-engine/presets";
-import { generateRequestSchema, createUserBlueprintRequestSchema, updateUserBlueprintRequestSchema } from "@shared/schema";
+import { 
+  generateRequestSchema, 
+  createUserBlueprintRequestSchema, 
+  updateUserBlueprintRequestSchema,
+  saveImageRequestSchema,
+  createFilterPresetRequestSchema,
+  updateFilterPresetRequestSchema 
+} from "@shared/schema";
 import { ZodError } from "zod";
 import { registerLoraRoutes } from "./lora-routes";
 
@@ -681,6 +688,149 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error checking ModelsLab status:", error);
       res.status(500).json({ error: "Failed to check status" });
+    }
+  });
+
+  // ============ SAVED IMAGES (Gallery) ============
+  app.get("/api/gallery", async (_req, res) => {
+    try {
+      const images = await storage.getSavedImages(DEV_USER_ID);
+      res.json(images);
+    } catch (error) {
+      console.error("Error fetching gallery:", error);
+      res.status(500).json({ error: "Failed to fetch gallery" });
+    }
+  });
+
+  app.get("/api/gallery/:id", async (req, res) => {
+    try {
+      const image = await storage.getSavedImage(req.params.id);
+      if (!image) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+      res.json(image);
+    } catch (error) {
+      console.error("Error fetching image:", error);
+      res.status(500).json({ error: "Failed to fetch image" });
+    }
+  });
+
+  app.post("/api/gallery", async (req, res) => {
+    try {
+      const validated = saveImageRequestSchema.parse(req.body);
+      const image = await storage.createSavedImage({
+        ...validated,
+        userId: DEV_USER_ID,
+        isFavorite: 0,
+      });
+      res.status(201).json(image);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ error: "Invalid request", details: error.errors });
+      }
+      console.error("Error saving image:", error);
+      res.status(500).json({ error: "Failed to save image" });
+    }
+  });
+
+  app.patch("/api/gallery/:id/favorite", async (req, res) => {
+    try {
+      const updated = await storage.toggleFavorite(req.params.id, DEV_USER_ID);
+      if (!updated) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      res.status(500).json({ error: "Failed to toggle favorite" });
+    }
+  });
+
+  app.delete("/api/gallery/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteSavedImage(req.params.id, DEV_USER_ID);
+      if (!success) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting image:", error);
+      res.status(500).json({ error: "Failed to delete image" });
+    }
+  });
+
+  // ============ FILTER PRESETS ============
+  app.get("/api/presets", async (_req, res) => {
+    try {
+      const presets = await storage.getFilterPresets(DEV_USER_ID);
+      res.json(presets);
+    } catch (error) {
+      console.error("Error fetching presets:", error);
+      res.status(500).json({ error: "Failed to fetch presets" });
+    }
+  });
+
+  app.get("/api/presets/:id", async (req, res) => {
+    try {
+      const preset = await storage.getFilterPreset(req.params.id);
+      if (!preset) {
+        return res.status(404).json({ error: "Preset not found" });
+      }
+      res.json(preset);
+    } catch (error) {
+      console.error("Error fetching preset:", error);
+      res.status(500).json({ error: "Failed to fetch preset" });
+    }
+  });
+
+  app.post("/api/presets", async (req, res) => {
+    try {
+      const validated = createFilterPresetRequestSchema.parse(req.body);
+      const preset = await storage.createFilterPreset({
+        ...validated,
+        userId: DEV_USER_ID,
+        isDefault: validated.isDefault ? 1 : 0,
+      });
+      res.status(201).json(preset);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ error: "Invalid request", details: error.errors });
+      }
+      console.error("Error creating preset:", error);
+      res.status(500).json({ error: "Failed to create preset" });
+    }
+  });
+
+  app.patch("/api/presets/:id", async (req, res) => {
+    try {
+      const validated = updateFilterPresetRequestSchema.parse(req.body);
+      const updated = await storage.updateFilterPreset(req.params.id, DEV_USER_ID, {
+        ...validated,
+        isDefault: validated.isDefault !== undefined ? (validated.isDefault ? 1 : 0) : undefined,
+      });
+      if (!updated) {
+        return res.status(404).json({ error: "Preset not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ error: "Invalid request", details: error.errors });
+      }
+      console.error("Error updating preset:", error);
+      res.status(500).json({ error: "Failed to update preset" });
+    }
+  });
+
+  app.delete("/api/presets/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteFilterPreset(req.params.id, DEV_USER_ID);
+      if (!success) {
+        return res.status(404).json({ error: "Preset not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting preset:", error);
+      res.status(500).json({ error: "Failed to delete preset" });
     }
   });
 
