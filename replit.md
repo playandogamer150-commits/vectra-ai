@@ -171,6 +171,9 @@ Workers receive signed payloads with:
 Workers must sign responses with HMAC and include `X-Signature` + `X-Timestamp` headers.
 
 ## Recent Changes
+- 2024-12-22: Added development mode training simulation - training completes instantly in dev
+- 2024-12-22: Fixed user ID handling in development for consistent LoRA visibility
+- 2024-12-22: Added training status badges (Training/Completed) in LoRA Studio UI
 - 2024-12-22: Integrated trained LoRA models into Prompt Studio with selector UI and weight slider (0-2)
 - 2024-12-22: Added `/api/lora/trained` endpoint to fetch all trained LoRA versions
 - 2024-12-22: Extended generate endpoint to accept `loraVersionId` and `loraWeight` parameters
