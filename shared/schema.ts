@@ -62,7 +62,8 @@ export const generatedPrompts = pgTable("generated_prompts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id"),
   profileId: varchar("profile_id").notNull(),
-  blueprintId: varchar("blueprint_id").notNull(),
+  blueprintId: varchar("blueprint_id"),
+  userBlueprintId: varchar("user_blueprint_id"),
   seed: text("seed").notNull(),
   input: jsonb("input").$type<{
     subject?: string;

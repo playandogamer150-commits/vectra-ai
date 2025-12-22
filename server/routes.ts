@@ -219,7 +219,8 @@ export async function registerRoutes(
       const savedPrompt = await storage.createGeneratedPrompt({
         userId: null,
         profileId: validated.profileId,
-        blueprintId: validated.blueprintId,
+        blueprintId: validated.blueprintId || null,
+        userBlueprintId: validated.userBlueprintId || null,
         seed: result.seed,
         input: {
           subject: validated.subject,
@@ -441,7 +442,7 @@ export async function registerRoutes(
           compatibleProfiles: validated.compatibleProfiles,
         },
         validated.blocks,
-        validated.constraints as Record<string, unknown> | undefined
+        validated.constraints
       );
       
       if (!result) {
@@ -537,7 +538,7 @@ export async function registerRoutes(
           isActive: 1,
         },
         latestVersion?.blocks || [],
-        latestVersion?.constraints as Record<string, unknown> || {}
+        latestVersion?.constraints || []
       );
       
       res.json({
