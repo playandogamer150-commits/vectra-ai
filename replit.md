@@ -84,6 +84,7 @@ Template collections defining prompt structure for specific use cases:
 - CCTV Detection
 - MS Paint Screen
 - Character Creator Screen
+- IG Realistic UGC (Instagram Story selfie with handheld aesthetic)
 
 ### Filters
 Adjustable parameters that modify prompt output:

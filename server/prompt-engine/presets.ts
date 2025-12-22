@@ -100,6 +100,14 @@ export const defaultBlueprints: BlueprintDefinition[] = [
     constraints: ["game_ui_consistency", "readable_interface"],
     previewDescription: "RPG character customization UI",
   },
+  {
+    name: "IG Realistic UGC",
+    category: "ugc",
+    description: "Ultra-realistic Instagram Story selfie with handheld aesthetic, playful poses, and authentic lo-fi texture",
+    blocks: ["ig_story_base", "ig_framing_selfie", "ig_story_aesthetic", "ig_appearance_neutral", "ig_accessory_details"],
+    constraints: ["no_text_stickers", "raw_story_only"],
+    previewDescription: "Authentic IG Story selfie",
+  },
 ];
 
 export const defaultBlocks: BlockDefinition[] = [
@@ -142,6 +150,15 @@ export const defaultBlocks: BlockDefinition[] = [
   { key: "character_turntable", label: "Character Turntable", template: "character preview, rotating view, 3D model display", type: "subject" },
   { key: "customization_sliders", label: "Customization Sliders", template: "slider controls, adjustment bars, value indicators", type: "layout" },
   { key: "stat_display", label: "Stat Display", template: "character stats, attribute values, skill numbers", type: "layout" },
+  
+  // IG Realistic UGC blocks
+  { key: "ig_story_base", label: "IG Story Base", template: "9:16 ultra-realistic handheld vertical selfie, shot in authentic IG-story style, slight motion blur, soft lo-fi texture, warm indoor lighting", type: "style" },
+  { key: "ig_framing_selfie", label: "IG Framing Selfie", template: "vertical close-up selfie filling most of the story frame, camera very close to the face, imperfect handheld angle, playful pose, relaxed confident expression, direct eye contact with the camera", type: "camera" },
+  { key: "ig_story_aesthetic", label: "IG Story Aesthetic", template: "IG-story realism, gentle exposure drifting, shallow depth of field, subtle grain, slightly over-smoothed iPhone edges, no cinematic polish", type: "postfx" },
+  { key: "ig_appearance_neutral", label: "IG Appearance Neutral", template: "no specific facial features, natural loose hair, minimal or optional makeup, identity should follow reference image provided", type: "subject" },
+  { key: "ig_accessory_details", label: "IG Accessory Details", template: "delicate gold rings on fingers, AirPods optional, shoulders framed with minimal white tank top, neutral indoor background softly out of focus", type: "subject" },
+  { key: "no_text_stickers", label: "No Text/Stickers", template: "no text on screen, no stickers, only the raw story-style selfie", type: "constraint" },
+  { key: "raw_story_only", label: "Raw Story Only", template: "authentic unedited story capture, no filters applied, no overlays", type: "constraint" },
 ];
 
 export const defaultFilters: FilterDefinition[] = [
