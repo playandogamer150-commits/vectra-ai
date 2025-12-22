@@ -163,7 +163,7 @@ export async function registerRoutes(
         });
       }
 
-      const result = compiler.compile({
+      const compileInput = {
         profileId: validated.profileId,
         blueprintId: validated.blueprintId,
         filters: validated.filters,
@@ -173,7 +173,22 @@ export async function registerRoutes(
         items: validated.items,
         environment: validated.environment,
         restrictions: validated.restrictions,
-      });
+      };
+
+      // Check if target platform needs Character Pack instead of LoRA syntax
+      let characterPack = null;
+      const loraSupportingPlatforms = ["flux", "sdxl", "stable_diffusion", "sd1.5", "sd_1.5"];
+      const targetPlatform = validated.targetPlatform?.toLowerCase() || "";
+      const platformSupportsLora = loraSupportingPlatforms.some(p => targetPlatform.includes(p));
+      
+      if (validated.loraVersionId && validated.targetPlatform && !platformSupportsLora) {
+        // Generate Character Pack for non-LoRA platforms
+        characterPack = compiler.generateCharacterPack(compileInput, validated.targetPlatform);
+        // Clear LoRA so it doesn't inject syntax into the prompt
+        compiler.setActiveLora(null);
+      }
+
+      const result = compiler.compile(compileInput);
 
       const savedPrompt = await storage.createGeneratedPrompt({
         userId: null,
@@ -196,7 +211,13 @@ export async function registerRoutes(
 
       await storage.incrementRateLimit(rateLimitKey);
 
-      res.json(savedPrompt);
+      // Include Character Pack if generated
+      const response: Record<string, unknown> = { ...savedPrompt };
+      if (characterPack) {
+        response.characterPack = characterPack;
+      }
+
+      res.json(response);
     } catch (error) {
       if (error instanceof ZodError) {
         return res.status(400).json({ error: "Invalid request", details: error.errors });

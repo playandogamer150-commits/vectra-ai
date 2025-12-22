@@ -17,12 +17,40 @@ import type { LlmProfile, PromptBlueprint, Filter, GeneratedPrompt, LoraModel, L
 import { 
   Zap, Copy, Download, Save, Share2, RefreshCw, AlertTriangle, 
   CheckCircle, ChevronDown, ChevronUp, Gauge, Layers, SlidersHorizontal,
-  Sparkles, FileText, Wand2, X
+  Sparkles, FileText, Wand2, X, Monitor, Image, Video, Info
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface TrainedLora {
   model: LoraModel;
   versions: LoraVersion[];
+}
+
+interface CharacterPack {
+  promptWithoutLora: string;
+  characterInstructions: string;
+  referenceImagesCount: number;
+  recommendedParams: {
+    aspectRatio: string;
+    duration?: number;
+    style?: string;
+  };
+  targetPlatform: string;
+}
+
+interface GeneratedPromptWithCharacterPack extends GeneratedPrompt {
+  characterPack?: CharacterPack;
 }
 
 type FilterValue = Record<string, string>;
@@ -40,8 +68,31 @@ export default function StudioPage() {
   const [environment, setEnvironment] = useState("");
   const [restrictions, setRestrictions] = useState("");
   const [showFilters, setShowFilters] = useState(true);
-  const [result, setResult] = useState<GeneratedPrompt | null>(null);
+  const [result, setResult] = useState<GeneratedPromptWithCharacterPack | null>(null);
   const [selectedLora, setSelectedLora] = useState<{ versionId: string; weight: number } | null>(null);
+  const [targetPlatform, setTargetPlatform] = useState<string>("");
+
+  // Platforms that support LoRA syntax injection
+  const loraSupportingPlatforms = ["flux", "sdxl", "stable_diffusion", "sd1.5"];
+  
+  // All available target platforms
+  const targetPlatforms = [
+    { id: "flux_dev", name: "Flux Dev (LoRA)", category: "lora", icon: "image" },
+    { id: "sdxl", name: "SDXL (LoRA)", category: "lora", icon: "image" },
+    { id: "sd1.5", name: "SD 1.5 (LoRA)", category: "lora", icon: "image" },
+    { id: "higgsfield", name: "Higgsfield / Nano Banana", category: "cloud", icon: "video" },
+    { id: "midjourney", name: "Midjourney", category: "cloud", icon: "image" },
+    { id: "dalle", name: "DALL-E 3", category: "cloud", icon: "image" },
+    { id: "sora", name: "Sora", category: "cloud", icon: "video" },
+    { id: "veo", name: "Veo", category: "cloud", icon: "video" },
+    { id: "runway", name: "Runway Gen-3", category: "cloud", icon: "video" },
+    { id: "pika", name: "Pika", category: "cloud", icon: "video" },
+    { id: "kling", name: "Kling", category: "cloud", icon: "video" },
+    { id: "luma", name: "Luma Dream Machine", category: "cloud", icon: "video" },
+    { id: "grok", name: "Grok", category: "cloud", icon: "image" },
+  ];
+
+  const selectedPlatformSupportsLora = targetPlatform && loraSupportingPlatforms.some(p => targetPlatform.includes(p));
 
   const { data: profiles, isLoading: loadingProfiles } = useQuery<LlmProfile[]>({
     queryKey: ["/api/profiles"],
@@ -73,10 +124,11 @@ export default function StudioPage() {
         restrictions,
         loraVersionId: selectedLora?.versionId,
         loraWeight: selectedLora?.weight,
+        targetPlatform: selectedLora && targetPlatform ? targetPlatform : undefined,
       });
       return res.json();
     },
-    onSuccess: (data: GeneratedPrompt) => {
+    onSuccess: (data: GeneratedPromptWithCharacterPack) => {
       setResult(data);
       setSeed(data.seed);
       toast({ title: t.studio.copied });
@@ -260,7 +312,7 @@ export default function StudioPage() {
                     </ScrollArea>
                     
                     {selectedLora && (
-                      <div className="space-y-2 pt-2 border-t">
+                      <div className="space-y-3 pt-2 border-t">
                         <div className="flex items-center justify-between gap-2">
                           <Label className="text-xs text-muted-foreground">
                             {t.loraStudio?.weight || "Weight"}: {selectedLora.weight.toFixed(2)}
@@ -268,7 +320,10 @@ export default function StudioPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => setSelectedLora(null)}
+                            onClick={() => {
+                              setSelectedLora(null);
+                              setTargetPlatform("");
+                            }}
                             data-testid="button-clear-lora"
                           >
                             <X className="w-4 h-4" />
@@ -282,6 +337,59 @@ export default function StudioPage() {
                           step={0.1}
                           data-testid="slider-lora-weight"
                         />
+                        
+                        <div className="space-y-2 pt-2">
+                          <div className="flex items-center gap-1">
+                            <Label className="text-xs text-muted-foreground">
+                              {t.studio?.targetPlatform || "Target Platform"}
+                            </Label>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Info className="w-3 h-3 text-muted-foreground" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <p>{t.studio?.platformHint || "Select where you'll use this prompt. Cloud platforms need Character Pack instead of LoRA syntax."}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                          <Select value={targetPlatform} onValueChange={setTargetPlatform}>
+                            <SelectTrigger data-testid="select-target-platform">
+                              <SelectValue placeholder={t.studio?.selectPlatform || "Select platform..."} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <div className="px-2 py-1 text-xs font-medium text-muted-foreground">
+                                {t.studio?.localWithLora || "Local (with LoRA)"}
+                              </div>
+                              {targetPlatforms.filter(p => p.category === "lora").map((platform) => (
+                                <SelectItem key={platform.id} value={platform.id}>
+                                  <div className="flex items-center gap-2">
+                                    <Image className="w-3 h-3" />
+                                    {platform.name}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                              <div className="px-2 py-1 text-xs font-medium text-muted-foreground mt-2">
+                                {t.studio?.cloudPlatforms || "Cloud (Character Pack)"}
+                              </div>
+                              {targetPlatforms.filter(p => p.category === "cloud").map((platform) => (
+                                <SelectItem key={platform.id} value={platform.id}>
+                                  <div className="flex items-center gap-2">
+                                    {platform.icon === "video" ? <Video className="w-3 h-3" /> : <Image className="w-3 h-3" />}
+                                    {platform.name}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          
+                          {targetPlatform && !selectedPlatformSupportsLora && (
+                            <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs">
+                              <p className="text-amber-600 dark:text-amber-400">
+                                {t.studio?.characterPackNote || "This platform doesn't support LoRA. A Character Pack with reference image instructions will be generated instead."}
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </>
@@ -498,6 +606,36 @@ export default function StudioPage() {
                   <div className="p-4 rounded-lg bg-muted/50 font-mono text-sm leading-relaxed whitespace-pre-wrap" data-testid="text-compiled-prompt">
                     {result.compiledPrompt}
                   </div>
+
+                  {result.characterPack && (
+                    <div className="space-y-3 p-4 rounded-lg border border-primary/30 bg-primary/5" data-testid="character-pack-section">
+                      <div className="flex items-center gap-2">
+                        <Wand2 className="w-4 h-4 text-primary" />
+                        <span className="font-medium text-sm">{t.studio.characterPackTitle}</span>
+                        <Badge variant="secondary" className="text-xs">
+                          {result.characterPack.targetPlatform}
+                        </Badge>
+                      </div>
+                      
+                      <div className="text-sm text-muted-foreground">
+                        {result.characterPack.characterInstructions}
+                      </div>
+                      
+                      <div className="flex items-center gap-4 text-xs">
+                        <div className="flex items-center gap-1">
+                          <Image className="w-3 h-3" />
+                          <span>{t.studio.uploadImages}: {result.characterPack.referenceImagesCount}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Monitor className="w-3 h-3" />
+                          <span>{t.studio.recommendedSettings}: {result.characterPack.recommendedParams.aspectRatio}</span>
+                          {result.characterPack.recommendedParams.duration && (
+                            <span>, {result.characterPack.recommendedParams.duration}s</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-2 flex-wrap">
                     <Button variant="outline" size="sm" onClick={handleCopy} className="gap-2" data-testid="button-copy">

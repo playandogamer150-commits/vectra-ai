@@ -23,7 +23,89 @@ export interface CharacterPackOutput {
 }
 
 const LORA_SUPPORTING_PROFILES = ["flux", "sdxl", "stable_diffusion", "sd1.5", "sd_1.5"];
-const TARGET_PLATFORM_PROFILES = ["sora", "veo", "grok"];
+const TARGET_PLATFORM_PROFILES = ["sora", "veo", "grok", "higgsfield", "midjourney", "dall-e", "dalle", "runway", "pika", "kling", "luma"];
+
+const CHARACTER_PACK_PLATFORMS: Record<string, {
+  instructions: string;
+  aspectRatio: string;
+  duration?: number;
+  style?: string;
+  supportsImageUpload: boolean;
+}> = {
+  higgsfield: {
+    instructions: `For Higgsfield/Nano Banana: Upload reference images of the character directly to the platform. ` +
+      `In your prompt, describe the character's distinctive features in detail. ` +
+      `Use terms like "the person in the reference image" or describe specific features (hair color, facial structure, clothing style).`,
+    aspectRatio: "9:16",
+    duration: 5,
+    style: "cinematic",
+    supportsImageUpload: true,
+  },
+  midjourney: {
+    instructions: `For Midjourney: Use --cref (character reference) with an uploaded image URL. ` +
+      `Add --cw 100 for maximum character consistency. ` +
+      `Describe the character's distinctive features in detail within your prompt.`,
+    aspectRatio: "1:1",
+    supportsImageUpload: true,
+  },
+  dalle: {
+    instructions: `For DALL-E: Describe the character's features in extensive detail. ` +
+      `Include: face shape, eye color, hair style/color, skin tone, distinctive marks. ` +
+      `Use the same detailed description across all generations for consistency.`,
+    aspectRatio: "1:1",
+    supportsImageUpload: false,
+  },
+  sora: {
+    instructions: `For Sora: Upload reference images as "character reference" in the interface. ` +
+      `The character should maintain consistent appearance across all frames.`,
+    aspectRatio: "16:9",
+    duration: 10,
+    style: "cinematic",
+    supportsImageUpload: true,
+  },
+  veo: {
+    instructions: `For Veo: Use the subject reference feature with your uploaded images. ` +
+      `Describe the character in your prompt for consistency.`,
+    aspectRatio: "16:9",
+    duration: 8,
+    style: "photorealistic",
+    supportsImageUpload: true,
+  },
+  grok: {
+    instructions: `For Grok: Describe the character with specific visual details. ` +
+      `Reference the attached images for appearance consistency.`,
+    aspectRatio: "1:1",
+    supportsImageUpload: true,
+  },
+  runway: {
+    instructions: `For Runway Gen-3: Upload a reference image and use image-to-video mode. ` +
+      `The first frame should be your character reference for best consistency.`,
+    aspectRatio: "16:9",
+    duration: 5,
+    supportsImageUpload: true,
+  },
+  pika: {
+    instructions: `For Pika: Use an image of your character as the input. ` +
+      `The motion will be applied to the uploaded reference.`,
+    aspectRatio: "16:9",
+    duration: 3,
+    supportsImageUpload: true,
+  },
+  kling: {
+    instructions: `For Kling: Upload your character reference and use the face swap or character consistency feature. ` +
+      `Describe distinctive features for better results.`,
+    aspectRatio: "16:9",
+    duration: 5,
+    supportsImageUpload: true,
+  },
+  luma: {
+    instructions: `For Luma Dream Machine: Use image-to-video with your character as the input image. ` +
+      `The character will be preserved in the generated video.`,
+    aspectRatio: "16:9",
+    duration: 5,
+    supportsImageUpload: true,
+  },
+};
 
 export class PromptCompiler {
   private profiles: Map<string, LlmProfile> = new Map();
@@ -71,34 +153,58 @@ export class PromptCompiler {
     const lora = this.activeLora;
     const modelName = lora.modelName || "Custom Identity";
     
-    let platformInstructions = "";
-    let recommendedParams: CharacterPackOutput["recommendedParams"] = { aspectRatio: "16:9" };
-
-    if (targetPlatform.startsWith("sora")) {
-      platformInstructions = `For Sora: Use this prompt with your uploaded reference images. ` +
-        `The character "${modelName}" should maintain consistent appearance across all frames. ` +
-        `Upload the reference images as "character reference" in Sora's interface.`;
-      recommendedParams = { aspectRatio: "16:9", duration: 10, style: "cinematic" };
-    } else if (targetPlatform.startsWith("veo")) {
-      platformInstructions = `For Veo: Include these reference images as visual anchors. ` +
-        `Describe the character "${modelName}" in your prompt for consistency. ` +
-        `Use Veo's subject reference feature to maintain identity.`;
-      recommendedParams = { aspectRatio: "16:9", duration: 8, style: "photorealistic" };
-    } else if (targetPlatform.startsWith("grok")) {
-      platformInstructions = `For Grok: Describe the character "${modelName}" with specific visual details. ` +
-        `Reference the attached images for appearance consistency.`;
-      recommendedParams = { aspectRatio: "1:1" };
+    // Find matching platform config
+    const normalizedPlatform = targetPlatform.toLowerCase().replace(/[\s.-]+/g, "");
+    let platformConfig = CHARACTER_PACK_PLATFORMS[normalizedPlatform];
+    
+    // Try partial match if exact match not found
+    if (!platformConfig) {
+      for (const [key, config] of Object.entries(CHARACTER_PACK_PLATFORMS)) {
+        if (normalizedPlatform.includes(key) || key.includes(normalizedPlatform)) {
+          platformConfig = config;
+          break;
+        }
+      }
+    }
+    
+    // Default config if platform not found
+    if (!platformConfig) {
+      platformConfig = {
+        instructions: `For ${targetPlatform}: Describe the character "${modelName}" with specific visual details. ` +
+          `If the platform supports image upload, include reference images for character consistency.`,
+        aspectRatio: "16:9",
+        supportsImageUpload: true,
+      };
     }
 
     const previewImages = (lora.version.previewImages as string[]) || [];
 
     return {
       promptWithoutLora: output.compiledPrompt,
-      characterInstructions: platformInstructions,
+      characterInstructions: platformConfig.instructions.replace(/the character/gi, `the character "${modelName}"`),
       referenceImagesCount: previewImages.length || 20,
-      recommendedParams,
+      recommendedParams: {
+        aspectRatio: platformConfig.aspectRatio,
+        duration: platformConfig.duration,
+        style: platformConfig.style,
+      },
       targetPlatform,
     };
+  }
+
+  getPlatformConfig(targetPlatform: string): typeof CHARACTER_PACK_PLATFORMS[string] | null {
+    const normalizedPlatform = targetPlatform.toLowerCase().replace(/[\s.-]+/g, "");
+    let platformConfig = CHARACTER_PACK_PLATFORMS[normalizedPlatform];
+    
+    if (!platformConfig) {
+      for (const [key, config] of Object.entries(CHARACTER_PACK_PLATFORMS)) {
+        if (normalizedPlatform.includes(key) || key.includes(normalizedPlatform)) {
+          return config;
+        }
+      }
+    }
+    
+    return platformConfig || null;
   }
 
   generateSeed(input: CompilerInput): string {
