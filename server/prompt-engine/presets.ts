@@ -85,6 +85,14 @@ export const defaultBlueprints: BlueprintDefinition[] = [
     previewDescription: "Estética de filmagem de segurança",
   },
   {
+    name: "Raw Surveillance Realism",
+    category: "surveillance",
+    description: "Realismo bruto de câmera de vigilância sem textos, HUDs ou overlays - apenas a estética autêntica e crua",
+    blocks: ["surveillance_angle", "lowlight_realism", "candid_moment", "subtle_grain"],
+    constraints: ["no_text_overlays", "no_ui_elements", "authentic_imperfection"],
+    previewDescription: "Realismo bruto sem overlays",
+  },
+  {
     name: "MS Paint Screen",
     category: "retro",
     description: "Interface clássica do MS Paint do Windows com estética de arte digital amadora",
@@ -210,6 +218,12 @@ export const defaultBlocks: BlockDefinition[] = [
   { key: "detection_overlay", label: "Sobreposição de Detecção", template: "caixas delimitadoras, indicadores de rastreamento, marcadores de detecção", type: "postfx" },
   { key: "timestamp_hud", label: "HUD de Timestamp", template: "sobreposição de data e hora, ID da câmera, indicador de gravação", type: "postfx" },
   { key: "grainy_texture", label: "Textura Granulada", template: "ruído de vídeo, artefatos de compressão, baixa resolução", type: "postfx" },
+  
+  // Raw Surveillance Realism (sem overlays)
+  { key: "surveillance_angle", label: "Ângulo de Vigilância", template: "ângulo de câmera fixa elevada, visão de canto, perspectiva voyeurística natural", type: "camera" },
+  { key: "lowlight_realism", label: "Realismo em Baixa Luz", template: "iluminação ambiente natural, sombras suaves autênticas, sem flash artificial, luz de ambiente interno realista", type: "camera" },
+  { key: "candid_moment", label: "Momento Candid", template: "pose espontânea natural, expressão desprevenida, movimento genuíno capturado, sem consciência da câmera", type: "subject" },
+  { key: "subtle_grain", label: "Granulação Sutil", template: "ruído de sensor leve, textura fotográfica autêntica, imperfeições naturais mínimas", type: "postfx" },
   
   // MS Paint Screen
   { key: "mspaint_interface", label: "Interface MS Paint", template: "Interface do Paint do Windows 95, barra de ferramentas visível, área de tela", type: "layout" },
