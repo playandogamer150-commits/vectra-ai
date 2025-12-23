@@ -71,7 +71,8 @@ export function detectAspectRatio(width: number, height: number): "portrait" | "
 
 export function mapDurationToFrames(durationSeconds: number, fps: number = 16): number {
   const frames = Math.round(durationSeconds * fps);
-  return Math.min(Math.max(frames, 16), 81);
+  // WAN 2.1 requires minimum 81 frames, maximum 129 frames
+  return Math.min(Math.max(frames, 81), 129);
 }
 
 export function generateIdempotencyKey(
