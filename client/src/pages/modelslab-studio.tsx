@@ -266,14 +266,14 @@ export default function ModelsLabStudioPage() {
 
   // Video generation mutation (Job System with ModelsLab)
   const generateVideoMutation = useMutation({
-    mutationFn: async (promptText: string) => {
+    mutationFn: async (imageUrl: string) => {
       const response = await apiRequest("POST", "/api/videogen/jobs", {
-        prompt: promptText || "Cinematic video with smooth natural motion, ultra realistic, professional cinematography",
+        sourceImageUrl: imageUrl,
+        prompt: prompt || "Cinematic video with smooth natural motion, professional cinematography",
         targetAspect: videoAspect,
         durationSeconds: videoDuration,
-        modelId: "seedance-1-5-pro",
-        generateAudio: generateAudio,
-        generationType: "text-to-video",
+        modelId: "seedance-1-0-pro",
+        generationType: "image-to-video",
       });
       return await response.json();
     },
@@ -1737,7 +1737,7 @@ export default function ModelsLabStudioPage() {
               {t.modelslab.videoDialogTitle || "Generate Video"}
             </DialogTitle>
             <DialogDescription>
-              {t.modelslab.videoDialogDescription || "Generate ultra-realistic video using Seedance 1.5 Pro"}
+              {t.modelslab.videoDialogDescription || "Animate your image into a realistic video using Seedance 1.0 Pro"}
             </DialogDescription>
           </DialogHeader>
           
@@ -1745,10 +1745,10 @@ export default function ModelsLabStudioPage() {
             {/* Model Badge */}
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-xs">
-                Seedance 1.5 Pro
+                Seedance 1.0 Pro
               </Badge>
               <Badge variant="outline" className="text-xs">
-                Ultra Realistic
+                Image-to-Video
               </Badge>
             </div>
 
@@ -1786,19 +1786,6 @@ export default function ModelsLabStudioPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>{t.modelslab.generateAudio || "Generate Audio"}</Label>
-                    <p className="text-xs text-muted-foreground">
-                      {t.modelslab.generateAudioHint || "Add AI-generated audio to the video"}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={generateAudio}
-                    onCheckedChange={setGenerateAudio}
-                    data-testid="switch-generate-audio"
-                  />
-                </div>
               </div>
             )}
 
@@ -1846,8 +1833,8 @@ export default function ModelsLabStudioPage() {
                   {t.modelslab.cancel || "Cancel"}
                 </Button>
                 <Button
-                  onClick={() => generateVideoMutation.mutate(prompt || "Cinematic video with smooth natural motion")}
-                  disabled={generateVideoMutation.isPending || !prompt}
+                  onClick={() => selectedImageForVideo && generateVideoMutation.mutate(selectedImageForVideo)}
+                  disabled={generateVideoMutation.isPending || !selectedImageForVideo}
                   data-testid="button-confirm-video"
                 >
                   {generateVideoMutation.isPending ? (

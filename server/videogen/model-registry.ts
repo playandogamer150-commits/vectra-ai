@@ -1,4 +1,4 @@
-export type VideoModelId = "seedance-1-5-pro";
+export type VideoModelId = "seedance-1-5-pro" | "seedance-1-0-pro";
 export type VideoGenerationType = "text-to-video" | "image-to-video";
 
 export interface VideoModelConfig {
@@ -19,7 +19,7 @@ export interface VideoModelConfig {
 export const VIDEO_MODEL_REGISTRY: Record<VideoModelId, VideoModelConfig> = {
   "seedance-1-5-pro": {
     id: "seedance-1-5-pro",
-    displayName: "Seedance 1.5 Pro (Ultra Realistic)",
+    displayName: "Seedance 1.5 Pro",
     provider: "modelslab",
     endpoint: "/api/v7/video-fusion/text-to-video",
     modelIdParam: "seedance-1-5-pro",
@@ -27,6 +27,20 @@ export const VIDEO_MODEL_REGISTRY: Record<VideoModelId, VideoModelConfig> = {
     supportsAspectRatio: true,
     qualityTier: "ultra",
     generationType: "text-to-video",
+    isDefault: false,
+    maxDurationSeconds: 8,
+    minDurationSeconds: 2,
+  },
+  "seedance-1-0-pro": {
+    id: "seedance-1-0-pro",
+    displayName: "Seedance 1.0 Pro",
+    provider: "modelslab",
+    endpoint: "/api/v7/video-fusion/image-to-video",
+    modelIdParam: "seedance-1-0-pro",
+    supportsAudio: false,
+    supportsAspectRatio: false,
+    qualityTier: "high",
+    generationType: "image-to-video",
     isDefault: true,
     maxDurationSeconds: 8,
     minDurationSeconds: 2,

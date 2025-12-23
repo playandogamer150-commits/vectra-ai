@@ -25,24 +25,15 @@ export class ModelsLabProvider implements VideoProvider {
     const modelId = input.modelId || getDefaultVideoModel().id;
     
     if (!isValidVideoModel(modelId)) {
-      console.error(`[ModelsLab] Invalid model_id: ${modelId}. Seedance 1.0 is NOT allowed.`);
+      console.error(`[ModelsLab] Invalid model_id: ${modelId}`);
       return {
         success: false,
         status: "error",
-        error: `Invalid model: ${modelId}. Only Seedance 1.5 Pro is supported.`,
+        error: `Invalid model: ${modelId}. Valid models: seedance-1-0-pro (image-to-video), seedance-1-5-pro (text-to-video)`,
       };
     }
 
     const model = getVideoModel(modelId);
-    
-    if (modelId.includes("1.0") || modelId.includes("1-0")) {
-      console.error(`[ModelsLab] BLOCKED: Attempted to use deprecated Seedance 1.0`);
-      return {
-        success: false,
-        status: "error",
-        error: "Seedance 1.0 is deprecated. Use Seedance 1.5 Pro instead.",
-      };
-    }
 
     try {
       if (model.generationType === "text-to-video") {
