@@ -7,6 +7,9 @@ export const userPlanEnum = pgEnum("user_plan", ["free", "pro"]);
 export const blockTypeEnum = pgEnum("block_type", ["style", "camera", "layout", "constraint", "postfx", "subject"]);
 export const loraJobStatusEnum = pgEnum("lora_job_status", ["pending", "processing", "completed", "failed", "cancelled"]);
 export const loraProviderEnum = pgEnum("lora_provider", ["webhook_worker", "replicate", "runpod"]);
+export const videoJobStatusEnum = pgEnum("video_job_status", ["queued", "processing", "success", "error"]);
+export const videoQualityTierEnum = pgEnum("video_quality_tier", ["standard", "ultra"]);
+export const videoTransformStrategyEnum = pgEnum("video_transform_strategy", ["letterbox", "crop", "none"]);
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -251,10 +254,35 @@ export const userBlueprintVersions = pgTable("user_blueprint_versions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const videoJobs = pgTable("video_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  provider: text("provider").notNull().default("modelslab"),
+  providerJobId: text("provider_job_id"),
+  status: videoJobStatusEnum("status").notNull().default("queued"),
+  sourceImageUrl: text("source_image_url").notNull(),
+  prompt: text("prompt"),
+  negativePrompt: text("negative_prompt"),
+  targetAspect: text("target_aspect").notNull().default("auto"),
+  qualityTier: videoQualityTierEnum("quality_tier").notNull().default("ultra"),
+  durationSeconds: integer("duration_seconds").notNull().default(5),
+  seed: integer("seed"),
+  transformStrategy: videoTransformStrategyEnum("transform_strategy").notNull().default("none"),
+  detectedAspect: text("detected_aspect"),
+  resultUrls: jsonb("result_urls").$type<string[]>().default([]),
+  errorMessage: text("error_message"),
+  eta: integer("eta"),
+  retryCount: integer("retry_count").default(0).notNull(),
+  nextPollAt: timestamp("next_poll_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const usersRelations = relations(users, ({ many, one }) => ({
   generatedPrompts: many(generatedPrompts),
   loraModels: many(loraModels),
   activeLora: one(userLoraActive, { fields: [users.id], references: [userLoraActive.userId] }),
+  videoJobs: many(videoJobs),
 }));
 
 export const generatedPromptsRelations = relations(generatedPrompts, ({ one, many }) => ({
@@ -305,6 +333,10 @@ export const userBlueprintsRelations = relations(userBlueprints, ({ one, many })
 
 export const userBlueprintVersionsRelations = relations(userBlueprintVersions, ({ one }) => ({
   blueprint: one(userBlueprints, { fields: [userBlueprintVersions.blueprintId], references: [userBlueprints.id] }),
+}));
+
+export const videoJobsRelations = relations(videoJobs, ({ one }) => ({
+  user: one(users, { fields: [videoJobs.userId], references: [users.id] }),
 }));
 
 export const insertUserSchema = createInsertSchema(users).pick({
@@ -572,3 +604,24 @@ export type FilterPreset = typeof filterPresets.$inferSelect;
 export type InsertFilterPreset = z.infer<typeof insertFilterPresetSchema>;
 export type CreateFilterPresetRequest = z.infer<typeof createFilterPresetRequestSchema>;
 export type UpdateFilterPresetRequest = z.infer<typeof updateFilterPresetRequestSchema>;
+
+// Video Jobs schemas
+export const insertVideoJobSchema = createInsertSchema(videoJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const createVideoJobRequestSchema = z.object({
+  sourceImageUrl: z.string().url(),
+  prompt: z.string().optional(),
+  negativePrompt: z.string().optional(),
+  targetAspect: z.enum(["9:16", "16:9", "1:1", "auto"]).default("auto"),
+  qualityTier: z.enum(["standard", "ultra"]).default("ultra"),
+  durationSeconds: z.number().min(1).max(10).default(5),
+  seed: z.number().optional(),
+});
+
+export type VideoJob = typeof videoJobs.$inferSelect;
+export type InsertVideoJob = z.infer<typeof insertVideoJobSchema>;
+export type CreateVideoJobRequest = z.infer<typeof createVideoJobRequestSchema>;

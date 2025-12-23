@@ -9,7 +9,8 @@ import {
   updateUserBlueprintRequestSchema,
   saveImageRequestSchema,
   createFilterPresetRequestSchema,
-  updateFilterPresetRequestSchema 
+  updateFilterPresetRequestSchema,
+  createVideoJobRequestSchema
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { registerLoraRoutes } from "./lora-routes";
@@ -843,6 +844,60 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error checking Sora 2 status:", error);
       res.status(500).json({ error: "Failed to check video status" });
+    }
+  });
+
+  // ============ VIDEO GENERATION (Job System) ============
+  app.post("/api/videogen/jobs", async (req, res) => {
+    try {
+      const validated = createVideoJobRequestSchema.parse(req.body);
+      
+      const { createVideoJob } = await import("./videogen/service");
+      const result = await createVideoJob(DEV_USER_ID, validated);
+      
+      if (result.success) {
+        const job = await storage.getVideoJob(result.jobId!);
+        res.status(201).json(job);
+      } else {
+        res.status(400).json({ error: result.error });
+      }
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ error: "Invalid request", details: error.errors });
+      }
+      console.error("Error creating video job:", error);
+      res.status(500).json({ error: "Failed to create video job" });
+    }
+  });
+
+  app.get("/api/videogen/jobs", async (_req, res) => {
+    try {
+      const jobs = await storage.getVideoJobs(DEV_USER_ID);
+      res.json(jobs);
+    } catch (error) {
+      console.error("Error fetching video jobs:", error);
+      res.status(500).json({ error: "Failed to fetch video jobs" });
+    }
+  });
+
+  app.get("/api/videogen/jobs/:id", async (req, res) => {
+    try {
+      const job = await storage.getVideoJob(req.params.id);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      
+      if (job.status === "processing" && job.providerJobId) {
+        const { pollVideoJob } = await import("./videogen/service");
+        await pollVideoJob(job);
+        const updatedJob = await storage.getVideoJob(req.params.id);
+        return res.json(updatedJob);
+      }
+      
+      res.json(job);
+    } catch (error) {
+      console.error("Error fetching video job:", error);
+      res.status(500).json({ error: "Failed to fetch video job" });
     }
   });
 

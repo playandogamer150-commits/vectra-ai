@@ -2,7 +2,7 @@ import {
   users, llmProfiles, promptBlueprints, promptBlocks, filters, 
   generatedPrompts, promptVersions, rateLimits,
   loraModels, loraDatasets, loraDatasetItems, loraVersions, loraJobs, userLoraActive, baseModels,
-  userBlueprints, userBlueprintVersions, savedImages, filterPresets,
+  userBlueprints, userBlueprintVersions, savedImages, filterPresets, videoJobs,
   type User, type InsertUser, type LlmProfile, type InsertLlmProfile,
   type PromptBlueprint, type InsertBlueprint, type PromptBlock, type InsertBlock,
   type Filter, type InsertFilter, type GeneratedPrompt, type InsertGeneratedPrompt,
@@ -11,10 +11,11 @@ import {
   type LoraVersion, type InsertLoraVersion, type LoraJob, type InsertLoraJob,
   type UserLoraActive, type BaseModel, type InsertBaseModel, type LoraDatasetItem,
   type UserBlueprint, type InsertUserBlueprint, type UserBlueprintVersion, type InsertUserBlueprintVersion,
-  type SavedImage, type InsertSavedImage, type FilterPreset, type InsertFilterPreset
+  type SavedImage, type InsertSavedImage, type FilterPreset, type InsertFilterPreset,
+  type VideoJob, type InsertVideoJob
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, lte } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -100,6 +101,14 @@ export interface IStorage {
   createFilterPreset(preset: InsertFilterPreset): Promise<FilterPreset>;
   updateFilterPreset(id: string, userId: string, data: Partial<InsertFilterPreset>): Promise<FilterPreset | undefined>;
   deleteFilterPreset(id: string, userId: string): Promise<boolean>;
+  
+  // Video Jobs
+  getVideoJobs(userId: string): Promise<VideoJob[]>;
+  getVideoJob(id: string): Promise<VideoJob | undefined>;
+  createVideoJob(job: Omit<InsertVideoJob, "id" | "createdAt" | "updatedAt">): Promise<VideoJob>;
+  updateVideoJob(id: string, data: Partial<InsertVideoJob>): Promise<VideoJob | undefined>;
+  findVideoJobByIdempotency(userId: string, idempotencyKey: string): Promise<VideoJob | undefined>;
+  getVideoJobsNeedingPoll(): Promise<VideoJob[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -544,6 +553,50 @@ export class DatabaseStorage implements IStorage {
 
     await db.delete(filterPresets).where(eq(filterPresets.id, id));
     return true;
+  }
+
+  // Video Jobs
+  async getVideoJobs(userId: string): Promise<VideoJob[]> {
+    return db.select().from(videoJobs)
+      .where(eq(videoJobs.userId, userId))
+      .orderBy(desc(videoJobs.createdAt));
+  }
+
+  async getVideoJob(id: string): Promise<VideoJob | undefined> {
+    const [job] = await db.select().from(videoJobs).where(eq(videoJobs.id, id));
+    return job || undefined;
+  }
+
+  async createVideoJob(job: Omit<InsertVideoJob, "id" | "createdAt" | "updatedAt">): Promise<VideoJob> {
+    const [created] = await db.insert(videoJobs).values(job as any).returning();
+    return created;
+  }
+
+  async updateVideoJob(id: string, data: Partial<InsertVideoJob>): Promise<VideoJob | undefined> {
+    const [updated] = await db.update(videoJobs)
+      .set({ ...data, updatedAt: new Date() } as any)
+      .where(eq(videoJobs.id, id))
+      .returning();
+    return updated;
+  }
+
+  async findVideoJobByIdempotency(userId: string, idempotencyKey: string): Promise<VideoJob | undefined> {
+    const jobs = await db.select().from(videoJobs)
+      .where(and(
+        eq(videoJobs.userId, userId),
+        eq(videoJobs.sourceImageUrl, idempotencyKey)
+      ))
+      .orderBy(desc(videoJobs.createdAt))
+      .limit(1);
+    return jobs[0] || undefined;
+  }
+
+  async getVideoJobsNeedingPoll(): Promise<VideoJob[]> {
+    return db.select().from(videoJobs)
+      .where(and(
+        eq(videoJobs.status, "processing"),
+        lte(videoJobs.nextPollAt, new Date())
+      ));
   }
 }
 
