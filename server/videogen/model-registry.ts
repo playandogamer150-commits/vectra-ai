@@ -1,4 +1,4 @@
-export type VideoModelId = "seedance-1-5-pro" | "seedance-1-0-pro";
+export type VideoModelId = "seedance-1-5-pro" | "svd";
 export type VideoGenerationType = "text-to-video" | "image-to-video";
 
 export interface VideoModelConfig {
@@ -31,12 +31,12 @@ export const VIDEO_MODEL_REGISTRY: Record<VideoModelId, VideoModelConfig> = {
     maxDurationSeconds: 8,
     minDurationSeconds: 2,
   },
-  "seedance-1-0-pro": {
-    id: "seedance-1-0-pro",
-    displayName: "Seedance 1.0 Pro",
+  "svd": {
+    id: "svd",
+    displayName: "Stable Video Diffusion",
     provider: "modelslab",
     endpoint: "/api/v7/video-fusion/image-to-video",
-    modelIdParam: "seedance-1-0-pro",
+    modelIdParam: "svd",
     supportsAudio: false,
     supportsAspectRatio: false,
     qualityTier: "high",

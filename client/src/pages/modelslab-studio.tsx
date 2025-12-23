@@ -272,7 +272,7 @@ export default function ModelsLabStudioPage() {
         prompt: prompt || "Cinematic video with smooth natural motion, professional cinematography",
         targetAspect: videoAspect,
         durationSeconds: videoDuration,
-        modelId: "seedance-1-0-pro",
+        modelId: "svd",
         generationType: "image-to-video",
       });
       return await response.json();
@@ -1217,7 +1217,7 @@ export default function ModelsLabStudioPage() {
                     </div>
                     <div>
                       <p className="text-muted-foreground">{t.modelslab.model}</p>
-                      <p className="font-medium">Seedance 1.0 Pro</p>
+                      <p className="font-medium">Stable Video Diffusion</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">{t.modelslab.generationTime || "Generation Time"}</p>
@@ -1737,7 +1737,7 @@ export default function ModelsLabStudioPage() {
               {t.modelslab.videoDialogTitle || "Generate Video"}
             </DialogTitle>
             <DialogDescription>
-              {t.modelslab.videoDialogDescription || "Animate your image into a realistic video using Seedance 1.0 Pro"}
+              {t.modelslab.videoDialogDescription || "Animate your image into a realistic video using Stable Video Diffusion"}
             </DialogDescription>
           </DialogHeader>
           
@@ -1745,7 +1745,7 @@ export default function ModelsLabStudioPage() {
             {/* Model Badge */}
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-xs">
-                Seedance 1.0 Pro
+                SVD
               </Badge>
               <Badge variant="outline" className="text-xs">
                 Image-to-Video
