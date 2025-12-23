@@ -1,0 +1,76 @@
+Você é um Principal Engineer focado em UX e arquitetura de front-end.
+
+CONTEXTO:
+No PromptForge, a funcionalidade de Image → Video está funcionando corretamente (ModelsLab).
+Porém, o RESULTADO do vídeo está sendo exibido dentro de um POP-UP / MODAL flutuante.
+
+PROBLEMA:
+Exibir vídeos gerados dentro de um modal é um erro de UX grave porque:
+- o vídeo fica pequeno
+- dificulta visualização
+- dificulta download
+- esconde informações importantes (metadata, duração, botões)
+- prejudica uso em desktop e mobile
+- não escala para vídeos longos ou múltiplos resultados
+
+OBJETIVO:
+Remover a exibição final do vídeo de dentro do pop-up/modal
+e exibir o vídeo GERADO diretamente NA ABA ORIGINAL / VIEW PRINCIPAL,
+no mesmo layout onde hoje aparecem imagens geradas.
+
+REQUISITOS FUNCIONAIS:
+1. O modal deve ser usado APENAS para:
+   - configuração
+   - disparo da geração (Image → Video)
+   - feedback de status inicial (queued / processing)
+
+2. Após o status do job ser "success":
+   - FECHAR automaticamente o modal
+   - REDIRECIONAR ou RENDERIZAR o resultado na área principal da página
+
+3. O vídeo deve aparecer:
+   - no mesmo container onde imagens são exibidas
+   - com tamanho grande (responsive)
+   - com controles visíveis
+   - com informações abaixo:
+     - duração
+     - fps
+     - resolução
+     - modelo usado
+     - tempo de geração
+   - botões claros:
+     - Baixar
+     - Abrir em nova aba
+     - Salvar na galeria
+
+REQUISITOS TÉCNICOS:
+- O estado do VideoJob deve ser global (não local ao modal)
+- Usar:
+   - TanStack Query ou Zustand para compartilhar o estado do job
+- O modal NÃO deve conter o player final
+- O componente de exibição final deve ser algo como:
+   <VideoResultViewer />
+
+ARQUITETURA SUGERIDA:
+- Modal:
+   - apenas dispara POST /api/videogen/jobs
+   - escuta status até "processing"
+- Página principal:
+   - escuta o jobId
+   - quando status === success → renderiza o vídeo
+- Manter persistência:
+   - se a página for recarregada, o vídeo ainda aparece
+
+ANTI-PATTERNS A EVITAR:
+- Não manter player dentro do modal
+- Não duplicar lógica de renderização
+- Não depender de DOM hacks ou refs cruzadas
+- Não esconder metadata do usuário
+
+CRITÉRIO DE ACEITE:
+- O vídeo NÃO aparece mais dentro do pop-up
+- O vídeo aparece grande na aba principal
+- Download e leitura de informações ficam confortáveis
+- UX consistente com geração de imagens
+
+Execute essa correção refatorando o fluxo de UI.

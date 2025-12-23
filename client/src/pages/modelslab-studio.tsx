@@ -137,6 +137,14 @@ export default function ModelsLabStudioPage() {
   const [videoAspect, setVideoAspect] = useState<"auto" | "9:16" | "16:9" | "1:1">("auto");
   const [videoDuration, setVideoDuration] = useState<number>(5);
   const [currentVideoJobId, setCurrentVideoJobId] = useState<string | null>(null);
+  const [videoGenerationMeta, setVideoGenerationMeta] = useState<{
+    duration: number;
+    aspect: string;
+    sourceImage: string;
+    generatedAt: Date;
+    generationTimeMs?: number;
+  } | null>(null);
+  const [videoGenerationStartTime, setVideoGenerationStartTime] = useState<number | null>(null);
 
   // Save image mutation
   const saveImageMutation = useMutation({
@@ -268,12 +276,12 @@ export default function ModelsLabStudioPage() {
     onSuccess: (data) => {
       if (data.id) {
         setCurrentVideoJobId(data.id);
+        setVideoGenerationStartTime(Date.now());
         if (data.status === "processing" || data.status === "queued") {
           setIsPollingVideo(true);
           pollVideoJobStatus(data.id);
         } else if (data.status === "success" && data.resultUrls?.length > 0) {
-          setVideoResult({ status: "success", output: data.resultUrls });
-          toast({ title: t.modelslab.videoGenerated || "Video generated successfully!" });
+          handleVideoSuccess(data.resultUrls);
         }
       }
     },
@@ -285,6 +293,22 @@ export default function ModelsLabStudioPage() {
       });
     },
   });
+
+  // Handle successful video generation
+  const handleVideoSuccess = (resultUrls: string[]) => {
+    const generationTime = videoGenerationStartTime ? Date.now() - videoGenerationStartTime : undefined;
+    setVideoResult({ status: "success", output: resultUrls });
+    setVideoGenerationMeta({
+      duration: videoDuration,
+      aspect: videoAspect,
+      sourceImage: selectedImageForVideo,
+      generatedAt: new Date(),
+      generationTimeMs: generationTime,
+    });
+    setIsPollingVideo(false);
+    setShowVideoDialog(false);
+    toast({ title: t.modelslab.videoGenerated || "Video generated successfully!" });
+  };
 
   // Poll video job status
   const pollVideoJobStatus = async (jobId: string) => {
@@ -306,9 +330,7 @@ export default function ModelsLabStudioPage() {
         const job = await response.json();
         
         if (job.status === "success" && job.resultUrls?.length > 0) {
-          setVideoResult({ status: "success", output: job.resultUrls });
-          setIsPollingVideo(false);
-          toast({ title: t.modelslab.videoGenerated || "Video generated successfully!" });
+          handleVideoSuccess(job.resultUrls);
         } else if (job.status === "error") {
           setIsPollingVideo(false);
           toast({ 
@@ -329,6 +351,14 @@ export default function ModelsLabStudioPage() {
     };
     
     poll();
+  };
+
+  // Clear video result
+  const clearVideoResult = () => {
+    setVideoResult(null);
+    setVideoGenerationMeta(null);
+    setCurrentVideoJobId(null);
+    setVideoGenerationStartTime(null);
   };
 
   // Load preset function
@@ -1136,6 +1166,140 @@ export default function ModelsLabStudioPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Video Result Viewer - Shows generated video in main view */}
+          {videoResult?.output && videoResult.output.length > 0 && (
+            <Card className="mt-6 border-2 border-primary/20">
+              <CardHeader>
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="flex items-center gap-2">
+                    <Video className="w-5 h-5" />
+                    {t.modelslab.videoResult || "Generated Video"}
+                  </CardTitle>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={clearVideoResult}
+                    title={t.modelslab.close || "Close"}
+                    data-testid="button-close-video-result"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+                <CardDescription>
+                  {t.modelslab.videoResultDescription || "Your video is ready! Download or save it to your gallery."}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <video 
+                  src={videoResult.output[0]} 
+                  controls 
+                  autoPlay
+                  loop
+                  className="w-full rounded-lg border aspect-video bg-black"
+                  data-testid="video-result-main"
+                />
+                
+                {/* Video Metadata */}
+                {videoGenerationMeta && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg text-sm">
+                    <div>
+                      <p className="text-muted-foreground">{t.modelslab.videoDurationLabel || "Duration"}</p>
+                      <p className="font-medium">{videoGenerationMeta.duration}s</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">{t.modelslab.aspectRatio}</p>
+                      <p className="font-medium">{videoGenerationMeta.aspect === "auto" ? "Auto" : videoGenerationMeta.aspect}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">{t.modelslab.model}</p>
+                      <p className="font-medium">Seedance 1.0 Pro</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">{t.modelslab.generationTime || "Generation Time"}</p>
+                      <p className="font-medium">
+                        {videoGenerationMeta.generationTimeMs 
+                          ? `${(videoGenerationMeta.generationTimeMs / 1000).toFixed(1)}s`
+                          : "-"}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open(videoResult.output![0], "_blank")}
+                    data-testid="button-open-video-main"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    {t.modelslab.openVideo || "Open in New Tab"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const link = document.createElement("a");
+                      link.href = videoResult.output![0];
+                      link.download = `video-${Date.now()}.mp4`;
+                      link.click();
+                    }}
+                    data-testid="button-download-video-main"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    {t.modelslab.downloadVideo || "Download"}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      saveVideoMutation.mutate({
+                        videoUrl: videoResult.output![0],
+                        prompt: prompt || "Video generated from image",
+                      });
+                    }}
+                    disabled={saveVideoMutation.isPending}
+                    data-testid="button-save-video-main"
+                  >
+                    {saveVideoMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Heart className="w-4 h-4 mr-2" />
+                    )}
+                    {t.modelslab.saveVideoToGallery || "Save to Gallery"}
+                  </Button>
+                </div>
+
+                {/* Source Image Thumbnail */}
+                {videoGenerationMeta?.sourceImage && (
+                  <div className="flex items-center gap-3 p-3 bg-muted/20 rounded-lg">
+                    <img 
+                      src={videoGenerationMeta.sourceImage} 
+                      alt="Source" 
+                      className="w-16 h-16 object-cover rounded border"
+                    />
+                    <div className="text-sm">
+                      <p className="font-medium">{t.modelslab.sourceImage || "Source Image"}</p>
+                      <p className="text-muted-foreground">
+                        {t.modelslab.transformedAt || "Transformed at"} {videoGenerationMeta.generatedAt.toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Video Processing Indicator (when modal is closed but still processing) */}
+          {isPollingVideo && !showVideoDialog && (
+            <Card className="mt-6 border-dashed">
+              <CardContent className="flex items-center justify-center gap-3 py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <div className="text-center">
+                  <p className="font-medium">{t.modelslab.videoProcessing || "Generating video..."}</p>
+                  <p className="text-sm text-muted-foreground">{t.modelslab.videoProcessingHint || "This may take a few minutes. You can continue using the app."}</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Model Info */}
@@ -1560,7 +1724,7 @@ export default function ModelsLabStudioPage() {
         </Card>
       </div>
 
-      {/* Video Generation Dialog */}
+      {/* Video Generation Dialog - Only for configuration and initial status */}
       <Dialog open={showVideoDialog} onOpenChange={setShowVideoDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -1569,7 +1733,7 @@ export default function ModelsLabStudioPage() {
               {t.modelslab.videoDialogTitle || "Transform to Video"}
             </DialogTitle>
             <DialogDescription>
-              {t.modelslab.videoDialogDescription || "Generate a video from your image using VEO 3.1"}
+              {t.modelslab.videoDialogDescription || "Generate a video from your image using Seedance 1.0 Pro"}
             </DialogDescription>
           </DialogHeader>
           
@@ -1588,8 +1752,8 @@ export default function ModelsLabStudioPage() {
               </div>
             )}
 
-            {/* Video Options */}
-            {!videoResult?.output?.length && !isPollingVideo && (
+            {/* Video Options - Only show when not processing */}
+            {!isPollingVideo && (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>{t.modelslab.videoAspectRatio || "Aspect Ratio"}</Label>
@@ -1630,103 +1794,62 @@ export default function ModelsLabStudioPage() {
               <p className="text-xs opacity-75">{t.modelslab.videoCostNote || "Video generation may take 1-3 minutes to complete."}</p>
             </div>
 
-            {/* Video Result */}
-            {videoResult?.output && videoResult.output.length > 0 && (
-              <div className="space-y-2">
-                <Label>{t.modelslab.videoResult || "Generated Video"}</Label>
-                <video 
-                  src={videoResult.output[0]} 
-                  controls 
-                  className="w-full rounded-lg border"
-                  data-testid="video-result"
-                />
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open(videoResult.output![0], "_blank")}
-                    data-testid="button-open-video"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    {t.modelslab.openVideo || "Open"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const link = document.createElement("a");
-                      link.href = videoResult.output![0];
-                      link.download = `video-${Date.now()}.mp4`;
-                      link.click();
-                    }}
-                    data-testid="button-download-video"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    {t.modelslab.downloadVideo || "Download"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      saveVideoMutation.mutate({
-                        videoUrl: videoResult.output![0],
-                        prompt: prompt || "Video generated from image",
-                      });
-                    }}
-                    disabled={saveVideoMutation.isPending}
-                    data-testid="button-save-video-gallery"
-                  >
-                    {saveVideoMutation.isPending ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Heart className="w-4 h-4 mr-2" />
-                    )}
-                    {t.modelslab.saveVideoToGallery || "Save to gallery"}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Processing Status */}
+            {/* Processing Status - Show in modal while processing */}
             {isPollingVideo && (
-              <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">
-                  {t.modelslab.videoProcessing || "Generating video... This may take a few minutes."}
-                </span>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-lg border border-primary/20">
+                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                  <div>
+                    <p className="text-sm font-medium">
+                      {t.modelslab.videoProcessing || "Generating video..."}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {t.modelslab.videoModalHint || "You can close this dialog. The video will appear in the main view when ready."}
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
           </div>
 
           <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowVideoDialog(false);
-                setVideoResult(null);
-              }}
-              data-testid="button-cancel-video"
-            >
-              {t.modelslab.cancel || "Cancel"}
-            </Button>
-            <Button
-              onClick={() => selectedImageForVideo && generateVideoMutation.mutate(selectedImageForVideo)}
-              disabled={generateVideoMutation.isPending || isPollingVideo || !selectedImageForVideo}
-              data-testid="button-confirm-video"
-            >
-              {generateVideoMutation.isPending || isPollingVideo ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {t.modelslab.generatingVideo || "Generating..."}
-                </>
-              ) : (
-                <>
-                  <Video className="w-4 h-4 mr-2" />
-                  {t.modelslab.generateVideo || "Generate Video"}
-                </>
-              )}
-            </Button>
+            {isPollingVideo ? (
+              <Button
+                variant="outline"
+                onClick={() => setShowVideoDialog(false)}
+                data-testid="button-close-video-modal"
+              >
+                {t.modelslab.closeAndWait || "Close & Wait"}
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowVideoDialog(false)}
+                  data-testid="button-cancel-video"
+                >
+                  {t.modelslab.cancel || "Cancel"}
+                </Button>
+                <Button
+                  onClick={() => selectedImageForVideo && generateVideoMutation.mutate(selectedImageForVideo)}
+                  disabled={generateVideoMutation.isPending || !selectedImageForVideo}
+                  data-testid="button-confirm-video"
+                >
+                  {generateVideoMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      {t.modelslab.startingGeneration || "Starting..."}
+                    </>
+                  ) : (
+                    <>
+                      <Video className="w-4 h-4 mr-2" />
+                      {t.modelslab.generateVideo || "Generate Video"}
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
