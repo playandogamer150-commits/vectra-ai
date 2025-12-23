@@ -1,8 +1,9 @@
 import type { VideoProvider, CreateVideoJobInput, CreateJobResult, JobStatusResult, VideoJobStatus } from "../contracts";
+import { getDefaultVideoModel, getVideoModel, isValidVideoModel, type VideoModelConfig } from "../model-registry";
 
-const MODELSLAB_BASE_URL = "https://modelslab.com/api/v7/video-fusion";
+const MODELSLAB_BASE_URL = "https://modelslab.com";
 
-interface SeedanceResponse {
+interface ModelsLabResponse {
   status: string;
   id?: number;
   output?: string[];
@@ -21,31 +22,36 @@ export class ModelsLabProvider implements VideoProvider {
   }
 
   async createJob(input: CreateVideoJobInput): Promise<CreateJobResult> {
-    try {
-      const requestBody = {
-        key: this.apiKey,
-        model_id: "seedance-1.0-pro-i2v",
-        init_image: [input.sourceImageUrl],
-        prompt: input.prompt || "Cinematic video with natural smooth movement, professional cinematography",
-        negative_prompt: input.negativePrompt || "low quality, blurry, distorted, amateur, static, frozen",
-        duration: String(input.durationSeconds),
-        ...(input.seed && { seed: input.seed }),
+    const modelId = input.modelId || getDefaultVideoModel().id;
+    
+    if (!isValidVideoModel(modelId)) {
+      console.error(`[ModelsLab] Invalid model_id: ${modelId}. Seedance 1.0 is NOT allowed.`);
+      return {
+        success: false,
+        status: "error",
+        error: `Invalid model: ${modelId}. Only Seedance 1.5 Pro is supported.`,
       };
+    }
 
-      console.log("Seedance I2V request:", { ...requestBody, key: "[REDACTED]" });
+    const model = getVideoModel(modelId);
+    
+    if (modelId.includes("1.0") || modelId.includes("1-0")) {
+      console.error(`[ModelsLab] BLOCKED: Attempted to use deprecated Seedance 1.0`);
+      return {
+        success: false,
+        status: "error",
+        error: "Seedance 1.0 is deprecated. Use Seedance 1.5 Pro instead.",
+      };
+    }
 
-      const response = await fetch(`${MODELSLAB_BASE_URL}/image-to-video`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      });
-
-      const data: SeedanceResponse = await response.json();
-      console.log("Seedance I2V response:", data);
-
-      return this.parseCreateResponse(data);
+    try {
+      if (model.generationType === "text-to-video") {
+        return await this.createTextToVideoJob(input, model);
+      } else {
+        return await this.createImageToVideoJob(input, model);
+      }
     } catch (error) {
-      console.error("Seedance createJob error:", error);
+      console.error("[ModelsLab] createJob error:", error);
       return {
         success: false,
         status: "error",
@@ -54,7 +60,90 @@ export class ModelsLabProvider implements VideoProvider {
     }
   }
 
-  private parseCreateResponse(data: SeedanceResponse): CreateJobResult {
+  private async createTextToVideoJob(input: CreateVideoJobInput, model: VideoModelConfig): Promise<CreateJobResult> {
+    const aspectRatio = input.targetAspect === "auto" ? "16:9" : input.targetAspect;
+    
+    const requestBody = {
+      key: this.apiKey,
+      model_id: model.modelIdParam,
+      prompt: input.prompt || "Cinematic video with natural smooth movement, ultra realistic, professional cinematography",
+      negative_prompt: input.negativePrompt || "low quality, blurry, distorted, amateur, static, frozen, text overlay",
+      aspect_ratio: aspectRatio,
+      duration: String(input.durationSeconds),
+      generate_audio: input.generateAudio ?? false,
+      ...(input.seed && { seed: input.seed }),
+    };
+
+    const endpoint = `${MODELSLAB_BASE_URL}${model.endpoint}`;
+    
+    console.log("[ModelsLab] Text-to-Video Request:", {
+      endpoint,
+      model_id: model.modelIdParam,
+      model_display: model.displayName,
+      aspect_ratio: aspectRatio,
+      duration: input.durationSeconds,
+      generate_audio: input.generateAudio,
+      prompt: requestBody.prompt?.substring(0, 100) + "...",
+    });
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+    });
+
+    const data: ModelsLabResponse = await response.json();
+    
+    console.log("[ModelsLab] Text-to-Video Response:", {
+      status: data.status,
+      id: data.id,
+      eta: data.eta,
+      hasOutput: !!data.output?.length,
+    });
+
+    return this.parseCreateResponse(data);
+  }
+
+  private async createImageToVideoJob(input: CreateVideoJobInput, model: VideoModelConfig): Promise<CreateJobResult> {
+    if (!input.sourceImageUrl) {
+      return {
+        success: false,
+        status: "error",
+        error: "Source image URL is required for image-to-video generation",
+      };
+    }
+
+    const requestBody = {
+      key: this.apiKey,
+      model_id: model.modelIdParam,
+      init_image: [input.sourceImageUrl],
+      prompt: input.prompt || "Cinematic video with natural smooth movement, professional cinematography",
+      negative_prompt: input.negativePrompt || "low quality, blurry, distorted, amateur, static, frozen",
+      duration: String(input.durationSeconds),
+      ...(input.seed && { seed: input.seed }),
+    };
+
+    const endpoint = `${MODELSLAB_BASE_URL}/api/v7/video-fusion/image-to-video`;
+    
+    console.log("[ModelsLab] Image-to-Video Request:", {
+      endpoint,
+      model_id: model.modelIdParam,
+      duration: input.durationSeconds,
+    });
+
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestBody),
+    });
+
+    const data: ModelsLabResponse = await response.json();
+    console.log("[ModelsLab] Image-to-Video Response:", data);
+
+    return this.parseCreateResponse(data);
+  }
+
+  private parseCreateResponse(data: ModelsLabResponse): CreateJobResult {
     if (data.status === "error") {
       return {
         success: false,
@@ -90,18 +179,22 @@ export class ModelsLabProvider implements VideoProvider {
 
   async fetchJob(providerJobId: string): Promise<JobStatusResult> {
     try {
-      const response = await fetch(`${MODELSLAB_BASE_URL}/fetch/${providerJobId}`, {
+      const response = await fetch(`${MODELSLAB_BASE_URL}/api/v7/video-fusion/fetch/${providerJobId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key: this.apiKey }),
       });
 
-      const data: SeedanceResponse = await response.json();
-      console.log(`Seedance fetch ${providerJobId}:`, data);
+      const data: ModelsLabResponse = await response.json();
+      console.log(`[ModelsLab] Fetch job ${providerJobId}:`, {
+        status: data.status,
+        hasOutput: !!data.output?.length,
+        eta: data.eta,
+      });
 
       return this.parseFetchResponse(data);
     } catch (error) {
-      console.error("Seedance fetchJob error:", error);
+      console.error("[ModelsLab] fetchJob error:", error);
       return {
         status: "error",
         outputs: [],
@@ -110,7 +203,7 @@ export class ModelsLabProvider implements VideoProvider {
     }
   }
 
-  private parseFetchResponse(data: SeedanceResponse): JobStatusResult {
+  private parseFetchResponse(data: ModelsLabResponse): JobStatusResult {
     const status = this.mapStatus(data.status);
 
     return {

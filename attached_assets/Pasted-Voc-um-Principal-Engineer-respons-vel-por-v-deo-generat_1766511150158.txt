@@ -1,0 +1,110 @@
+Você é um Principal Engineer responsável por vídeo generativo em produção.
+
+CONTEXTO:
+O app PromptForge usa ModelsLab para geração de vídeos.
+Atualmente, apesar de já existir suporte a endpoints mais novos, o sistema ainda está:
+- usando Seedance 1.0 em produção
+- ou caindo em fallback silencioso para modelos antigos
+
+OBJETIVO:
+Migrar DEFINITIVAMENTE a geração de vídeos text-to-video para:
+👉 model_id = "seedance-1-5-pro"
+
+O objetivo é obter vídeos mais realistas, naturais, com melhor motion, iluminação e áudio.
+
+━━━━━━━━━━━━━━━━━━
+1) PROBLEMA A CORRIGIR
+━━━━━━━━━━━━━━━━━━
+Existe pelo menos UM dos problemas abaixo no código:
+- model_id hardcoded como "seedance-1-0" ou default
+- fallback automático quando model_id não é explicitamente passado
+- UI seleciona Seedance 1.5 Pro, mas backend ignora
+- enum/lista de modelos desatualizada
+- provider ModelsLab sobrescrevendo model_id
+
+Você deve localizar e corrigir TODOS.
+
+━━━━━━━━━━━━━━━━━━
+2) ENDPOINT CORRETO
+━━━━━━━━━━━━━━━━━━
+Usar EXCLUSIVAMENTE:
+
+POST https://modelslab.com/api/v7/video-fusion/text-to-video
+
+Payload base obrigatório:
+{
+  prompt: string,
+  model_id: "seedance-1-5-pro",
+  aspect_ratio: "9:16" | "16:9",
+  generate_audio: boolean,
+  key: MODELSLAB_API_KEY
+}
+
+━━━━━━━━━━━━━━━━━━
+3) ARQUITETURA CORRETA (OBRIGATÓRIO)
+━━━━━━━━━━━━━━━━━━
+Criar/ajustar um registry de modelos:
+
+VideoModelRegistry = {
+  "seedance-1-5-pro": {
+    provider: "modelslab",
+    endpoint: "/api/v7/video-fusion/text-to-video",
+    supportsAudio: true,
+    supportsAspectRatio: true,
+    qualityTier: "ultra",
+    isDefault: true
+  }
+}
+
+REGRAS:
+- Seedance 1.5 Pro deve ser o DEFAULT para text-to-video
+- Seedance 1.0 NÃO deve mais ser usado nem como fallback
+- Se o model_id não for reconhecido → erro explícito (422), nunca fallback silencioso
+
+━━━━━━━━━━━━━━━━━━
+4) BACKEND — CORREÇÕES OBRIGATÓRIAS
+━━━━━━━━━━━━━━━━━━
+- Garantir que model_id vindo do frontend NÃO seja sobrescrito
+- Validar model_id contra o registry
+- Logar claramente:
+   - model_id usado
+   - endpoint chamado
+   - payload final (sem API key)
+- Se backend detectar uso de Seedance 1.0 → lançar erro
+
+━━━━━━━━━━━━━━━━━━
+5) FRONTEND — UX
+━━━━━━━━━━━━━━━━━━
+- No modal / UI de geração de vídeo:
+   - Exibir explicitamente: "Seedance 1.5 Pro (Ultra Realistic)"
+   - Remover Seedance 1.0 da UI
+- Exibir nos detalhes do vídeo gerado:
+   - Modelo: Seedance 1.5 Pro
+   - Aspect Ratio
+   - Áudio: ON/OFF
+
+━━━━━━━━━━━━━━━━━━
+6) MIGRAÇÃO E SEGURANÇA
+━━━━━━━━━━━━━━━━━━
+- Remover qualquer enum, constante ou default antigo
+- Garantir que seeds, prompts e parâmetros NÃO mudem
+- Nenhum downgrade automático de modelo é permitido
+
+━━━━━━━━━━━━━━━━━━
+7) CRITÉRIOS DE ACEITE
+━━━━━━━━━━━━━━━━━━
+✔ Todos os vídeos novos usam Seedance 1.5 Pro  
+✔ Endpoint correto (v7/video-fusion/text-to-video)  
+✔ Vídeos visivelmente mais naturais e realistas  
+✔ Áudio gerado quando generate_audio = true  
+✔ Nenhum uso de Seedance 1.0 em logs ou payloads  
+
+━━━━━━━━━━━━━━━━━━
+8) ENTREGA
+━━━━━━━━━━━━━━━━━━
+Antes de finalizar:
+- Mostre onde o Seedance 1.0 estava sendo usado
+- Mostre o diff principal
+- Confirme o model_id final em runtime
+
+Execute agora.

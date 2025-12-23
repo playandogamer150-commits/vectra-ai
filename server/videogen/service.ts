@@ -31,7 +31,7 @@ export async function createVideoJob(
   let finalAspect: AspectRatio = request.targetAspect as AspectRatio;
   let transformStrategy: TransformStrategy = "none";
 
-  if (request.targetAspect === "auto") {
+  if (request.targetAspect === "auto" && request.sourceImageUrl) {
     try {
       const imageInfo = await getImageDimensions(request.sourceImageUrl);
       if (imageInfo) {
@@ -40,16 +40,18 @@ export async function createVideoJob(
                       detectedAspect === "landscape" ? "16:9" : "1:1";
       }
     } catch (e) {
-      console.warn("Could not detect image dimensions, using 1:1");
-      finalAspect = "1:1";
+      console.warn("Could not detect image dimensions, using 16:9 for text-to-video");
+      finalAspect = "16:9";
     }
+  } else if (request.targetAspect === "auto") {
+    finalAspect = "16:9";
   }
 
   const idempotencyKey = generateIdempotencyKey(
     userId,
-    request.sourceImageUrl,
+    request.sourceImageUrl || "",
     request.prompt || null,
-    { aspect: finalAspect, duration: request.durationSeconds }
+    { aspect: finalAspect, duration: request.durationSeconds, modelId: request.modelId }
   );
 
   const existingJob = await storage.findVideoJobByIdempotency(userId, idempotencyKey);
@@ -62,7 +64,7 @@ export async function createVideoJob(
     provider: "modelslab",
     providerJobId: null,
     status: "queued",
-    sourceImageUrl: request.sourceImageUrl,
+    sourceImageUrl: request.sourceImageUrl || "",
     prompt: request.prompt || null,
     negativePrompt: request.negativePrompt || null,
     targetAspect: finalAspect,
@@ -77,6 +79,9 @@ export async function createVideoJob(
     nextPollAt: null,
   });
 
+  const generationType = request.generationType || "text-to-video";
+  console.log(`[VideoService] Creating ${generationType} job with model: ${request.modelId || "seedance-1-5-pro"}`);
+
   const input: CreateVideoJobInput = {
     userId,
     sourceImageUrl: request.sourceImageUrl,
@@ -85,6 +90,9 @@ export async function createVideoJob(
     targetAspect: finalAspect,
     durationSeconds: request.durationSeconds,
     seed: request.seed,
+    modelId: request.modelId || "seedance-1-5-pro",
+    generateAudio: request.generateAudio ?? false,
+    generationType,
   };
 
   try {

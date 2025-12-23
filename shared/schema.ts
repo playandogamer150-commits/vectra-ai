@@ -644,12 +644,15 @@ export const insertVideoJobSchema = createInsertSchema(videoJobs).omit({
 });
 
 export const createVideoJobRequestSchema = z.object({
-  sourceImageUrl: z.string().url(),
+  sourceImageUrl: z.string().url().optional(),
   prompt: z.string().optional(),
   negativePrompt: z.string().optional(),
   targetAspect: z.enum(["9:16", "16:9", "1:1", "auto"]).default("auto"),
-  durationSeconds: z.number().min(1).max(10).default(5),
+  durationSeconds: z.number().min(2).max(8).default(5),
   seed: z.number().optional(),
+  modelId: z.string().default("seedance-1-5-pro"),
+  generateAudio: z.boolean().default(false),
+  generationType: z.enum(["text-to-video", "image-to-video"]).default("text-to-video"),
 });
 
 export type VideoJob = typeof videoJobs.$inferSelect;

@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/lib/i18n";
 import { apiRequest } from "@/lib/queryClient";
@@ -134,8 +135,9 @@ export default function ModelsLabStudioPage() {
   const [selectedImageForVideo, setSelectedImageForVideo] = useState<string>("");
   const [videoResult, setVideoResult] = useState<Sora2Response | null>(null);
   const [isPollingVideo, setIsPollingVideo] = useState(false);
-  const [videoAspect, setVideoAspect] = useState<"auto" | "9:16" | "16:9" | "1:1">("auto");
+  const [videoAspect, setVideoAspect] = useState<"auto" | "9:16" | "16:9" | "1:1">("16:9");
   const [videoDuration, setVideoDuration] = useState<number>(5);
+  const [generateAudio, setGenerateAudio] = useState<boolean>(false);
   const [currentVideoJobId, setCurrentVideoJobId] = useState<string | null>(null);
   const [videoGenerationMeta, setVideoGenerationMeta] = useState<{
     duration: number;
@@ -264,12 +266,14 @@ export default function ModelsLabStudioPage() {
 
   // Video generation mutation (Job System with ModelsLab)
   const generateVideoMutation = useMutation({
-    mutationFn: async (imageUrl: string) => {
+    mutationFn: async (promptText: string) => {
       const response = await apiRequest("POST", "/api/videogen/jobs", {
-        sourceImageUrl: imageUrl,
-        prompt: prompt || "Cinematic video with smooth natural motion",
+        prompt: promptText || "Cinematic video with smooth natural motion, ultra realistic, professional cinematography",
         targetAspect: videoAspect,
         durationSeconds: videoDuration,
+        modelId: "seedance-1-5-pro",
+        generateAudio: generateAudio,
+        generationType: "text-to-video",
       });
       return await response.json();
     },
@@ -1730,27 +1734,23 @@ export default function ModelsLabStudioPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Video className="w-5 h-5" />
-              {t.modelslab.videoDialogTitle || "Transform to Video"}
+              {t.modelslab.videoDialogTitle || "Generate Video"}
             </DialogTitle>
             <DialogDescription>
-              {t.modelslab.videoDialogDescription || "Generate a video from your image using Seedance 1.0 Pro"}
+              {t.modelslab.videoDialogDescription || "Generate ultra-realistic video using Seedance 1.5 Pro"}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
-            {/* Preview Image */}
-            {selectedImageForVideo && (
-              <div className="relative rounded-lg overflow-hidden border">
-                <img 
-                  src={selectedImageForVideo} 
-                  alt="Preview" 
-                  className="w-full h-32 object-cover"
-                />
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <Play className="w-8 h-8 text-white/80" />
-                </div>
-              </div>
-            )}
+            {/* Model Badge */}
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-xs">
+                Seedance 1.5 Pro
+              </Badge>
+              <Badge variant="outline" className="text-xs">
+                Ultra Realistic
+              </Badge>
+            </div>
 
             {/* Video Options - Only show when not processing */}
             {!isPollingVideo && (
@@ -1784,6 +1784,20 @@ export default function ModelsLabStudioPage() {
                     <span>2s</span>
                     <span>8s</span>
                   </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>{t.modelslab.generateAudio || "Generate Audio"}</Label>
+                    <p className="text-xs text-muted-foreground">
+                      {t.modelslab.generateAudioHint || "Add AI-generated audio to the video"}
+                    </p>
+                  </div>
+                  <Switch
+                    checked={generateAudio}
+                    onCheckedChange={setGenerateAudio}
+                    data-testid="switch-generate-audio"
+                  />
                 </div>
               </div>
             )}
@@ -1832,8 +1846,8 @@ export default function ModelsLabStudioPage() {
                   {t.modelslab.cancel || "Cancel"}
                 </Button>
                 <Button
-                  onClick={() => selectedImageForVideo && generateVideoMutation.mutate(selectedImageForVideo)}
-                  disabled={generateVideoMutation.isPending || !selectedImageForVideo}
+                  onClick={() => generateVideoMutation.mutate(prompt || "Cinematic video with smooth natural motion")}
+                  disabled={generateVideoMutation.isPending || !prompt}
                   data-testid="button-confirm-video"
                 >
                   {generateVideoMutation.isPending ? (

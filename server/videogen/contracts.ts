@@ -4,12 +4,15 @@ export type TransformStrategy = "letterbox" | "crop" | "none";
 
 export interface CreateVideoJobInput {
   userId: string;
-  sourceImageUrl: string;
+  sourceImageUrl?: string;
   prompt?: string;
   negativePrompt?: string;
   targetAspect: AspectRatio;
   durationSeconds: number;
   seed?: number;
+  modelId?: string;
+  generateAudio?: boolean;
+  generationType?: "text-to-video" | "image-to-video";
 }
 
 export interface CreateJobResult {
