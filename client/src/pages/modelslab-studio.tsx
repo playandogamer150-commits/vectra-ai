@@ -18,9 +18,11 @@ import { queryClient } from "@/lib/queryClient";
 import { 
   Loader2, ImagePlus, Sparkles, X, Download, ExternalLink, Upload, Clipboard,
   ChevronDown, ChevronUp, Layers, SlidersHorizontal, Wand2, RefreshCw, Heart,
-  Save, Trash2, FolderOpen, BookmarkPlus, Video, Play
+  Save, Trash2, FolderOpen, BookmarkPlus, Video, Play, FileJson, FileText, FileDown
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { exportToJSON, exportToYAML, exportToPDF } from "@/lib/export-utils";
 
 interface ModelsLabResponse {
   status: string;
@@ -962,8 +964,8 @@ export default function ModelsLabStudioPage() {
                     </p>
                   )}
                   
-                  {/* Transform to Video CTA */}
-                  <div className="pt-4 border-t">
+                  {/* Action Buttons */}
+                  <div className="pt-4 border-t flex flex-wrap gap-2">
                     <Button
                       onClick={() => {
                         if (result.output && result.output.length > 0) {
@@ -971,13 +973,102 @@ export default function ModelsLabStudioPage() {
                           setShowVideoDialog(true);
                         }
                       }}
-                      className="w-full"
+                      className="flex-1"
                       variant="outline"
                       data-testid="button-transform-video"
                     >
                       <Video className="w-4 h-4 mr-2" />
-                      {t.modelslab.transformToVideoFull || "Transform to Video with VEO 3.1"}
+                      {t.modelslab.transformToVideoFull || "Transform to Video"}
                     </Button>
+                    
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" data-testid="button-export-dropdown">
+                          <FileDown className="w-4 h-4 mr-2" />
+                          {t.modelslab.export || "Export"}
+                          <ChevronDown className="w-4 h-4 ml-2" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            if (!result?.output) return;
+                            const exportData = {
+                              prompt: prompt || undefined,
+                              seed: seed || undefined,
+                              aspectRatio,
+                              profile: selectedProfile || undefined,
+                              blueprint: selectedBlueprint || selectedUserBlueprint || undefined,
+                              filters: Object.keys(activeFilters).length > 0 ? activeFilters : undefined,
+                              imageUrls: result.output,
+                              generatedAt: new Date().toISOString(),
+                            };
+                            exportToJSON(exportData);
+                            toast({ title: t.modelslab.exportSuccess || "Export completed" });
+                          }}
+                          data-testid="menu-item-export-json"
+                        >
+                          <FileJson className="w-4 h-4 mr-2" />
+                          {t.modelslab.exportJSON || "Export JSON"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            if (!result?.output) return;
+                            const exportData = {
+                              prompt: prompt || undefined,
+                              seed: seed || undefined,
+                              aspectRatio,
+                              profile: selectedProfile || undefined,
+                              blueprint: selectedBlueprint || selectedUserBlueprint || undefined,
+                              filters: Object.keys(activeFilters).length > 0 ? activeFilters : undefined,
+                              imageUrls: result.output,
+                              generatedAt: new Date().toISOString(),
+                            };
+                            exportToYAML(exportData);
+                            toast({ title: t.modelslab.exportSuccess || "Export completed" });
+                          }}
+                          data-testid="menu-item-export-yaml"
+                        >
+                          <FileText className="w-4 h-4 mr-2" />
+                          {t.modelslab.exportYAML || "Export YAML"}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={async () => {
+                            if (!result?.output) return;
+                            try {
+                              const exportData = {
+                                prompt: prompt || undefined,
+                                seed: seed || undefined,
+                                aspectRatio,
+                                profile: selectedProfile || undefined,
+                                blueprint: selectedBlueprint || selectedUserBlueprint || undefined,
+                                filters: Object.keys(activeFilters).length > 0 ? activeFilters : undefined,
+                                imageUrls: result.output,
+                                generatedAt: new Date().toISOString(),
+                              };
+                              await exportToPDF(exportData, 'promptforge-export', {
+                                title: t.modelslab.exportTitle || "PromptForge Export",
+                                prompt: t.modelslab.exportPrompt || "Prompt",
+                                seed: t.modelslab.exportSeed || "Seed",
+                                aspectRatio: t.modelslab.exportAspectRatio || "Aspect Ratio",
+                                profile: t.modelslab.exportProfile || "Profile",
+                                blueprint: t.modelslab.exportBlueprint || "Blueprint",
+                                filters: t.modelslab.exportFilters || "Filters",
+                                generatedAt: t.modelslab.exportGeneratedAt || "Generated At",
+                                images: t.modelslab.exportImages || "Images",
+                              });
+                              toast({ title: t.modelslab.exportSuccess || "Export completed" });
+                            } catch (error) {
+                              toast({ title: t.modelslab.exportError || "Export failed", variant: "destructive" });
+                            }
+                          }}
+                          data-testid="menu-item-export-pdf"
+                        >
+                          <FileDown className="w-4 h-4 mr-2" />
+                          {t.modelslab.exportPDF || "Export PDF"}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               ) : (
@@ -1074,11 +1165,85 @@ export default function ModelsLabStudioPage() {
                               className={`w-4 h-4 ${img.isFavorite ? 'fill-red-500 text-red-500' : ''}`} 
                             />
                           </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 text-white"
+                                data-testid={`button-export-gallery-${img.id}`}
+                              >
+                                <FileDown className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  const exportData = {
+                                    prompt: img.prompt || undefined,
+                                    imageUrls: [img.imageUrl],
+                                    generatedAt: new Date(img.createdAt).toISOString(),
+                                  };
+                                  exportToJSON(exportData, `image-${img.id}`);
+                                  toast({ title: t.modelslab.exportSuccess || "Export completed" });
+                                }}
+                                data-testid={`menu-item-gallery-json-${img.id}`}
+                              >
+                                <FileJson className="w-4 h-4 mr-2" />
+                                JSON
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  const exportData = {
+                                    prompt: img.prompt || undefined,
+                                    imageUrls: [img.imageUrl],
+                                    generatedAt: new Date(img.createdAt).toISOString(),
+                                  };
+                                  exportToYAML(exportData, `image-${img.id}`);
+                                  toast({ title: t.modelslab.exportSuccess || "Export completed" });
+                                }}
+                                data-testid={`menu-item-gallery-yaml-${img.id}`}
+                              >
+                                <FileText className="w-4 h-4 mr-2" />
+                                YAML
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={async () => {
+                                  try {
+                                    const exportData = {
+                                      prompt: img.prompt || undefined,
+                                      imageUrls: [img.imageUrl],
+                                      generatedAt: new Date(img.createdAt).toISOString(),
+                                    };
+                                    await exportToPDF(exportData, `image-${img.id}`, {
+                                      title: t.modelslab.exportTitle || "PromptForge Export",
+                                      prompt: t.modelslab.exportPrompt || "Prompt",
+                                      seed: t.modelslab.exportSeed || "Seed",
+                                      aspectRatio: t.modelslab.exportAspectRatio || "Aspect Ratio",
+                                      profile: t.modelslab.exportProfile || "Profile",
+                                      blueprint: t.modelslab.exportBlueprint || "Blueprint",
+                                      filters: t.modelslab.exportFilters || "Filters",
+                                      generatedAt: t.modelslab.exportGeneratedAt || "Generated At",
+                                      images: t.modelslab.exportImages || "Images",
+                                    });
+                                    toast({ title: t.modelslab.exportSuccess || "Export completed" });
+                                  } catch (error) {
+                                    toast({ title: t.modelslab.exportError || "Export failed", variant: "destructive" });
+                                  }
+                                }}
+                                data-testid={`menu-item-gallery-pdf-${img.id}`}
+                              >
+                                <FileDown className="w-4 h-4 mr-2" />
+                                PDF
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                           <Button
                             size="icon"
                             variant="ghost"
                             className="h-7 w-7 text-white"
                             onClick={() => window.open(img.imageUrl, "_blank")}
+                            data-testid={`button-open-gallery-${img.id}`}
                           >
                             <ExternalLink className="w-4 h-4" />
                           </Button>
