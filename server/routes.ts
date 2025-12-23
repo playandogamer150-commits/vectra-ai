@@ -664,6 +664,8 @@ export async function registerRoutes(
         aspect_ratio: selectedRatio,
         width: dimensions.width,
         height: dimensions.height,
+        resize: true,
+        output_format: "png",
       };
       
       console.log("Sending to ModelsLab:", { 
