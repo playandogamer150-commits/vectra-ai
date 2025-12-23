@@ -14,7 +14,7 @@ import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/lib/i18n";
 import { apiRequest } from "@/lib/queryClient";
-import type { LlmProfile, PromptBlueprint, Filter, SavedImage, FilterPreset } from "@shared/schema";
+import type { LlmProfile, PromptBlueprint, Filter, SavedImage, FilterPreset, SavedVideo } from "@shared/schema";
 import { queryClient } from "@/lib/queryClient";
 import { 
   Loader2, ImagePlus, Sparkles, X, Download, ExternalLink, Upload, Clipboard,
@@ -119,8 +119,13 @@ export default function ModelsLabStudioPage() {
     queryKey: ["/api/presets"],
   });
 
+  const { data: savedVideos, isLoading: loadingSavedVideos } = useQuery<SavedVideo[]>({
+    queryKey: ["/api/video-gallery"],
+  });
+
   // Gallery state
   const [showGallery, setShowGallery] = useState(false);
+  const [showVideoGallery, setShowVideoGallery] = useState(false);
   const [presetName, setPresetName] = useState("");
   const [showPresetDialog, setShowPresetDialog] = useState(false);
 
@@ -206,6 +211,46 @@ export default function ModelsLabStudioPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/presets"] });
       toast({ title: t.modelslab.presetDeleted || "Preset deleted" });
+    },
+  });
+
+  // Save video mutation
+  const saveVideoMutation = useMutation({
+    mutationFn: async (videoData: { videoUrl: string; prompt: string; thumbnailUrl?: string }) => {
+      return apiRequest("POST", "/api/video-gallery", {
+        ...videoData,
+        aspectRatio: videoAspect === "auto" ? "16:9" : videoAspect,
+        durationSeconds: videoDuration,
+        jobId: currentVideoJobId || undefined,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/video-gallery"] });
+      toast({ title: t.modelslab.videoSaved || "Video saved to gallery" });
+    },
+    onError: () => {
+      toast({ title: t.modelslab.error, description: "Failed to save video", variant: "destructive" });
+    },
+  });
+
+  // Toggle video favorite mutation
+  const toggleVideoFavoriteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("PATCH", `/api/video-gallery/${id}/favorite`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/video-gallery"] });
+    },
+  });
+
+  // Delete video mutation
+  const deleteVideoMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest("DELETE", `/api/video-gallery/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/video-gallery"] });
+      toast({ title: t.modelslab.videoDeleted || "Video deleted" });
     },
   });
 
@@ -1275,6 +1320,149 @@ export default function ModelsLabStudioPage() {
           )}
         </Card>
 
+        {/* Video Gallery Section */}
+        <Card className="mt-6">
+          <CardHeader>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="flex items-center gap-2">
+                <Video className="w-5 h-5" />
+                {t.modelslab.videoGalleryTitle || "Video Gallery"}
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowVideoGallery(!showVideoGallery)}
+                data-testid="button-toggle-video-gallery"
+              >
+                {showVideoGallery ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </Button>
+            </div>
+            <CardDescription>{t.modelslab.videoGalleryDescription || "Your saved generated videos"}</CardDescription>
+          </CardHeader>
+          {showVideoGallery && (
+            <CardContent>
+              {loadingSavedVideos ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {[...Array(4)].map((_, i) => (
+                    <Skeleton key={i} className="aspect-video rounded-lg" />
+                  ))}
+                </div>
+              ) : savedVideos && savedVideos.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {savedVideos.map((video) => (
+                    <div key={video.id} className="relative group aspect-video">
+                      <video
+                        src={video.videoUrl}
+                        poster={video.thumbnailUrl || undefined}
+                        className="w-full h-full object-cover rounded-lg border"
+                        data-testid={`video-gallery-${video.id}`}
+                        muted
+                        loop
+                        onMouseEnter={(e) => e.currentTarget.play()}
+                        onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }}
+                      />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex flex-col justify-between p-2">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-white"
+                            onClick={() => toggleVideoFavoriteMutation.mutate(video.id)}
+                            data-testid={`button-favorite-video-${video.id}`}
+                          >
+                            <Heart 
+                              className={`w-4 h-4 ${video.isFavorite ? 'fill-red-500 text-red-500' : ''}`} 
+                            />
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 text-white"
+                                data-testid={`button-export-video-${video.id}`}
+                              >
+                                <FileDown className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  const exportData = {
+                                    prompt: video.prompt || undefined,
+                                    videoUrl: video.videoUrl,
+                                    aspectRatio: video.aspectRatio,
+                                    durationSeconds: video.durationSeconds,
+                                    generatedAt: new Date(video.createdAt).toISOString(),
+                                  };
+                                  exportToJSON(exportData, `video-${video.id}`);
+                                  toast({ title: t.modelslab.exportSuccess || "Export completed" });
+                                }}
+                                data-testid={`menu-item-video-json-${video.id}`}
+                              >
+                                <FileJson className="w-4 h-4 mr-2" />
+                                JSON
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  const exportData = {
+                                    prompt: video.prompt || undefined,
+                                    videoUrl: video.videoUrl,
+                                    aspectRatio: video.aspectRatio,
+                                    durationSeconds: video.durationSeconds,
+                                    generatedAt: new Date(video.createdAt).toISOString(),
+                                  };
+                                  exportToYAML(exportData, `video-${video.id}`);
+                                  toast({ title: t.modelslab.exportSuccess || "Export completed" });
+                                }}
+                                data-testid={`menu-item-video-yaml-${video.id}`}
+                              >
+                                <FileText className="w-4 h-4 mr-2" />
+                                YAML
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-white"
+                            onClick={() => window.open(video.videoUrl, "_blank")}
+                            data-testid={`button-open-video-${video.id}`}
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-white"
+                            onClick={() => deleteVideoMutation.mutate(video.id)}
+                            data-testid={`button-delete-video-${video.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">
+                            {video.durationSeconds}s
+                          </Badge>
+                          <p className="text-xs text-white/80 line-clamp-1 flex-1">{video.prompt}</p>
+                        </div>
+                      </div>
+                      <div className="absolute top-2 left-2">
+                        <Play className="w-6 h-6 text-white drop-shadow-md" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-32 flex items-center justify-center border border-dashed rounded-lg">
+                  <p className="text-muted-foreground text-sm">{t.modelslab.noSavedVideos || "No saved videos yet"}</p>
+                </div>
+              )}
+            </CardContent>
+          )}
+        </Card>
+
         {/* Filter Presets Section */}
         <Card className="mt-6">
           <CardHeader>
@@ -1475,6 +1663,25 @@ export default function ModelsLabStudioPage() {
                   >
                     <Download className="w-4 h-4 mr-2" />
                     {t.modelslab.downloadVideo || "Download"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      saveVideoMutation.mutate({
+                        videoUrl: videoResult.output![0],
+                        prompt: prompt || "Video generated from image",
+                      });
+                    }}
+                    disabled={saveVideoMutation.isPending}
+                    data-testid="button-save-video-gallery"
+                  >
+                    {saveVideoMutation.isPending ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Heart className="w-4 h-4 mr-2" />
+                    )}
+                    {t.modelslab.saveVideoToGallery || "Save to gallery"}
                   </Button>
                 </div>
               </div>

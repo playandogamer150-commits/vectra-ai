@@ -214,6 +214,20 @@ export const savedImages = pgTable("saved_images", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Saved Videos Gallery
+export const savedVideos = pgTable("saved_videos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  videoUrl: text("video_url").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
+  prompt: text("prompt").notNull(),
+  aspectRatio: text("aspect_ratio").default("16:9").notNull(),
+  durationSeconds: integer("duration_seconds").default(5).notNull(),
+  jobId: varchar("job_id"),
+  isFavorite: integer("is_favorite").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Filter Presets (saved filter configurations)
 export const filterPresets = pgTable("filter_presets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -573,6 +587,25 @@ export const saveImageRequestSchema = z.object({
 export type SavedImage = typeof savedImages.$inferSelect;
 export type InsertSavedImage = z.infer<typeof insertSavedImageSchema>;
 export type SaveImageRequest = z.infer<typeof saveImageRequestSchema>;
+
+// Saved Videos schemas
+export const insertSavedVideoSchema = createInsertSchema(savedVideos).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const saveVideoRequestSchema = z.object({
+  videoUrl: z.string().min(1),
+  thumbnailUrl: z.string().optional(),
+  prompt: z.string().min(1),
+  aspectRatio: z.string().default("16:9"),
+  durationSeconds: z.number().default(5),
+  jobId: z.string().optional(),
+});
+
+export type SavedVideo = typeof savedVideos.$inferSelect;
+export type InsertSavedVideo = z.infer<typeof insertSavedVideoSchema>;
+export type SaveVideoRequest = z.infer<typeof saveVideoRequestSchema>;
 
 // Filter Presets schemas
 export const insertFilterPresetSchema = createInsertSchema(filterPresets).omit({

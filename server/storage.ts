@@ -2,7 +2,7 @@ import {
   users, llmProfiles, promptBlueprints, promptBlocks, filters, 
   generatedPrompts, promptVersions, rateLimits,
   loraModels, loraDatasets, loraDatasetItems, loraVersions, loraJobs, userLoraActive, baseModels,
-  userBlueprints, userBlueprintVersions, savedImages, filterPresets, videoJobs,
+  userBlueprints, userBlueprintVersions, savedImages, savedVideos, filterPresets, videoJobs,
   type User, type InsertUser, type LlmProfile, type InsertLlmProfile,
   type PromptBlueprint, type InsertBlueprint, type PromptBlock, type InsertBlock,
   type Filter, type InsertFilter, type GeneratedPrompt, type InsertGeneratedPrompt,
@@ -11,7 +11,8 @@ import {
   type LoraVersion, type InsertLoraVersion, type LoraJob, type InsertLoraJob,
   type UserLoraActive, type BaseModel, type InsertBaseModel, type LoraDatasetItem,
   type UserBlueprint, type InsertUserBlueprint, type UserBlueprintVersion, type InsertUserBlueprintVersion,
-  type SavedImage, type InsertSavedImage, type FilterPreset, type InsertFilterPreset,
+  type SavedImage, type InsertSavedImage, type SavedVideo, type InsertSavedVideo,
+  type FilterPreset, type InsertFilterPreset,
   type VideoJob, type InsertVideoJob
 } from "@shared/schema";
 import { db } from "./db";
@@ -94,6 +95,13 @@ export interface IStorage {
   createSavedImage(image: InsertSavedImage): Promise<SavedImage>;
   deleteSavedImage(id: string, userId: string): Promise<boolean>;
   toggleFavorite(id: string, userId: string): Promise<SavedImage | undefined>;
+  
+  // Saved Videos
+  getSavedVideos(userId: string): Promise<SavedVideo[]>;
+  getSavedVideo(id: string): Promise<SavedVideo | undefined>;
+  createSavedVideo(video: InsertSavedVideo): Promise<SavedVideo>;
+  deleteSavedVideo(id: string, userId: string): Promise<boolean>;
+  toggleVideoFavorite(id: string, userId: string): Promise<SavedVideo | undefined>;
   
   // Filter Presets
   getFilterPresets(userId: string): Promise<FilterPreset[]>;
@@ -515,6 +523,42 @@ export class DatabaseStorage implements IStorage {
     const [updated] = await db.update(savedImages)
       .set({ isFavorite: existing.isFavorite === 1 ? 0 : 1 })
       .where(eq(savedImages.id, id))
+      .returning();
+    return updated;
+  }
+
+  // Saved Videos
+  async getSavedVideos(userId: string): Promise<SavedVideo[]> {
+    return db.select().from(savedVideos)
+      .where(eq(savedVideos.userId, userId))
+      .orderBy(desc(savedVideos.createdAt));
+  }
+
+  async getSavedVideo(id: string): Promise<SavedVideo | undefined> {
+    const [video] = await db.select().from(savedVideos).where(eq(savedVideos.id, id));
+    return video || undefined;
+  }
+
+  async createSavedVideo(video: InsertSavedVideo): Promise<SavedVideo> {
+    const [created] = await db.insert(savedVideos).values(video).returning();
+    return created;
+  }
+
+  async deleteSavedVideo(id: string, userId: string): Promise<boolean> {
+    const existing = await this.getSavedVideo(id);
+    if (!existing || existing.userId !== userId) return false;
+
+    await db.delete(savedVideos).where(eq(savedVideos.id, id));
+    return true;
+  }
+
+  async toggleVideoFavorite(id: string, userId: string): Promise<SavedVideo | undefined> {
+    const existing = await this.getSavedVideo(id);
+    if (!existing || existing.userId !== userId) return undefined;
+
+    const [updated] = await db.update(savedVideos)
+      .set({ isFavorite: existing.isFavorite === 1 ? 0 : 1 })
+      .where(eq(savedVideos.id, id))
       .returning();
     return updated;
   }

@@ -8,6 +8,7 @@ import {
   createUserBlueprintRequestSchema, 
   updateUserBlueprintRequestSchema,
   saveImageRequestSchema,
+  saveVideoRequestSchema,
   createFilterPresetRequestSchema,
   updateFilterPresetRequestSchema,
   createVideoJobRequestSchema
@@ -966,6 +967,74 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting image:", error);
       res.status(500).json({ error: "Failed to delete image" });
+    }
+  });
+
+  // ============ SAVED VIDEOS (Video Gallery) ============
+  app.get("/api/video-gallery", async (_req, res) => {
+    try {
+      const videos = await storage.getSavedVideos(DEV_USER_ID);
+      res.json(videos);
+    } catch (error) {
+      console.error("Error fetching video gallery:", error);
+      res.status(500).json({ error: "Failed to fetch video gallery" });
+    }
+  });
+
+  app.get("/api/video-gallery/:id", async (req, res) => {
+    try {
+      const video = await storage.getSavedVideo(req.params.id);
+      if (!video) {
+        return res.status(404).json({ error: "Video not found" });
+      }
+      res.json(video);
+    } catch (error) {
+      console.error("Error fetching video:", error);
+      res.status(500).json({ error: "Failed to fetch video" });
+    }
+  });
+
+  app.post("/api/video-gallery", async (req, res) => {
+    try {
+      const validated = saveVideoRequestSchema.parse(req.body);
+      const video = await storage.createSavedVideo({
+        ...validated,
+        userId: DEV_USER_ID,
+        isFavorite: 0,
+      });
+      res.status(201).json(video);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ error: "Invalid request", details: error.errors });
+      }
+      console.error("Error saving video:", error);
+      res.status(500).json({ error: "Failed to save video" });
+    }
+  });
+
+  app.patch("/api/video-gallery/:id/favorite", async (req, res) => {
+    try {
+      const updated = await storage.toggleVideoFavorite(req.params.id, DEV_USER_ID);
+      if (!updated) {
+        return res.status(404).json({ error: "Video not found" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error toggling video favorite:", error);
+      res.status(500).json({ error: "Failed to toggle favorite" });
+    }
+  });
+
+  app.delete("/api/video-gallery/:id", async (req, res) => {
+    try {
+      const success = await storage.deleteSavedVideo(req.params.id, DEV_USER_ID);
+      if (!success) {
+        return res.status(404).json({ error: "Video not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting video:", error);
+      res.status(500).json({ error: "Failed to delete video" });
     }
   });
 
