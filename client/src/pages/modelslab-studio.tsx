@@ -130,7 +130,6 @@ export default function ModelsLabStudioPage() {
   const [videoResult, setVideoResult] = useState<Sora2Response | null>(null);
   const [isPollingVideo, setIsPollingVideo] = useState(false);
   const [videoAspect, setVideoAspect] = useState<"auto" | "9:16" | "16:9" | "1:1">("auto");
-  const [videoQuality, setVideoQuality] = useState<"standard" | "ultra">("ultra");
   const [videoDuration, setVideoDuration] = useState<number>(5);
   const [currentVideoJobId, setCurrentVideoJobId] = useState<string | null>(null);
 
@@ -217,7 +216,6 @@ export default function ModelsLabStudioPage() {
         sourceImageUrl: imageUrl,
         prompt: prompt || "Cinematic video with smooth natural motion",
         targetAspect: videoAspect,
-        qualityTier: videoQuality,
         durationSeconds: videoDuration,
       });
       return await response.json();
@@ -1416,19 +1414,6 @@ export default function ModelsLabStudioPage() {
                       <SelectItem value="9:16">{t.modelslab.aspectPortrait || "9:16 Portrait"}</SelectItem>
                       <SelectItem value="16:9">{t.modelslab.aspectLandscape || "16:9 Landscape"}</SelectItem>
                       <SelectItem value="1:1">{t.modelslab.aspectSquare || "1:1 Square"}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>{t.modelslab.videoQuality || "Quality"}</Label>
-                  <Select value={videoQuality} onValueChange={(v) => setVideoQuality(v as typeof videoQuality)}>
-                    <SelectTrigger data-testid="select-video-quality">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ultra">{t.modelslab.qualityUltra || "Ultra (WAN 2.1 - Best quality)"}</SelectItem>
-                      <SelectItem value="standard">{t.modelslab.qualityStandard || "Standard (SVD - Faster)"}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

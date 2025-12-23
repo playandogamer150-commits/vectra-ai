@@ -1,0 +1,42 @@
+const endpointUrl = 'https://modelslab.com/api/v7/video-fusion/image-to-video';
+
+const requestBody = {
+    "init_image": [
+      "https://assets.modelslab.com/generations/162c8276-1bd9-4fac-bb67-a011702b9d36.png",
+      "https://assets.modelslab.com/generations/f45e75a8-2d44-4009-bbb2-76bb6298d830.png"
+    ],
+    "prompt": "A cinematic skincare commercial featuring a stunning female model with flawless glowing skin and wet, brushed-back hair. Begin with close-up shots of fresh water splashing in slow motion, soft daylight reflections, and droplets gliding over smooth skin. Transition to the model gently touching her face, smiling confidently, holding a premium facewash bottle beside her cheek. Show her applying the facewash with delicate hand movements, water running over her skin, highlighting hydration and purity. Use soft natural lighting, minimal clean background, and elegant product focus. Include aesthetic shots of the facewash bottle rotating in light, product texture visuals, and final hero shot of the model holding the product with a gentle smile. Mood: Fresh, luxurious, pure, premium skincare. Ultra-realistic, beauty commercial style, 4K, smooth transitions, slow motion.",
+    "model_id": "seedance-1.0-pro-i2v",
+    "key": "Mi7a4vA8vmQ4nMtufHLOz2VDvK6Y6clhxfVAAfEOmZI5yHaAft2S1r9lPPY1"
+  };
+
+async function makeApiRequest() {
+  try {
+    const response = await fetch(endpointUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      let errorResult;
+      try {
+        errorResult = await response.json();
+      } catch (e) {
+        errorResult = { error: { message: await response.text() } };
+      }
+      throw new Error(`API Error (${response.status}): ${errorResult.error?.message || response.statusText || 'Unknown error'}`);
+    }
+
+    const result = await response.json();
+    console.log('API Response:', result);
+    return result;
+  } catch (error) {
+    console.error('Error making API request:', error.message);
+    throw error;
+  }
+}
+
+makeApiRequest();

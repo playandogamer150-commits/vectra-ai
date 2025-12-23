@@ -177,6 +177,9 @@ Workers receive signed payloads with:
 Workers must sign responses with HMAC and include `X-Signature` + `X-Timestamp` headers.
 
 ## Recent Changes
+- 2024-12-23: Migrated video generation from WAN 2.1/SVD to Seedance 1.0 Pro I2V (more stable API)
+- 2024-12-23: Removed quality tier selector from video modal (single high-quality model now)
+- 2024-12-23: Updated video endpoint to use ModelsLab v7 API with video-fusion/image-to-video
 - 2024-12-22: Added ModelsLab Nano Banana Pro integration for image generation (Image Studio page)
 - 2024-12-22: Added SSRF protection on ModelsLab status endpoint (only allows trusted domains)
 - 2024-12-22: Added development mode training simulation - training completes instantly in dev

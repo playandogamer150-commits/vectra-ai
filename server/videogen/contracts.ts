@@ -1,5 +1,4 @@
 export type AspectRatio = "9:16" | "16:9" | "1:1" | "auto";
-export type QualityTier = "standard" | "ultra";
 export type VideoJobStatus = "queued" | "processing" | "success" | "error";
 export type TransformStrategy = "letterbox" | "crop" | "none";
 
@@ -9,7 +8,6 @@ export interface CreateVideoJobInput {
   prompt?: string;
   negativePrompt?: string;
   targetAspect: AspectRatio;
-  qualityTier: QualityTier;
   durationSeconds: number;
   seed?: number;
 }
@@ -42,7 +40,6 @@ export interface VideoJob {
   prompt: string | null;
   negativePrompt: string | null;
   targetAspect: AspectRatio;
-  qualityTier: QualityTier;
   durationSeconds: number;
   seed: number | null;
   transformStrategy: TransformStrategy;
@@ -67,12 +64,6 @@ export function detectAspectRatio(width: number, height: number): "portrait" | "
   if (ratio > 1.1) return "landscape";
   if (ratio < 0.9) return "portrait";
   return "square";
-}
-
-export function mapDurationToFrames(durationSeconds: number, fps: number = 16): number {
-  const frames = Math.round(durationSeconds * fps);
-  // WAN 2.1 requires minimum 81 frames, maximum 129 frames
-  return Math.min(Math.max(frames, 81), 129);
 }
 
 export function generateIdempotencyKey(

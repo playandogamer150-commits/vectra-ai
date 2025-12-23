@@ -1,9 +1,8 @@
 import type { VideoProvider, CreateVideoJobInput, CreateJobResult, JobStatusResult, VideoJobStatus } from "../contracts";
-import { mapDurationToFrames } from "../contracts";
 
-const MODELSLAB_BASE_URL = "https://modelslab.com/api/v6/video";
+const MODELSLAB_BASE_URL = "https://modelslab.com/api/v7/video-fusion";
 
-interface ModelsLabResponse {
+interface SeedanceResponse {
   status: string;
   id?: number;
   output?: string[];
@@ -23,16 +22,30 @@ export class ModelsLabProvider implements VideoProvider {
 
   async createJob(input: CreateVideoJobInput): Promise<CreateJobResult> {
     try {
-      const isPortrait = input.targetAspect === "9:16";
-      const numFrames = mapDurationToFrames(input.durationSeconds);
-      
-      if (input.qualityTier === "ultra") {
-        return this.createUltraJob(input, isPortrait, numFrames);
-      } else {
-        return this.createStandardJob(input, numFrames);
-      }
+      const requestBody = {
+        key: this.apiKey,
+        model_id: "seedance-1.0-pro-i2v",
+        init_image: [input.sourceImageUrl],
+        prompt: input.prompt || "Cinematic video with natural smooth movement, professional cinematography",
+        negative_prompt: input.negativePrompt || "low quality, blurry, distorted, amateur, static, frozen",
+        duration: String(input.durationSeconds),
+        ...(input.seed && { seed: input.seed }),
+      };
+
+      console.log("Seedance I2V request:", { ...requestBody, key: "[REDACTED]" });
+
+      const response = await fetch(`${MODELSLAB_BASE_URL}/image-to-video`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      const data: SeedanceResponse = await response.json();
+      console.log("Seedance I2V response:", data);
+
+      return this.parseCreateResponse(data);
     } catch (error) {
-      console.error("ModelsLab createJob error:", error);
+      console.error("Seedance createJob error:", error);
       return {
         success: false,
         status: "error",
@@ -41,74 +54,7 @@ export class ModelsLabProvider implements VideoProvider {
     }
   }
 
-  private async createUltraJob(
-    input: CreateVideoJobInput, 
-    isPortrait: boolean, 
-    numFrames: number
-  ): Promise<CreateJobResult> {
-    const requestBody = {
-      key: this.apiKey,
-      model_id: "wan2.1",
-      init_image: input.sourceImageUrl,
-      prompt: input.prompt || "Cinematic video with natural smooth movement, professional cinematography",
-      negative_prompt: input.negativePrompt || "low quality, blurry, distorted, amateur, static, frozen",
-      portrait: isPortrait,
-      resolution: "480",
-      num_frames: numFrames,
-      fps: 16,
-      guidance_scale: 5,
-      num_inference_steps: 30,
-      ...(input.seed && { seed: input.seed }),
-    };
-
-    console.log("ModelsLab Ultra request:", { ...requestBody, key: "[REDACTED]" });
-
-    const response = await fetch(`${MODELSLAB_BASE_URL}/img2video_ultra`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
-    });
-
-    const data: ModelsLabResponse = await response.json();
-    console.log("ModelsLab Ultra response:", data);
-
-    return this.parseCreateResponse(data);
-  }
-
-  private async createStandardJob(
-    input: CreateVideoJobInput, 
-    numFrames: number
-  ): Promise<CreateJobResult> {
-    const requestBody = {
-      key: this.apiKey,
-      model_id: "svd",
-      init_image: input.sourceImageUrl,
-      prompt: input.prompt || "Smooth natural motion, cinematic quality",
-      negative_prompt: input.negativePrompt || "low quality, blurry, distorted",
-      width: 512,
-      height: 512,
-      num_frames: Math.min(numFrames, 25),
-      fps: 8,
-      motion_bucket_id: 127,
-      noise_aug_strength: 0.02,
-      ...(input.seed && { seed: input.seed }),
-    };
-
-    console.log("ModelsLab Standard request:", { ...requestBody, key: "[REDACTED]" });
-
-    const response = await fetch(`${MODELSLAB_BASE_URL}/img2video`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
-    });
-
-    const data: ModelsLabResponse = await response.json();
-    console.log("ModelsLab Standard response:", data);
-
-    return this.parseCreateResponse(data);
-  }
-
-  private parseCreateResponse(data: ModelsLabResponse): CreateJobResult {
+  private parseCreateResponse(data: SeedanceResponse): CreateJobResult {
     if (data.status === "error") {
       return {
         success: false,
@@ -150,12 +96,12 @@ export class ModelsLabProvider implements VideoProvider {
         body: JSON.stringify({ key: this.apiKey }),
       });
 
-      const data: ModelsLabResponse = await response.json();
-      console.log(`ModelsLab fetch ${providerJobId}:`, data);
+      const data: SeedanceResponse = await response.json();
+      console.log(`Seedance fetch ${providerJobId}:`, data);
 
       return this.parseFetchResponse(data);
     } catch (error) {
-      console.error("ModelsLab fetchJob error:", error);
+      console.error("Seedance fetchJob error:", error);
       return {
         status: "error",
         outputs: [],
@@ -164,7 +110,7 @@ export class ModelsLabProvider implements VideoProvider {
     }
   }
 
-  private parseFetchResponse(data: ModelsLabResponse): JobStatusResult {
+  private parseFetchResponse(data: SeedanceResponse): JobStatusResult {
     const status = this.mapStatus(data.status);
 
     return {
@@ -176,16 +122,18 @@ export class ModelsLabProvider implements VideoProvider {
     };
   }
 
-  private mapStatus(apiStatus: string): VideoJobStatus {
-    switch (apiStatus) {
+  private mapStatus(status: string): VideoJobStatus {
+    switch (status) {
       case "success":
         return "success";
       case "processing":
-        return "processing";
       case "queued":
-        return "queued";
-      default:
+        return "processing";
+      case "error":
+      case "failed":
         return "error";
+      default:
+        return "processing";
     }
   }
 }

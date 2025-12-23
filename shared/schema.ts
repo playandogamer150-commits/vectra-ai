@@ -8,7 +8,6 @@ export const blockTypeEnum = pgEnum("block_type", ["style", "camera", "layout", 
 export const loraJobStatusEnum = pgEnum("lora_job_status", ["pending", "processing", "completed", "failed", "cancelled"]);
 export const loraProviderEnum = pgEnum("lora_provider", ["webhook_worker", "replicate", "runpod"]);
 export const videoJobStatusEnum = pgEnum("video_job_status", ["queued", "processing", "success", "error"]);
-export const videoQualityTierEnum = pgEnum("video_quality_tier", ["standard", "ultra"]);
 export const videoTransformStrategyEnum = pgEnum("video_transform_strategy", ["letterbox", "crop", "none"]);
 
 export const users = pgTable("users", {
@@ -264,7 +263,6 @@ export const videoJobs = pgTable("video_jobs", {
   prompt: text("prompt"),
   negativePrompt: text("negative_prompt"),
   targetAspect: text("target_aspect").notNull().default("auto"),
-  qualityTier: videoQualityTierEnum("quality_tier").notNull().default("ultra"),
   durationSeconds: integer("duration_seconds").notNull().default(5),
   seed: integer("seed"),
   transformStrategy: videoTransformStrategyEnum("transform_strategy").notNull().default("none"),
@@ -617,7 +615,6 @@ export const createVideoJobRequestSchema = z.object({
   prompt: z.string().optional(),
   negativePrompt: z.string().optional(),
   targetAspect: z.enum(["9:16", "16:9", "1:1", "auto"]).default("auto"),
-  qualityTier: z.enum(["standard", "ultra"]).default("ultra"),
   durationSeconds: z.number().min(1).max(10).default(5),
   seed: z.number().optional(),
 });

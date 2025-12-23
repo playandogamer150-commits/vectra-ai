@@ -1,0 +1,61 @@
+Você é um Principal Engineer. Corrija o bug no fluxo de image-to-video ModelsLab (img2video_ultra).
+
+BUG ATUAL:
+Estamos enviando `resolution: "512"` para /api/v6/video/img2video_ultra e recebendo erro:
+"The resolution field must not be greater than 480."
+
+OBJETIVO:
+Implementar validação e normalização por endpoint, evitando enviar parâmetros inválidos.
+O sistema deve:
+- clamping/normalização por provider+endpoint
+- retornar erro 422 com mensagem amigável antes de chamar a API
+- ajustar UI para não permitir selecionar valores inválidos para Ultra
+
+REQUISITOS:
+1) Criar um arquivo de constraints do ModelsLab:
+   src/server/videogen/providers/modelslab/constraints.ts
+
+Definir:
+- ULTRA_MAX_RESOLUTION = 480
+- STANDARD_MAX_DIM = 512
+
+2) Normalização:
+No provider ModelsLab, antes de chamar a API:
+- se endpoint == "img2video_ultra":
+   - aceitar `resolution` como number/string
+   - converter para number
+   - se > 480, clamar para 480 OU rejeitar com 422 dependendo do modo:
+       - modo default: clamp silencioso + warning no metadata
+       - modo strict: rejeitar com 422 e explicação
+   - garantir que `resolution` enviado seja string/number conforme requerido
+- se endpoint == "img2video" (standard):
+   - garantir width/height <= 512 (ou redimensionar/crop server-side)
+   - se não houver proxy image resize implementado, rejeitar com 422
+
+3) Aspect ratio:
+- Quando user escolher 9:16 ou quando detectar imagem vertical:
+   - set `portrait: true` para img2video_ultra
+- Quando 16:9:
+   - `portrait: false`
+
+4) UI:
+- No modal “Transformar em Vídeo”, quando quality=Ultra:
+   - limitar resolução máxima a 480 (dropdown: 256, 320, 384, 480)
+- Quando quality=Standard:
+   - indicar limite 512 e se necessário reduzir internamente
+- Mostrar no UI: “Ultra max 480” para evitar confusão.
+
+5) Observabilidade:
+- Logar params normalizados (sem segredos)
+- Se clamp ocorrer, adicionar metadata.warnings[] = "resolution clamped to 480 for Ultra"
+
+6) Testes:
+- Adicionar teste unitário para normalizeUltraParams:
+   - input 512 -> output 480
+   - input 480 -> output 480
+   - input 384 -> output 384
+
+ENTREGÁVEIS:
+- corrigir provider
+- corrigir UI
+- garantir que /api/videogen/jobs nunca envie resolution > 480 para Ultra

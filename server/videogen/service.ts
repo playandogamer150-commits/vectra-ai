@@ -1,4 +1,4 @@
-import type { CreateVideoJobInput, VideoProvider, AspectRatio, QualityTier, TransformStrategy } from "./contracts";
+import type { CreateVideoJobInput, VideoProvider, AspectRatio, TransformStrategy } from "./contracts";
 import { detectAspectRatio, generateIdempotencyKey } from "./contracts";
 import { ModelsLabProvider } from "./providers/modelslab";
 import { storage } from "../storage";
@@ -49,7 +49,7 @@ export async function createVideoJob(
     userId,
     request.sourceImageUrl,
     request.prompt || null,
-    { aspect: finalAspect, quality: request.qualityTier, duration: request.durationSeconds }
+    { aspect: finalAspect, duration: request.durationSeconds }
   );
 
   const existingJob = await storage.findVideoJobByIdempotency(userId, idempotencyKey);
@@ -66,7 +66,6 @@ export async function createVideoJob(
     prompt: request.prompt || null,
     negativePrompt: request.negativePrompt || null,
     targetAspect: finalAspect,
-    qualityTier: request.qualityTier as QualityTier,
     durationSeconds: request.durationSeconds,
     seed: request.seed || null,
     transformStrategy,
@@ -84,7 +83,6 @@ export async function createVideoJob(
     prompt: request.prompt,
     negativePrompt: request.negativePrompt,
     targetAspect: finalAspect,
-    qualityTier: request.qualityTier as QualityTier,
     durationSeconds: request.durationSeconds,
     seed: request.seed,
   };
