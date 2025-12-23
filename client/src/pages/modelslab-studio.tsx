@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/lib/i18n";
 import { apiRequest } from "@/lib/queryClient";
@@ -123,26 +124,27 @@ export default function ModelsLabStudioPage() {
   const [presetName, setPresetName] = useState("");
   const [showPresetDialog, setShowPresetDialog] = useState(false);
 
-  // Video generation state (Sora 2)
+  // Video generation state (Job System)
   const [showVideoDialog, setShowVideoDialog] = useState(false);
   const [selectedImageForVideo, setSelectedImageForVideo] = useState<string>("");
   const [videoResult, setVideoResult] = useState<Sora2Response | null>(null);
   const [isPollingVideo, setIsPollingVideo] = useState(false);
+  const [videoAspect, setVideoAspect] = useState<"auto" | "9:16" | "16:9" | "1:1">("auto");
+  const [videoQuality, setVideoQuality] = useState<"standard" | "ultra">("ultra");
+  const [videoDuration, setVideoDuration] = useState<number>(5);
+  const [currentVideoJobId, setCurrentVideoJobId] = useState<string | null>(null);
 
   // Save image mutation
   const saveImageMutation = useMutation({
     mutationFn: async (imageData: { imageUrl: string; prompt: string }) => {
-      return apiRequest("/api/gallery", {
-        method: "POST",
-        body: JSON.stringify({
-          ...imageData,
-          aspectRatio,
-          profileId: selectedProfile || undefined,
-          blueprintId: selectedBlueprint || undefined,
-          userBlueprintId: selectedUserBlueprint || undefined,
-          appliedFilters: activeFilters,
-          seed: seed || undefined,
-        }),
+      return apiRequest("POST", "/api/gallery", {
+        ...imageData,
+        aspectRatio,
+        profileId: selectedProfile || undefined,
+        blueprintId: selectedBlueprint || undefined,
+        userBlueprintId: selectedUserBlueprint || undefined,
+        appliedFilters: activeFilters,
+        seed: seed || undefined,
       });
     },
     onSuccess: () => {
@@ -157,7 +159,7 @@ export default function ModelsLabStudioPage() {
   // Toggle favorite mutation
   const toggleFavoriteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/gallery/${id}/favorite`, { method: "PATCH" });
+      return apiRequest("PATCH", `/api/gallery/${id}/favorite`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/gallery"] });
@@ -167,7 +169,7 @@ export default function ModelsLabStudioPage() {
   // Delete image mutation
   const deleteImageMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/gallery/${id}`, { method: "DELETE" });
+      return apiRequest("DELETE", `/api/gallery/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/gallery"] });
@@ -208,23 +210,28 @@ export default function ModelsLabStudioPage() {
     },
   });
 
-  // Video generation mutation (Image-to-Video with VEO 3.1 Fast)
+  // Video generation mutation (Job System with ModelsLab)
   const generateVideoMutation = useMutation({
     mutationFn: async (imageUrl: string) => {
-      const response = await apiRequest("POST", "/api/sora2/generate", {
-        prompt: prompt || "Cinematic video of the scene with smooth natural motion",
-        imageUrl, // Pass the reference image URL for image-to-video
+      const response = await apiRequest("POST", "/api/videogen/jobs", {
+        sourceImageUrl: imageUrl,
+        prompt: prompt || "Cinematic video with smooth natural motion",
+        targetAspect: videoAspect,
+        qualityTier: videoQuality,
+        durationSeconds: videoDuration,
       });
-      return await response.json() as Sora2Response;
+      return await response.json();
     },
     onSuccess: (data) => {
-      setVideoResult(data);
-      if (data.status === "processing" && data.fetch_result) {
-        setIsPollingVideo(true);
-        pollVideoStatus(data.fetch_result);
-      } else if (data.output && data.output.length > 0) {
-        toast({ title: t.modelslab.videoGenerated || "Video generated successfully!" });
-        setShowVideoDialog(false);
+      if (data.id) {
+        setCurrentVideoJobId(data.id);
+        if (data.status === "processing" || data.status === "queued") {
+          setIsPollingVideo(true);
+          pollVideoJobStatus(data.id);
+        } else if (data.status === "success" && data.resultUrls?.length > 0) {
+          setVideoResult({ status: "success", output: data.resultUrls });
+          toast({ title: t.modelslab.videoGenerated || "Video generated successfully!" });
+        }
       }
     },
     onError: (error) => {
@@ -236,10 +243,10 @@ export default function ModelsLabStudioPage() {
     },
   });
 
-  // Poll video status
-  const pollVideoStatus = async (fetchUrl: string) => {
+  // Poll video job status
+  const pollVideoJobStatus = async (jobId: string) => {
     let attempts = 0;
-    const maxAttempts = 60; // 5 minutes max
+    const maxAttempts = 60;
     
     const poll = async () => {
       if (attempts >= maxAttempts) {
@@ -252,15 +259,14 @@ export default function ModelsLabStudioPage() {
       }
       
       try {
-        const response = await apiRequest("POST", "/api/sora2/status", { fetchUrl });
-        const data = await response.json() as Sora2Response;
+        const response = await fetch(`/api/videogen/jobs/${jobId}`);
+        const job = await response.json();
         
-        setVideoResult(data);
-        
-        if (data.status === "success" && data.output && data.output.length > 0) {
+        if (job.status === "success" && job.resultUrls?.length > 0) {
+          setVideoResult({ status: "success", output: job.resultUrls });
           setIsPollingVideo(false);
           toast({ title: t.modelslab.videoGenerated || "Video generated successfully!" });
-        } else if (data.status === "failed") {
+        } else if (job.status === "error") {
           setIsPollingVideo(false);
           toast({ 
             title: t.modelslab.videoFailed || "Video generation failed", 
@@ -1396,9 +1402,58 @@ export default function ModelsLabStudioPage() {
               </div>
             )}
 
+            {/* Video Options */}
+            {!videoResult?.output?.length && !isPollingVideo && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>{t.modelslab.videoAspectRatio || "Aspect Ratio"}</Label>
+                  <Select value={videoAspect} onValueChange={(v) => setVideoAspect(v as typeof videoAspect)}>
+                    <SelectTrigger data-testid="select-video-aspect">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">{t.modelslab.aspectAuto || "Auto (detect from image)"}</SelectItem>
+                      <SelectItem value="9:16">{t.modelslab.aspectPortrait || "9:16 Portrait"}</SelectItem>
+                      <SelectItem value="16:9">{t.modelslab.aspectLandscape || "16:9 Landscape"}</SelectItem>
+                      <SelectItem value="1:1">{t.modelslab.aspectSquare || "1:1 Square"}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>{t.modelslab.videoQuality || "Quality"}</Label>
+                  <Select value={videoQuality} onValueChange={(v) => setVideoQuality(v as typeof videoQuality)}>
+                    <SelectTrigger data-testid="select-video-quality">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ultra">{t.modelslab.qualityUltra || "Ultra (WAN 2.1 - Best quality)"}</SelectItem>
+                      <SelectItem value="standard">{t.modelslab.qualityStandard || "Standard (SVD - Faster)"}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>{t.modelslab.videoDuration || "Duration"}: {videoDuration}s</Label>
+                  <Slider
+                    value={[videoDuration]}
+                    onValueChange={(v) => setVideoDuration(v[0])}
+                    min={2}
+                    max={8}
+                    step={1}
+                    data-testid="slider-video-duration"
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>2s</span>
+                    <span>8s</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Video Specs Info */}
             <div className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg space-y-1">
-              <p>{t.modelslab.videoSpecs || "Generates ~5 second high-quality videos at 16fps."}</p>
+              <p>{t.modelslab.videoSpecs || "High-quality video generation at 16fps."}</p>
               <p className="text-xs opacity-75">{t.modelslab.videoCostNote || "Video generation may take 1-3 minutes to complete."}</p>
             </div>
 
