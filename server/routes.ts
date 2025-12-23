@@ -764,14 +764,14 @@ export async function registerRoutes(
       console.log("=== Image-to-Video Generation (Wan 2.1) ===");
       console.log("Input image:", imageUrl);
       
-      // Use Wan 2.1 I2V model - high quality, works with any resolution
+      // Use Wan 2.1 I2V model - max height is 512px per API requirement
       const requestBody = {
         key: apiKey,
         model_id: "wan-2.1-i2v",
         init_image: imageUrl,
         prompt: prompt || "Cinematic video with natural smooth movement, professional cinematography, hyper-realistic",
         negative_prompt: "low quality, blurry, distorted, amateur, static, frozen",
-        height: 768,
+        height: 512,
         width: 512,
         num_frames: 81,
         fps: 16,

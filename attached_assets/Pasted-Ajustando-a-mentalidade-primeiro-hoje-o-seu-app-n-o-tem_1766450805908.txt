@@ -1,0 +1,179 @@
+Ajustando a mentalidade primeiro: hoje o seu app **não tem “Sora 2 Pro Max / Veo 3.1” dentro do ModelsLab** (pelo menos não via os endpoints públicos que você já está usando). O que existe documentado para **image→video** no ModelsLab é:
+
+* **`POST /api/v6/video/img2video`** com **`model_id: "svd"`** e limites **`width/height <= 512`**. ([docs.modelslab.com][1])
+* **`POST /api/v6/video/img2video_ultra`** com **`model_id: "wan2.1" | "wan2.2"`**, e parâmetro **`portrait: boolean`** (bom pra vertical), além de `resolution`, `num_frames`, etc. ([docs.modelslab.com][2])
+* **`POST /api/v6/video/fetch/{id}`** pra buscar resultado quando estiver `processing`. ([docs.modelslab.com][3])
+
+Então o “conserto” real é: **criar uma camada de roteamento + normalização de aspect ratio + job queue/polling**, e só depois plugar outros providers (Runway/Kling/Luma/Google Vertex etc.) se você realmente quiser “nível Sora/Veo”.
+
+Abaixo vai um **prompt pronto (senior)** pra você colar no Replit (Engineer/Architect) e mandar ele corrigir e evoluir isso do jeito certo.
+
+---
+
+## PROMPT PARA O REPLIT (COLAR INTEIRO)
+
+Você é Principal Engineer + Security Architect. Trabalhe como se isso fosse produção.
+
+### 1) Reformulação do problema (corrija o que está errado hoje)
+
+Temos um app **PromptForge** (Next.js) com **ModelsLab** integrado para geração de imagens (Nano Banana Pro OK).
+Agora precisamos de **Image→Video extremamente realista**, suportando **9:16 e 16:9**, com **autodetecção do aspect ratio** da imagem de entrada e **roteamento automático** para o endpoint/modelo correto.
+
+Problemas atuais:
+
+* A UI/UX do “Transformar em Vídeo” não garante aspect ratio correto.
+* Não existe uma camada consistente de “Video Jobs” (criar job, acompanhar status, retry, idempotência, salvar resultado).
+* Não existe um “registry” de modelos/fornecedores para escolher automaticamente qual API chamar.
+
+**Requisito-chave:** o sistema deve ser escalável e extensível: hoje ModelsLab, amanhã outros providers (sem reescrever o app).
+
+### 2) Restrições e fatos (use como fonte de verdade)
+
+No ModelsLab, os endpoints documentados:
+
+* `POST https://modelslab.com/api/v6/video/img2video` (model_id `svd`, `width/height` com limite `<= 512`, fps <= 16, etc.) ([docs.modelslab.com][1])
+* `POST https://modelslab.com/api/v6/video/img2video_ultra` (model_id `wan2.1` ou `wan2.2`, tem `portrait: boolean`, `resolution`, `num_frames`, `fps` etc.) ([docs.modelslab.com][2])
+* `POST https://modelslab.com/api/v6/video/fetch/{id}` para buscar resultado quando retornar `processing`. ([docs.modelslab.com][3])
+
+**Observação obrigatória:** não inventar suporte a “Sora/Veo” dentro do ModelsLab sem evidência. Se quiser “Sora-like”, crie uma interface de provider e permita plugar outro vendor depois.
+
+### 3) Solução recomendada (arquitetura)
+
+Implemente **uma Vertical Slice** “VideoGen” com:
+
+#### 3.1 Domain / Contracts
+
+Crie tipos e contratos:
+
+* `VideoProvider` interface:
+
+  * `createJob(input: CreateVideoJobInput): Promise<CreateJobResult>`
+  * `fetchJob(id: string): Promise<JobStatusResult>`
+* `CreateVideoJobInput` inclui:
+
+  * `sourceImageUrl` (obrigatório)
+  * `prompt` e `negativePrompt`
+  * `targetAspect`: `"9:16" | "16:9" | "1:1" | "auto"`
+  * `qualityTier`: `"standard" | "ultra"`
+  * `durationSeconds` (mapear para frames/fps)
+  * `seed?`
+* `JobStatusResult`: `status: "queued" | "processing" | "success" | "error"`, `outputs[]`, `eta?`, `rawMeta`.
+
+#### 3.2 Provider ModelsLab (implementação real)
+
+* Se `qualityTier=ultra`, use `img2video_ultra`:
+
+  * defina `portrait = true` quando `targetAspect` for `9:16` (ou detectado como vertical).
+  * use `model_id: "wan2.1"` default, e permita `"wan2.2"` via config/admin.
+* Se `qualityTier=standard`, use `img2video`:
+
+  * **atenção**: `width/height <= 512` e `model_id` documentado como `svd`. ([docs.modelslab.com][1])
+  * Faça resize/crop server-side antes de mandar (ou gere uma versão “proxy” da imagem com tamanho aceito).
+* Após criar job, se resposta vier `processing`, persistir `id` e chamar `fetch/{id}` em polling exponencial, OU webhook (se você já tem infra de webhook).
+* Implementar idempotência: `idempotencyKey = hash(userId + sourceImageUrl + prompt + params)`; se já existir job em “processing/success”, reaproveitar.
+
+#### 3.3 Aspect Ratio: detecção + normalização
+
+* Detectar aspect ratio real da imagem: se `width >= height` → landscape (16:9), senão portrait (9:16).
+* Se user escolher “auto”, usar detecção.
+* Se user escolher manual e conflitar com a imagem:
+
+  * opção A (default): **letterbox** (preserva imagem, adiciona bordas) e avisa no UI
+  * opção B: **crop inteligente** (center-crop) e avisa no UI
+* Guardar `transformStrategy` no job meta.
+
+#### 3.4 Persistência e escalabilidade
+
+Crie tabelas:
+
+* `video_jobs`:
+
+  * `id` (uuid), `user_id`, `provider`, `provider_job_id` (ModelsLab id int/string), `status`, `params_json`, `source_image_url`, `result_urls[]`, `error_message`, `created_at`, `updated_at`
+* `video_assets` (opcional): cache/derivados da imagem (512px etc)
+
+Use filas:
+
+* Worker (mesmo que inicial seja “in-process”): um job runner que executa polling e atualiza DB.
+* Rate limit por usuário e por IP para proteger créditos.
+
+#### 3.5 UI/UX (o que o usuário vai ver)
+
+Na tela “Estúdio de Imagem”:
+
+* Botão “Transformar em Vídeo”
+* Modal com:
+
+  * Provider: `ModelsLab (auto)` (por enquanto)
+  * Qualidade: `Ultra (WAN)` / `Standard (SVD)`
+  * Aspect ratio: `Auto / 9:16 / 16:9`
+  * Duração (curta/normal/long) → mapeia pra frames/fps
+  * Prompt extra opcional (se já existe prompt base do blueprint, concatena com segurança)
+* Ao iniciar:
+
+  * Mostra “Job card” com status: queued/processing + ETA + botão “atualizar”
+  * Quando success: player + download + salvar na galeria
+
+### 4) O que NÃO fazer (anti-patterns)
+
+* Não “chutar” endpoints/model_ids não documentados.
+* Não travar o request esperando o vídeo ficar pronto: isso mata UX e escala.
+* Não fazer polling agressivo sem backoff (vai estourar rate limit e créditos).
+* Não misturar lógica de provider dentro de componentes React: manter provider no backend.
+
+### 5) Implementação (tarefas objetivas)
+
+Implemente em etapas e commite cada slice:
+
+1. **Backend**
+
+   * `src/server/videogen/contracts.ts`
+   * `src/server/videogen/providers/modelslab.ts`
+   * `src/server/videogen/service.ts` (roteamento + validação)
+   * Rotas API:
+
+     * `POST /api/videogen/jobs` (cria job)
+     * `GET /api/videogen/jobs/:id` (status)
+   * Job runner (polling):
+
+     * cron simples (a cada X segundos) ou fila (BullMQ/Cloudflare Queues etc.)
+     * chama `fetch/{id}` ([docs.modelslab.com][3])
+
+2. **Frontend**
+
+   * Modal “Transformar em Vídeo”
+   * `VideoJobCard` com status e player
+   * Integração com galeria/salvar
+
+3. **Segurança/Confiabilidade**
+
+   * Zod validation em todas as rotas
+   * rate limiting
+   * logs estruturados + Sentry
+   * sanitize de prompt (limites, tamanho, bloqueio de payload gigante)
+
+### 6) Critérios de aceite (sem isso não está pronto)
+
+* Gera vídeo com ModelsLab **standard** e **ultra**.
+* Suporta **9:16 e 16:9** com “Auto”.
+* Jobs sobrevivem refresh/reload (persistência no DB).
+* Polling com backoff e sem spam.
+* UI mostra status, ETA (se houver), e resultado final com download.
+
+### 7) Entregáveis
+
+* Código implementado
+* README curto explicando:
+
+  * env vars (`MODELSLAB_API_KEY`)
+  * fluxo job
+  * como plugar novo provider no futuro
+
+Agora execute.
+
+---
+
+Se você colar isso no Replit, ele tende a “parar de viajar” e implementar o que falta: **roteamento, aspect ratio de verdade, job system e UI** — e o mais importante: sem fingir que ModelsLab é Sora/Veo.
+
+[1]: https://docs.modelslab.com/video-api/img-to-video "Image to Video - ModelsLab"
+[2]: https://docs.modelslab.com/video-api/image-to-video-ultra "Image to Video Ultra - ModelsLab"
+[3]: https://docs.modelslab.com/video-api/fetch-video "Fetch Video - ModelsLab"
