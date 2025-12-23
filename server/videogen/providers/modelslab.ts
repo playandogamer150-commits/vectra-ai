@@ -53,7 +53,7 @@ export class ModelsLabProvider implements VideoProvider {
       prompt: input.prompt || "Cinematic video with natural smooth movement, professional cinematography",
       negative_prompt: input.negativePrompt || "low quality, blurry, distorted, amateur, static, frozen",
       portrait: isPortrait,
-      resolution: "512",
+      resolution: "480",
       num_frames: numFrames,
       fps: 16,
       guidance_scale: 5,
