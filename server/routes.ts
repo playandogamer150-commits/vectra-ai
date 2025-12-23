@@ -666,6 +666,10 @@ export async function registerRoutes(
         height: dimensions.height,
         resize: true,
         output_format: "png",
+        safety_checker: false,
+        enhance_prompt: false,
+        num_inference_steps: 30,
+        guidance_scale: 7.5,
       };
       
       console.log("Sending to ModelsLab:", { 
