@@ -701,9 +701,10 @@ export async function registerRoutes(
   });
 
   // NSFW Ultra-Realistic Generation API (newrealityxl-global-nsfw)
+  // Supports both text-to-image and image-to-image (with reference images)
   app.post("/api/modelslab/generate-nsfw", async (req, res) => {
     try {
-      const { prompt, aspectRatio } = req.body;
+      const { prompt, aspectRatio, images } = req.body;
       
       if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
         return res.status(400).json({ error: "Prompt is required" });
@@ -738,6 +739,56 @@ export async function registerRoutes(
       
       const dimensions = getDimensions(selectedRatio);
       
+      // Check if reference images are provided for image-to-image
+      const hasReferenceImages = images && Array.isArray(images) && images.length > 0;
+      
+      if (hasReferenceImages) {
+        // Image-to-image mode with reference character
+        const processedImages = images.map((img: string) => {
+          if (typeof img !== 'string') return '';
+          return img;
+        }).filter((img: string) => img.length > 0);
+        
+        const requestBody = {
+          key: apiKey,
+          model_id: "newrealityxl-global-nsfw",
+          prompt,
+          negative_prompt: "painting, drawing, cartoon, anime, illustration, sketch, low quality, blurry, deformed, ugly, bad anatomy, extra limbs, mutated hands, poorly drawn face, disfigured",
+          init_image: processedImages,
+          width: dimensions.width,
+          height: dimensions.height,
+          samples: 1,
+          num_inference_steps: 30,
+          guidance_scale: 7.5,
+          strength: 0.7,
+          safety_checker: false,
+          enhance_prompt: false,
+          seed: null,
+        };
+        
+        console.log("Sending NSFW image-to-image to ModelsLab:", { 
+          ...requestBody, 
+          key: "[REDACTED]",
+          init_image: `[${processedImages.length} images]`,
+        });
+        
+        const response = await fetch("https://modelslab.com/api/v4/dreambooth/img2img", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === "error") {
+          console.error("ModelsLab NSFW img2img error:", data);
+          return res.status(400).json({ error: data.message || "ModelsLab API error" });
+        }
+        
+        return res.json(data);
+      }
+      
+      // Text-to-image mode (no reference images)
       const requestBody = {
         key: apiKey,
         model_id: "newrealityxl-global-nsfw",
@@ -754,7 +805,7 @@ export async function registerRoutes(
         scheduler: "UniPCMultistepScheduler",
       };
       
-      console.log("Sending NSFW generation to ModelsLab:", { 
+      console.log("Sending NSFW text-to-image to ModelsLab:", { 
         ...requestBody, 
         key: "[REDACTED]",
       });

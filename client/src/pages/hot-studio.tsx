@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,14 @@ import { apiRequest } from "@/lib/queryClient";
 import type { Filter } from "@shared/schema";
 import { queryClient } from "@/lib/queryClient";
 import { 
-  Loader2, Sparkles, Download, Flame, AlertTriangle, RefreshCw
+  Loader2, Sparkles, Download, Flame, AlertTriangle, RefreshCw, Upload, X, ImagePlus
 } from "lucide-react";
+
+interface UploadedImage {
+  id: string;
+  dataUrl: string;
+  name: string;
+}
 
 interface ModelsLabResponse {
   status: string;
@@ -31,12 +37,53 @@ export default function HotStudioPage() {
   const { toast } = useToast();
   const { t } = useI18n();
   
+  const [referenceImages, setReferenceImages] = useState<UploadedImage[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [prompt, setPrompt] = useState("");
   const [aspectRatio, setAspectRatio] = useState("9:16");
   const [activeFilters, setActiveFilters] = useState<FilterValue>({});
   const [result, setResult] = useState<ModelsLabResponse | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
+
+  const handleFileSelect = (files: FileList | null) => {
+    if (!files) return;
+    
+    Array.from(files).forEach((file) => {
+      if (!file.type.startsWith("image/")) return;
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        setReferenceImages((prev) => [
+          ...prev,
+          { id: crypto.randomUUID(), dataUrl, name: file.name },
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    handleFileSelect(e.dataTransfer.files);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const removeImage = (id: string) => {
+    setReferenceImages((prev) => prev.filter((img) => img.id !== id));
+  };
 
   const { data: filters, isLoading: loadingFilters } = useQuery<Filter[]>({
     queryKey: ["/api/filters-nsfw"],
@@ -61,6 +108,7 @@ export default function HotStudioPage() {
       return apiRequest("POST", "/api/modelslab/generate-nsfw", {
         prompt: fullPrompt,
         aspectRatio,
+        images: referenceImages.map((img) => img.dataUrl),
       });
     },
     onSuccess: async (response) => {
@@ -193,6 +241,81 @@ export default function HotStudioPage() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
+                  <ImagePlus className="w-4 h-4" />
+                  {t.hotStudio?.referenceImage || "Reference Image"}
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {t.hotStudio?.referenceImageDesc || "Upload a photo of the character to use as reference"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => handleFileSelect(e.target.files)}
+                  data-testid="input-file-upload"
+                />
+                
+                {referenceImages.length === 0 ? (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDrop={handleDrop}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
+                      isDragging
+                        ? "border-red-500 bg-red-500/10"
+                        : "border-muted-foreground/25 hover:border-red-500/50"
+                    }`}
+                    data-testid="dropzone-reference"
+                  >
+                    <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      {t.hotStudio?.uploadHint || "Click or drag to upload reference photo"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      {referenceImages.map((img) => (
+                        <div key={img.id} className="relative group aspect-square rounded-md overflow-hidden">
+                          <img
+                            src={img.dataUrl}
+                            alt={img.name}
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(img.id)}
+                            className="absolute top-1 right-1 p-1 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                            data-testid={`button-remove-image-${img.id}`}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full"
+                      data-testid="button-add-more-images"
+                    >
+                      <ImagePlus className="w-3 h-3 mr-1" />
+                      {t.hotStudio?.addMore || "Add more"}
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
                   <Sparkles className="w-4 h-4" />
                   {t.hotStudio?.filters || "Filters"}
                 </CardTitle>
@@ -278,7 +401,7 @@ export default function HotStudioPage() {
 
                 <Button
                   onClick={() => generateMutation.mutate()}
-                  disabled={isGenerating || Object.keys(activeFilters).length === 0}
+                  disabled={isGenerating || (Object.keys(activeFilters).length === 0 && referenceImages.length === 0)}
                   className="w-full bg-red-500 hover:bg-red-600"
                   data-testid="button-generate"
                 >
@@ -295,9 +418,9 @@ export default function HotStudioPage() {
                   )}
                 </Button>
 
-                {Object.keys(activeFilters).length === 0 && (
+                {Object.keys(activeFilters).length === 0 && referenceImages.length === 0 && (
                   <p className="text-xs text-muted-foreground text-center">
-                    {t.hotStudio?.selectFiltersHint || "Select at least one filter to generate"}
+                    {t.hotStudio?.selectFiltersHint || "Upload a reference image or select filters to generate"}
                   </p>
                 )}
               </CardContent>
