@@ -1322,12 +1322,10 @@ export async function registerRoutes(
 
   app.post("/api/stripe/checkout", async (req, res) => {
     try {
-      const user = req.user as any;
-      if (!user?.claims?.sub) {
-        return res.status(401).json({ error: "Authentication required" });
-      }
+      const userId = requireAuth(req, res);
+      if (!userId) return;
 
-      const userId = user.claims.sub;
+      const user = req.user as any;
       const { priceId } = req.body;
 
       if (!priceId) {
@@ -1341,21 +1339,23 @@ export async function registerRoutes(
       }
 
       let customerId = appUser?.stripeCustomerId;
+      const userEmail = user?.claims?.email || `${user?.claims?.name || 'user'}@vectra.temp`;
+      const userName = user?.claims?.name || user?.claims?.sub || "User";
 
       if (!customerId) {
-        const email = user.claims.email || `${user.claims.name || 'user'}@vectra.temp`;
         const customer = await stripeService.createCustomer(
-          email,
+          userEmail,
           userId,
-          user.claims.name || user.claims.sub
+          userName
         );
         customerId = customer.id;
         
         if (appUser) {
           await stripeService.updateUserStripeInfo(userId, { stripeCustomerId: customerId });
         } else {
-          await storage.createAppUserFromReplit(userId, user.claims.name || "User", customerId);
+          await storage.createAppUserFromReplit(userId, userName, customerId);
         }
+        appUser = await storage.getAppUser(userId);
       }
 
       const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -1365,7 +1365,8 @@ export async function registerRoutes(
         priceId,
         `${baseUrl}/pricing?success=true`,
         `${baseUrl}/pricing?canceled=true`,
-        locale
+        locale,
+        userId
       );
 
       res.json({ url: session.url });

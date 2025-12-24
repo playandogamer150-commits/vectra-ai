@@ -13,7 +13,7 @@ export class StripeService {
     });
   }
 
-  async createCheckoutSession(customerId: string, priceId: string, successUrl: string, cancelUrl: string, locale?: string) {
+  async createCheckoutSession(customerId: string, priceId: string, successUrl: string, cancelUrl: string, locale?: string, userId?: string) {
     const stripe = await getUncachableStripeClient();
     const checkoutLocale = locale?.startsWith('en') ? 'en' : 'pt-BR';
     return await stripe.checkout.sessions.create({
@@ -24,6 +24,10 @@ export class StripeService {
       success_url: successUrl,
       cancel_url: cancelUrl,
       locale: checkoutLocale,
+      subscription_data: userId ? {
+        metadata: { userId, customerId },
+      } : undefined,
+      metadata: userId ? { userId, customerId } : undefined,
     });
   }
 
