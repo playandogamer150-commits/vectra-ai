@@ -177,6 +177,14 @@ Workers receive signed payloads with:
 Workers must sign responses with HMAC and include `X-Signature` + `X-Timestamp` headers.
 
 ## Recent Changes
+- 2024-12-24: Security hardening for commercial launch:
+  - Fixed authentication bypass: `getUserId()` returns null in production without auth, `requireAuth()` helper for 401
+  - Added ownership verification on LoRA endpoints (`/api/lora/models/:id`, `/api/lora/jobs/:id`)
+  - Secured HMAC: `WORKER_HMAC_SECRET` required in production, random secret in dev
+  - Added security headers: X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, HSTS (production)
+  - Stricter CSP in production (no unsafe-inline/eval), relaxed for development
+  - Added `fetchWithTimeout()` utility for all external API calls (10-90s timeouts)
+  - Created `server/lib/fetch-with-timeout.ts` for timeout and log redaction utilities
 - 2024-12-24: Removed HOT Studio and NSFW features (navigation, routes, API endpoints, filters)
 - 2024-12-24: Updated design system to "Soft Minimal Editorial UI / Calm Tech Design"
 - 2024-12-23: Upgraded to Seedance 1.5 Pro text-to-video with generate_audio support
