@@ -3,66 +3,66 @@
 @tailwind utilities;
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   SOFT MINIMAL EDITORIAL UI / CALM TECH DESIGN
-   Design System Tokens - Vectra AI
+   VECTRA AI - MONOCHROMATIC DESIGN SYSTEM
+   Minimal, Premium, Professional
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
-/* LIGHT MODE - Calm, editorial, content-first */
+/* LIGHT MODE - Clean, minimal white */
 :root {
   /* Elevation system */
-  --button-outline: rgba(0, 0, 0, 0.06);
-  --badge-outline: rgba(0, 0, 0, 0.04);
+  --button-outline: rgba(0, 0, 0, 0.08);
+  --badge-outline: rgba(0, 0, 0, 0.06);
   --opaque-button-border-intensity: -6;
-  --elevate-1: rgba(0, 0, 0, 0.025);
-  --elevate-2: rgba(0, 0, 0, 0.055);
+  --elevate-1: rgba(0, 0, 0, 0.03);
+  --elevate-2: rgba(0, 0, 0, 0.06);
 
-  /* Core surfaces - #F7F7F8 warm off-white */
-  --background: 240 5% 97%;
-  --foreground: 220 13% 10%;
+  /* Core surfaces */
+  --background: 0 0% 100%;
+  --foreground: 0 0% 4%;
 
-  /* Borders - subtle, low opacity */
-  --border: 220 9% 91%;
+  /* Borders - subtle */
+  --border: 0 0% 90%;
 
-  /* Card surfaces - pure white on warm background */
+  /* Card surfaces */
   --card: 0 0% 100%;
-  --card-foreground: 220 13% 10%;
-  --card-border: 220 9% 93%;
+  --card-foreground: 0 0% 4%;
+  --card-border: 0 0% 92%;
 
-  /* Sidebar - slightly elevated */
-  --sidebar: 240 5% 98%;
-  --sidebar-foreground: 220 13% 10%;
-  --sidebar-border: 220 9% 92%;
-  --sidebar-primary: 292 84% 61%;
+  /* Sidebar */
+  --sidebar: 0 0% 98%;
+  --sidebar-foreground: 0 0% 4%;
+  --sidebar-border: 0 0% 92%;
+  --sidebar-primary: 0 0% 10%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 5% 94%;
-  --sidebar-accent-foreground: 220 13% 10%;
-  --sidebar-ring: 292 84% 61%;
+  --sidebar-accent: 0 0% 95%;
+  --sidebar-accent-foreground: 0 0% 4%;
+  --sidebar-ring: 0 0% 10%;
 
-  /* Popovers - elevated white */
+  /* Popovers */
   --popover: 0 0% 100%;
-  --popover-foreground: 220 13% 10%;
-  --popover-border: 220 9% 90%;
+  --popover-foreground: 0 0% 4%;
+  --popover-border: 0 0% 90%;
 
-  /* Primary accent - Fuchsia/Magenta */
-  --primary: 292 84% 61%;
+  /* Primary accent - Black */
+  --primary: 0 0% 7%;
   --primary-foreground: 0 0% 100%;
 
-  /* Secondary - neutral gray */
-  --secondary: 240 5% 94%;
-  --secondary-foreground: 220 13% 10%;
+  /* Secondary - Light gray */
+  --secondary: 0 0% 96%;
+  --secondary-foreground: 0 0% 10%;
 
-  /* Muted - softer gray */
-  --muted: 240 5% 92%;
-  --muted-foreground: 220 9% 46%;
+  /* Muted - Softer gray */
+  --muted: 0 0% 96%;
+  --muted-foreground: 0 0% 42%;
 
-  /* Accent - soft purple tint */
-  --accent: 270 30% 95%;
-  --accent-foreground: 220 13% 10%;
+  /* Accent - Neutral */
+  --accent: 0 0% 96%;
+  --accent-foreground: 0 0% 10%;
 
-  /* Accent-2 - Violet for secondary highlights */
-  --accent-2: 263 70% 58%;
+  /* Accent-2 - Medium gray */
+  --accent-2: 0 0% 23%;
 
-  /* Destructive - warm red */
+  /* Destructive */
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
 
@@ -71,34 +71,34 @@
   --warning: 38 92% 50%;
 
   /* Input borders */
-  --input: 220 9% 80%;
-  --ring: 292 84% 61%;
+  --input: 0 0% 83%;
+  --ring: 0 0% 10%;
 
-  /* Charts - harmonious purple/violet palette */
-  --chart-1: 292 84% 50%;
-  --chart-2: 263 70% 58%;
-  --chart-3: 280 60% 55%;
-  --chart-4: 250 65% 50%;
-  --chart-5: 300 55% 45%;
+  /* Charts - grayscale */
+  --chart-1: 0 0% 10%;
+  --chart-2: 0 0% 30%;
+  --chart-3: 0 0% 50%;
+  --chart-4: 0 0% 70%;
+  --chart-5: 0 0% 85%;
 
-  /* Typography */
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  /* Typography - Roboto */
+  --font-sans: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-serif: Georgia, "Times New Roman", serif;
   --font-mono: "JetBrains Mono", "SF Mono", Consolas, monospace;
 
   /* Spacing base */
   --spacing: 0.25rem;
 
-  /* Radius - larger, softer */
+  /* Radius - consistent 12-16px */
   --radius: 0.875rem;
-  --radius-sm: 0.75rem;
+  --radius-sm: 0.625rem;
   --radius-lg: 1rem;
 
   /* Shadows - minimal, diffuse */
   --shadow-2xs: none;
   --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
-  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+  --shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
   --shadow-lg: 0 8px 16px -4px rgba(0, 0, 0, 0.06), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
   --shadow-xl: 0 16px 32px -8px rgba(0, 0, 0, 0.08), 0 8px 16px -4px rgba(0, 0, 0, 0.04);
@@ -126,60 +126,60 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
-/* DARK MODE - Calm, no pure black */
+/* DARK MODE - Rich dark grays, no pure black */
 .dark {
   /* Elevation system */
-  --button-outline: rgba(255, 255, 255, 0.08);
-  --badge-outline: rgba(255, 255, 255, 0.04);
+  --button-outline: rgba(255, 255, 255, 0.1);
+  --badge-outline: rgba(255, 255, 255, 0.06);
   --opaque-button-border-intensity: 8;
-  --elevate-1: rgba(255, 255, 255, 0.035);
-  --elevate-2: rgba(255, 255, 255, 0.075);
+  --elevate-1: rgba(255, 255, 255, 0.04);
+  --elevate-2: rgba(255, 255, 255, 0.08);
 
-  /* Core surfaces - #0F1115 warm dark */
-  --background: 225 14% 7%;
-  --foreground: 220 9% 95%;
+  /* Core surfaces - #111111 */
+  --background: 0 0% 7%;
+  --foreground: 0 0% 96%;
 
-  /* Borders - subtle warm gray */
-  --border: 222 16% 18%;
+  /* Borders */
+  --border: 0 0% 16%;
 
-  /* Card surfaces - slightly elevated */
-  --card: 222 20% 10%;
-  --card-foreground: 220 9% 95%;
-  --card-border: 222 16% 14%;
+  /* Card surfaces */
+  --card: 0 0% 10%;
+  --card-foreground: 0 0% 96%;
+  --card-border: 0 0% 14%;
 
   /* Sidebar */
-  --sidebar: 222 18% 9%;
-  --sidebar-foreground: 220 9% 95%;
-  --sidebar-border: 222 16% 14%;
-  --sidebar-primary: 292 84% 55%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 222 16% 16%;
-  --sidebar-accent-foreground: 220 9% 95%;
-  --sidebar-ring: 292 84% 55%;
+  --sidebar: 0 0% 8%;
+  --sidebar-foreground: 0 0% 96%;
+  --sidebar-border: 0 0% 14%;
+  --sidebar-primary: 0 0% 96%;
+  --sidebar-primary-foreground: 0 0% 7%;
+  --sidebar-accent: 0 0% 14%;
+  --sidebar-accent-foreground: 0 0% 96%;
+  --sidebar-ring: 0 0% 96%;
 
   /* Popovers */
-  --popover: 222 18% 12%;
-  --popover-foreground: 220 9% 95%;
-  --popover-border: 222 16% 18%;
+  --popover: 0 0% 10%;
+  --popover-foreground: 0 0% 96%;
+  --popover-border: 0 0% 16%;
 
-  /* Primary - slightly brighter in dark */
-  --primary: 292 84% 55%;
-  --primary-foreground: 0 0% 100%;
+  /* Primary - White */
+  --primary: 0 0% 96%;
+  --primary-foreground: 0 0% 7%;
 
   /* Secondary */
-  --secondary: 222 16% 18%;
-  --secondary-foreground: 220 9% 95%;
+  --secondary: 0 0% 16%;
+  --secondary-foreground: 0 0% 96%;
 
   /* Muted */
-  --muted: 222 14% 20%;
-  --muted-foreground: 220 9% 64%;
+  --muted: 0 0% 16%;
+  --muted-foreground: 0 0% 64%;
 
-  /* Accent - soft purple in dark */
-  --accent: 270 20% 16%;
-  --accent-foreground: 220 9% 95%;
+  /* Accent */
+  --accent: 0 0% 16%;
+  --accent-foreground: 0 0% 96%;
 
   /* Accent-2 */
-  --accent-2: 263 70% 68%;
+  --accent-2: 0 0% 70%;
 
   /* Destructive */
   --destructive: 0 72% 55%;
@@ -190,17 +190,17 @@
   --warning: 38 92% 55%;
 
   /* Input */
-  --input: 222 14% 28%;
-  --ring: 292 84% 55%;
+  --input: 0 0% 24%;
+  --ring: 0 0% 96%;
 
   /* Charts */
-  --chart-1: 292 84% 70%;
-  --chart-2: 263 70% 72%;
-  --chart-3: 280 60% 68%;
-  --chart-4: 250 65% 65%;
-  --chart-5: 300 55% 62%;
+  --chart-1: 0 0% 96%;
+  --chart-2: 0 0% 75%;
+  --chart-3: 0 0% 55%;
+  --chart-4: 0 0% 35%;
+  --chart-5: 0 0% 20%;
 
-  /* Shadows - very subtle in dark */
+  /* Shadows - subtle in dark */
   --shadow-2xs: none;
   --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
   --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.25), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
@@ -239,17 +239,17 @@
 
   /* Typography scale */
   h1 {
-    @apply text-3xl font-semibold tracking-tight;
+    @apply text-3xl font-medium tracking-tight;
     line-height: 1.25;
   }
 
   h2 {
-    @apply text-2xl font-semibold tracking-tight;
+    @apply text-2xl font-medium tracking-tight;
     line-height: 1.33;
   }
 
   h3 {
-    @apply text-lg font-semibold;
+    @apply text-lg font-medium;
     line-height: 1.44;
   }
 
@@ -264,26 +264,22 @@
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   ELEVATION SYSTEM - Subtle interactions
+   ELEVATION SYSTEM
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 @layer utilities {
-  /* Hide ugly search cancel button in Chrome */
   input[type="search"]::-webkit-search-cancel-button {
     @apply hidden;
   }
 
-  /* Placeholder styling for contentEditable div */
   [contenteditable][data-placeholder]:empty::before {
     content: attr(data-placeholder);
     color: hsl(var(--muted-foreground));
     pointer-events: none;
   }
 
-  /* Escape hatches for custom interactions */
   .no-default-hover-elevate {}
   .no-default-active-elevate {}
 
-  /* Toggle elevation - behind content */
   .toggle-elevate::before,
   .toggle-elevate-2::before {
     content: "";
@@ -303,7 +299,6 @@
     inset: -1px;
   }
 
-  /* Hover/Active elevation - in front of content */
   .hover-elevate:not(.no-default-hover-elevate),
   .active-elevate:not(.no-default-active-elevate),
   .hover-elevate-2:not(.no-default-hover-elevate),
@@ -342,20 +337,18 @@
     inset: -1px;
   }
 
-  /* Editorial spacing utilities */
   .editorial-container {
-    @apply max-w-7xl mx-auto px-6 md:px-8 lg:px-10;
+    @apply max-w-6xl mx-auto px-6 md:px-8;
   }
 
   .editorial-section {
-    @apply py-12 md:py-16 lg:py-20;
+    @apply py-16 md:py-20 lg:py-24;
   }
 
   .editorial-card {
-    @apply bg-card rounded-lg border border-card-border p-5 md:p-6;
+    @apply bg-card rounded-lg border border-border p-6;
   }
 
-  /* Subtle transitions */
   .transition-subtle {
     transition: all 150ms ease;
   }
@@ -364,14 +357,13 @@
     transition: all 200ms ease;
   }
 
-  /* Focus ring - elegant accent */
   .focus-ring {
-    @apply outline-none ring-2 ring-primary/30 ring-offset-2 ring-offset-background;
+    @apply outline-none ring-2 ring-foreground/20 ring-offset-2 ring-offset-background;
   }
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   SCROLLBAR STYLING - Subtle and minimal
+   SCROLLBAR STYLING
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 @layer utilities {
   .scrollbar-thin {

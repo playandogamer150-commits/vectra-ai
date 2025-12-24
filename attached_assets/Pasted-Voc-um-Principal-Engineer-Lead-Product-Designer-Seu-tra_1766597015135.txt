@@ -1,0 +1,237 @@
+Você é um Principal Engineer + Lead Product Designer.
+Seu trabalho é implementar um rebranding completo e a experiência inicial do produto para venda.
+
+NOME DO PRODUTO:
+- Vectra AI
+
+SLOGAN OFICIAL (TAGLINE):
+- “Structured Creativity”
+
+SLOGAN COMERCIAL (MARKETING LINE):
+- “Create Smarter. Generate Better.”
+
+MISSÃO DO PRODUTO (POSICIONAMENTO):
+Vectra AI é uma plataforma profissional de engenharia de prompts e geração visual baseada em estrutura, consistência e controle.
+Não é um gerador genérico. É uma ferramenta de workflow profissional.
+
+OBJETIVO DA ENTREGA:
+1) Aplicar o rebranding (PromptForge -> Vectra AI) em TODO o app
+2) Implementar a página “Início” (landing interna do app) com:
+   - Hero + value props + features
+   - Login/Signup obrigatório para usar a versão gratuita
+   - CTA para plano Pro
+3) Implementar uma página “Pricing” (Free vs Pro) pronta pra venda
+4) Aplicar branding monocromático (preto/branco/cinza), minimalista
+5) Definir Design System com tokens e componentes coerentes
+6) Criar copy comercial consistente com o posicionamento
+7) Garantir escalabilidade e consistência (nada hardcoded espalhado)
+
+STACK E RESTRIÇÕES:
+- Next.js App Router + TypeScript
+- Tailwind CSS
+- shadcn/ui (Radix)
+- Ícones via SVG (monocromático)
+- Tipografia Roboto (e fallbacks sans-serif)
+- Visual: minimalista, monocromático, premium
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+A) REBRANDING GLOBAL (OBRIGATÓRIO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Substituir TODAS as ocorrências de “PromptForge” por “Vectra AI”
+- Centralizar em constante global:
+  const BRAND = {
+    name: "Vectra AI",
+    tagline: "Structured Creativity",
+    marketingLine: "Create Smarter. Generate Better."
+  }
+
+- Atualizar:
+  - Header / Navbar
+  - Titles/H1
+  - Meta tags (title/description)
+  - Favicon (placeholder ok)
+  - Textos de empty state
+  - Footer (se existir)
+  - Emails/labels (se existir)
+
+Nada de strings duplicadas. Deve ser fácil rebrand futuro.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+B) BRANDING MONOCROMÁTICO (TOKENS)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Criar/ajustar Design Tokens em CSS variables e integrar ao Tailwind.
+
+PALETA (obrigatória):
+- black: #0A0A0A
+- white: #FFFFFF
+- gray-950: #111111
+- gray-900: #1A1A1A
+- gray-700: #3A3A3A
+- gray-500: #6B6B6B
+- gray-300: #D4D4D4
+- gray-200: #E5E5E5
+- gray-100: #F5F5F5
+
+Regras visuais:
+- nada de cores fora do monocromático
+- contraste elegante (sem preto puro em textos grandes se ficar agressivo)
+- bordas suaves 1px com baixa opacidade
+- sombras mínimas e difusas
+- radius consistente (12–16px)
+
+Tipografia:
+- Instalar Roboto e aplicar globalmente no layout root.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+C) ÍCONES (SVG MONOCROMÁTICOS)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Criar um pequeno set de SVG icons internos:
+  - LogoMark (abstract V / vector feel)
+  - Sparkles (geração)
+  - Library (biblioteca)
+  - History
+  - Pricing
+  - Lock/Auth
+
+Regras:
+- stroke 1.5–2
+- sem preenchimento
+- cor herdada via currentColor
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+D) NOVA PÁGINA “INÍCIO” (LANDING + AUTH GATE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Criar a rota / (home) ou /inicio conforme estrutura do app.
+Essa página é a “porta de entrada” e deve ser vendável.
+
+Layout:
+- Hero à esquerda
+- Card de Login/Signup à direita (ou abaixo no mobile)
+
+HERO (copy obrigatório):
+- Title: “Vectra AI”
+- Tagline: “Structured Creativity”
+- Marketing line: “Create Smarter. Generate Better.”
+- Subtext:
+  “A professional platform for structured prompt engineering and high-quality image/video generation — built for consistency, control, and scale.”
+
+CTA:
+- Primary: “Get Started (Free)”
+- Secondary: “View Pricing”
+
+FEATURES (3 blocos curtos):
+1) “Blueprint-driven prompts”
+   “Build prompts with structure — not guesswork.”
+2) “Model-aware output”
+   “Generate prompts tailored to each model’s required base format.”
+3) “Reusable workflows”
+   “Save, reuse, version, and scale your generations.”
+
+SOCIAL PROOF (minimalista):
+- “Built for creators, studios, and agencies.”
+
+AUTH CARD:
+- Tabs: Login | Create account
+- Campos:
+  - email
+  - password
+- Botão:
+  - “Continue”
+- Texto legal:
+  “By continuing, you agree to Terms & Privacy.”
+- Estado loading
+- Erros claros
+- Suporte a “free tier” após login
+
+IMPORTANTE:
+Usuário só pode acessar Studio/Biblioteca/Histórico se estiver autenticado.
+Se não estiver autenticado:
+- redirecionar para /inicio (ou /)
+- mostrar toast discreto “Please log in to continue.”
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+E) PÁGINA PRICING (/pricing)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Criar página /pricing com design minimalista.
+
+Estrutura:
+- Título:
+  “Pricing”
+- Subtítulo:
+  “Start free. Upgrade when you need full control.”
+
+Cards (2):
+FREE:
+- Price: “$0”
+- Bullets:
+  - Limited generations/day
+  - Core blueprints
+  - Basic history
+  - Personal projects
+- CTA: “Start Free”
+
+PRO:
+- Price: “$19/mo” (placeholder)
+- Bullets:
+  - Unlimited generations
+  - Advanced models (image/video)
+  - Custom blueprints
+  - Full history + versioning
+  - Priority processing
+- CTA: “Upgrade to Pro”
+
+Enterprise (opcional abaixo):
+- “Need teams & compliance? Talk to us.”
+
+Design:
+- Pro card levemente destacado (border mais forte ou background cinza 100)
+- Sem cores além do monocromático
+- Ícones SVG nos bullets
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+F) COPY COMERCIAL (COERÊNCIA GLOBAL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Atualizar textos em lugares-chave para refletir posicionamento:
+- Evitar “gerador de prompt”
+- Usar:
+  - “structured prompts”
+  - “blueprints”
+  - “consistent output”
+  - “professional workflows”
+- Microcopy curta e premium:
+  - “Generate”
+  - “Save”
+  - “Reuse”
+  - “Upgrade”
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+G) COMPONENTIZAÇÃO (PRA NÃO VIRAR DÍVIDA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Criar componentes reutilizáveis:
+- <BrandHeader />
+- <Hero />
+- <AuthCard />
+- <PricingCards />
+- <MonoIcon name="..." />
+- <FeatureGrid />
+
+Nada de duplicar layout em páginas diferentes.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+H) CHECKLIST DE PRODUÇÃO (OBRIGATÓRIO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Zero strings “PromptForge” no repo (busca global)
+- Página inicial responsiva (mobile-first)
+- Acessibilidade: labels, focus ring, tab navigation
+- Sem hardcode de cores fora dos tokens
+- Sem quebras de rotas existentes
+- Auth gating funcionando
+- Build limpo e sem warnings
+
+ENTREGA:
+1) Mostrar quais arquivos foram criados/alterados
+2) Confirmar o rebranding completo
+3) Confirmar Home + Pricing funcionando e acessível
+4) Confirmar que o usuário precisa logar para usar o app
+
+Execute agora com qualidade de produto premium vendável.
