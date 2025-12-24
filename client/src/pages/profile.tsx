@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
@@ -114,7 +114,7 @@ export default function ProfilePage() {
     },
   });
 
-  useState(() => {
+  useEffect(() => {
     if (profile) {
       setFormData({
         displayName: profile.displayName || "",
@@ -125,7 +125,7 @@ export default function ProfilePage() {
         theme: profile.theme || "system",
       });
     }
-  });
+  }, [profile, language]);
 
   const handleSave = () => {
     updateMutation.mutate({
