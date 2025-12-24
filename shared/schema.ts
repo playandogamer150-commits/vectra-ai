@@ -1,7 +1,10 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, integer, jsonb, timestamp, pgEnum, real } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer, jsonb, timestamp, pgEnum, real, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// Re-export auth schema
+export * from "./models/auth";
 
 export const userPlanEnum = pgEnum("user_plan", ["free", "pro"]);
 export const blockTypeEnum = pgEnum("block_type", ["style", "camera", "layout", "constraint", "postfx", "subject"]);
@@ -10,7 +13,7 @@ export const loraProviderEnum = pgEnum("lora_provider", ["webhook_worker", "repl
 export const videoJobStatusEnum = pgEnum("video_job_status", ["queued", "processing", "success", "error"]);
 export const videoTransformStrategyEnum = pgEnum("video_transform_strategy", ["letterbox", "crop", "none"]);
 
-export const users = pgTable("users", {
+export const appUsers = pgTable("app_users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
@@ -290,15 +293,15 @@ export const videoJobs = pgTable("video_jobs", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-export const usersRelations = relations(users, ({ many, one }) => ({
+export const appUsersRelations = relations(appUsers, ({ many, one }) => ({
   generatedPrompts: many(generatedPrompts),
   loraModels: many(loraModels),
-  activeLora: one(userLoraActive, { fields: [users.id], references: [userLoraActive.userId] }),
+  activeLora: one(userLoraActive, { fields: [appUsers.id], references: [userLoraActive.userId] }),
   videoJobs: many(videoJobs),
 }));
 
 export const generatedPromptsRelations = relations(generatedPrompts, ({ one, many }) => ({
-  user: one(users, { fields: [generatedPrompts.userId], references: [users.id] }),
+  user: one(appUsers, { fields: [generatedPrompts.userId], references: [appUsers.id] }),
   profile: one(llmProfiles, { fields: [generatedPrompts.profileId], references: [llmProfiles.id] }),
   blueprint: one(promptBlueprints, { fields: [generatedPrompts.blueprintId], references: [promptBlueprints.id] }),
   versions: many(promptVersions),
@@ -309,13 +312,13 @@ export const promptVersionsRelations = relations(promptVersions, ({ one }) => ({
 }));
 
 export const loraModelsRelations = relations(loraModels, ({ one, many }) => ({
-  user: one(users, { fields: [loraModels.userId], references: [users.id] }),
+  user: one(appUsers, { fields: [loraModels.userId], references: [appUsers.id] }),
   datasets: many(loraDatasets),
   versions: many(loraVersions),
 }));
 
 export const loraDatasetsRelations = relations(loraDatasets, ({ one, many }) => ({
-  user: one(users, { fields: [loraDatasets.userId], references: [users.id] }),
+  user: one(appUsers, { fields: [loraDatasets.userId], references: [appUsers.id] }),
   loraModel: one(loraModels, { fields: [loraDatasets.loraModelId], references: [loraModels.id] }),
   items: many(loraDatasetItems),
 }));
@@ -334,12 +337,12 @@ export const loraJobsRelations = relations(loraJobs, ({ one }) => ({
 }));
 
 export const userLoraActiveRelations = relations(userLoraActive, ({ one }) => ({
-  user: one(users, { fields: [userLoraActive.userId], references: [users.id] }),
+  user: one(appUsers, { fields: [userLoraActive.userId], references: [appUsers.id] }),
   loraVersion: one(loraVersions, { fields: [userLoraActive.loraVersionId], references: [loraVersions.id] }),
 }));
 
 export const userBlueprintsRelations = relations(userBlueprints, ({ one, many }) => ({
-  user: one(users, { fields: [userBlueprints.userId], references: [users.id] }),
+  user: one(appUsers, { fields: [userBlueprints.userId], references: [appUsers.id] }),
   versions: many(userBlueprintVersions),
 }));
 
@@ -348,10 +351,10 @@ export const userBlueprintVersionsRelations = relations(userBlueprintVersions, (
 }));
 
 export const videoJobsRelations = relations(videoJobs, ({ one }) => ({
-  user: one(users, { fields: [videoJobs.userId], references: [users.id] }),
+  user: one(appUsers, { fields: [videoJobs.userId], references: [appUsers.id] }),
 }));
 
-export const insertUserSchema = createInsertSchema(users).pick({
+export const insertAppUserSchema = createInsertSchema(appUsers).pick({
   username: true,
   password: true,
 });
@@ -404,8 +407,8 @@ export const generateRequestSchema = z.object({
   message: "Either blueprintId or userBlueprintId is required",
 });
 
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
+export type InsertAppUser = z.infer<typeof insertAppUserSchema>;
+export type AppUser = typeof appUsers.$inferSelect;
 export type LlmProfile = typeof llmProfiles.$inferSelect;
 export type InsertLlmProfile = z.infer<typeof insertLlmProfileSchema>;
 export type PromptBlueprint = typeof promptBlueprints.$inferSelect;

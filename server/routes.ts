@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { compiler } from "./prompt-engine/compiler";
@@ -15,8 +15,14 @@ import {
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { registerLoraRoutes } from "./lora-routes";
+import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 
 const DEV_USER_ID = "dev_user";
+
+function getUserId(req: Request): string {
+  const user = req.user as any;
+  return user?.claims?.sub || DEV_USER_ID;
+}
 
 async function seedDatabase() {
   const existingProfiles = await storage.getProfiles();
@@ -79,6 +85,10 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
+  // Setup auth BEFORE other routes
+  await setupAuth(app);
+  registerAuthRoutes(app);
+  
   await seedDatabase();
 
   const profiles = await storage.getProfiles();
