@@ -3,6 +3,7 @@ import { detectAspectRatio, generateIdempotencyKey } from "./contracts";
 import { ModelsLabProvider } from "./providers/modelslab";
 import { storage } from "../storage";
 import type { VideoJob, CreateVideoJobRequest } from "@shared/schema";
+import { fetchWithTimeout } from "../lib/fetch-with-timeout";
 
 const providers: Map<string, VideoProvider> = new Map();
 
@@ -183,7 +184,7 @@ export async function runPollingWorker(): Promise<void> {
 
 async function getImageDimensions(url: string): Promise<{ width: number; height: number } | null> {
   try {
-    const response = await fetch(url, { method: "HEAD" });
+    const response = await fetchWithTimeout(url, { method: "HEAD" }, 10000); // 10s timeout
     return null;
   } catch {
     return null;

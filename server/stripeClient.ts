@@ -1,4 +1,5 @@
 import Stripe from 'stripe';
+import { fetchWithTimeout } from './lib/fetch-with-timeout';
 
 let connectionSettings: any;
 
@@ -23,12 +24,12 @@ async function getCredentials() {
   url.searchParams.set('connector_names', connectorName);
   url.searchParams.set('environment', targetEnvironment);
 
-  const response = await fetch(url.toString(), {
+  const response = await fetchWithTimeout(url.toString(), {
     headers: {
       'Accept': 'application/json',
       'X_REPLIT_TOKEN': xReplitToken
     }
-  });
+  }, 10000); // 10s timeout for credentials
 
   const data = await response.json();
   

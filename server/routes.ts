@@ -19,12 +19,30 @@ import { registerLoraRoutes } from "./lora-routes";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { stripeService } from "./stripeService";
 import { getStripePublishableKey } from "./stripeClient";
+import { fetchWithTimeout } from "./lib/fetch-with-timeout";
 
 const DEV_USER_ID = "dev_user";
+const IS_PRODUCTION = process.env.NODE_ENV === "production" || process.env.REPLIT_DEPLOYMENT === "1";
 
-function getUserId(req: Request): string {
+function getUserId(req: Request): string | null {
   const user = req.user as any;
-  return user?.claims?.sub || DEV_USER_ID;
+  if (user?.claims?.sub) {
+    return user.claims.sub;
+  }
+  // In development, allow dev_user fallback for testing
+  if (!IS_PRODUCTION) {
+    return DEV_USER_ID;
+  }
+  return null;
+}
+
+function requireAuth(req: Request, res: any): string | null {
+  const userId = getUserId(req);
+  if (!userId) {
+    res.status(401).json({ error: "Authentication required" });
+    return null;
+  }
+  return userId;
 }
 
 async function seedDatabase() {
@@ -105,7 +123,9 @@ export async function registerRoutes(
   // Profile routes
   app.get("/api/profile", async (req, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      
       const user = req.user as any;
       
       if (userId === DEV_USER_ID) {
@@ -149,7 +169,9 @@ export async function registerRoutes(
 
   app.put("/api/profile", async (req, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      
       const user = req.user as any;
       
       if (userId === DEV_USER_ID) {
@@ -185,7 +207,8 @@ export async function registerRoutes(
 
   app.get("/api/profile/usage", async (req, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
       
       const history = await storage.getHistory(userId);
       const loraModels = await storage.getLoraModels(userId);
@@ -833,11 +856,11 @@ export async function registerRoutes(
         prompt: `[${truncatedPrompt.length} chars]`,
       });
       
-      const response = await fetch("https://modelslab.com/api/v6/images/img2img", {
+      const response = await fetchWithTimeout("https://modelslab.com/api/v6/images/img2img", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
-      });
+      }, 60000); // 60s timeout for image generation
       
       const data = await response.json();
       
@@ -891,13 +914,13 @@ export async function registerRoutes(
         return res.status(500).json({ error: "ModelsLab API key not configured" });
       }
       
-      const response = await fetch(fetchUrl, {
+      const response = await fetchWithTimeout(fetchUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           key: apiKey,
         }),
-      });
+      }, 30000); // 30s timeout for status check
       
       const data = await response.json();
       res.json(data);
@@ -945,11 +968,11 @@ export async function registerRoutes(
         key: "[REDACTED]"
       });
       
-      const response = await fetch("https://modelslab.com/api/v6/video/img2video", {
+      const response = await fetchWithTimeout("https://modelslab.com/api/v6/video/img2video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
-      });
+      }, 90000); // 90s timeout for video generation
       
       const data = await response.json();
       console.log("Wan 2.1 I2V response:", data);
@@ -991,7 +1014,7 @@ export async function registerRoutes(
         return res.status(500).json({ error: "ModelsLab API key not configured" });
       }
       
-      const response = await fetch(fetchUrl, {
+      const response = await fetchWithTimeout(fetchUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -1354,7 +1377,9 @@ export async function registerRoutes(
 
   app.post("/api/stripe/portal", async (req, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      
       const user = req.user as any;
       
       if (!user?.claims?.sub) {
@@ -1381,7 +1406,9 @@ export async function registerRoutes(
 
   app.get("/api/stripe/subscription", async (req, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      
       const appUser = await storage.getAppUser(userId);
       
       if (!appUser?.stripeSubscriptionId) {

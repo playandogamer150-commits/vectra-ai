@@ -1,5 +1,6 @@
 import type { VideoProvider, CreateVideoJobInput, CreateJobResult, JobStatusResult, VideoJobStatus } from "../contracts";
 import { getModelForAspectRatio, type VideoModelConfig, type VideoAspectRatio } from "../model-registry";
+import { fetchWithTimeout } from "../../lib/fetch-with-timeout";
 
 const MODELSLAB_BASE_URL = "https://modelslab.com";
 
@@ -79,11 +80,11 @@ export class ModelsLabProvider implements VideoProvider {
       prompt: requestBody.prompt?.substring(0, 100) + "...",
     });
 
-    const response = await fetch(endpoint, {
+    const response = await fetchWithTimeout(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
-    });
+    }, 90000); // 90s timeout for video generation
 
     const data: ModelsLabResponse = await response.json();
     
@@ -126,11 +127,11 @@ export class ModelsLabProvider implements VideoProvider {
       duration: input.durationSeconds,
     });
 
-    const response = await fetch(endpoint, {
+    const response = await fetchWithTimeout(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
-    });
+    }, 90000); // 90s timeout for video generation
 
     const data: ModelsLabResponse = await response.json();
     console.log("[ModelsLab] Image-to-Video Response:", data);
@@ -174,11 +175,11 @@ export class ModelsLabProvider implements VideoProvider {
 
   async fetchJob(providerJobId: string): Promise<JobStatusResult> {
     try {
-      const response = await fetch(`${MODELSLAB_BASE_URL}/api/v7/video-fusion/fetch/${providerJobId}`, {
+      const response = await fetchWithTimeout(`${MODELSLAB_BASE_URL}/api/v7/video-fusion/fetch/${providerJobId}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key: this.apiKey }),
-      });
+      }, 30000); // 30s timeout for status check
 
       const data: ModelsLabResponse = await response.json();
       console.log(`[ModelsLab] Fetch job ${providerJobId}:`, {

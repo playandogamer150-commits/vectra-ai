@@ -3,6 +3,7 @@ import { storage } from "./storage";
 import { storageProvider } from "./lib/storage-provider";
 import { verifySignature, createJobPayload } from "./lib/hmac";
 import { loraJobRateLimiter, webhookRateLimiter, datasetUploadRateLimiter } from "./lib/rate-limiter";
+import { fetchWithTimeout } from "./lib/fetch-with-timeout";
 import {
   createLoraModelRequestSchema,
   initDatasetRequestSchema,
@@ -20,13 +21,27 @@ const IS_PRO_OVERRIDE = process.env.ADMIN_OVERRIDE === "true" || process.env.PLA
 const FREE_LORA_JOBS = 0;
 const PRO_LORA_JOBS = 10;
 
-function getUserId(req: Request): string {
-  // In development mode, use a fixed user ID for consistent experience
-  const isDev = process.env.NODE_ENV === "development";
-  if (isDev) {
+const IS_PRODUCTION = process.env.NODE_ENV === "production" || process.env.REPLIT_DEPLOYMENT === "1";
+
+function getUserId(req: Request): string | null {
+  const user = (req as any).user;
+  if (user?.claims?.sub) {
+    return user.claims.sub;
+  }
+  // In development, allow dev_user fallback for testing
+  if (!IS_PRODUCTION) {
     return "dev_user";
   }
-  return req.ip || "anonymous";
+  return null;
+}
+
+function requireAuth(req: Request, res: Response): string | null {
+  const userId = getUserId(req);
+  if (!userId) {
+    res.status(401).json({ error: "Authentication required" });
+    return null;
+  }
+  return userId;
 }
 
 async function checkLoraPermission(req: Request, res: Response, next: NextFunction) {
@@ -43,7 +58,9 @@ async function checkLoraPermission(req: Request, res: Response, next: NextFuncti
 export function registerLoraRoutes(app: Express) {
   app.get("/api/lora/models", async (req, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      
       const models = await storage.getLoraModels(userId);
       res.json(models);
     } catch (error) {
@@ -55,7 +72,9 @@ export function registerLoraRoutes(app: Express) {
   // Get all trained LoRA versions for use in prompt generation
   app.get("/api/lora/trained", async (req, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      
       const models = await storage.getLoraModels(userId);
       
       const trainedLoras = await Promise.all(
@@ -80,9 +99,17 @@ export function registerLoraRoutes(app: Express) {
 
   app.get("/api/lora/models/:id", async (req, res) => {
     try {
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      
       const model = await storage.getLoraModel(req.params.id);
       if (!model) {
         return res.status(404).json({ error: "LoRA model not found" });
+      }
+      
+      // Verify user owns this model
+      if (model.userId !== userId) {
+        return res.status(403).json({ error: "Access denied" });
       }
       
       const datasets = await storage.getLoraDatasets(model.id);
@@ -97,7 +124,9 @@ export function registerLoraRoutes(app: Express) {
 
   app.post("/api/lora/models", checkLoraPermission, async (req, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      
       const validated = createLoraModelRequestSchema.parse(req.body);
       
       const model = await storage.createLoraModel({
@@ -119,7 +148,9 @@ export function registerLoraRoutes(app: Express) {
 
   app.post("/api/lora/dataset/init", checkLoraPermission, datasetUploadRateLimiter(), async (req, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      
       const validated = initDatasetRequestSchema.parse(req.body);
       
       const model = await storage.getLoraModel(validated.loraModelId);
@@ -162,7 +193,9 @@ export function registerLoraRoutes(app: Express) {
 
   app.post("/api/lora/dataset/commit", checkLoraPermission, async (req, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      
       const validated = commitDatasetRequestSchema.parse(req.body);
       
       const dataset = await storage.getLoraDataset(validated.datasetId);
@@ -261,7 +294,9 @@ export function registerLoraRoutes(app: Express) {
 
   app.post("/api/lora/jobs", checkLoraPermission, loraJobRateLimiter(), async (req, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      
       const validated = createLoraJobRequestSchema.parse(req.body);
       
       const model = await storage.getLoraModel(validated.loraModelId);
@@ -302,7 +337,7 @@ export function registerLoraRoutes(app: Express) {
         );
         
         try {
-          const response = await fetch(WORKER_URL, {
+          const response = await fetchWithTimeout(WORKER_URL, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -310,7 +345,7 @@ export function registerLoraRoutes(app: Express) {
               "X-Timestamp": String(signedPayload.timestamp),
             },
             body: JSON.stringify(signedPayload.payload),
-          });
+          }, 60000); // 60s timeout for worker job
           
           if (response.ok) {
             const result = await response.json() as { externalJobId?: string };
@@ -379,12 +414,25 @@ export function registerLoraRoutes(app: Express) {
 
   app.get("/api/lora/jobs/:id", async (req, res) => {
     try {
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      
       const job = await storage.getLoraJob(req.params.id);
       if (!job) {
         return res.status(404).json({ error: "Job not found" });
       }
       
+      // Verify user owns this job via the version/model chain
       const version = await storage.getLoraVersion(job.loraVersionId);
+      if (!version) {
+        return res.status(404).json({ error: "Job version not found" });
+      }
+      
+      const model = await storage.getLoraModel(version.loraModelId);
+      if (!model || model.userId !== userId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
       res.json({ job, version });
     } catch (error) {
       console.error("Error fetching LoRA job:", error);
@@ -440,7 +488,9 @@ export function registerLoraRoutes(app: Express) {
 
   app.post("/api/lora/activate", checkLoraPermission, async (req, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      
       const validated = activateLoraRequestSchema.parse(req.body);
       
       const version = await storage.getLoraVersion(validated.loraVersionId);
@@ -477,7 +527,9 @@ export function registerLoraRoutes(app: Express) {
 
   app.get("/api/lora/active", async (req, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      
       const active = await storage.getUserActiveLora(userId);
       
       if (!active) {
@@ -496,7 +548,9 @@ export function registerLoraRoutes(app: Express) {
 
   app.delete("/api/lora/active", checkLoraPermission, async (req, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      
       await storage.clearUserActiveLora(userId);
       res.json({ success: true, message: "LoRA deactivated" });
     } catch (error) {

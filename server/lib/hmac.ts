@@ -1,6 +1,20 @@
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, timingSafeEqual, randomBytes } from "crypto";
 
-const HMAC_SECRET = process.env.WORKER_HMAC_SECRET || "dev-secret-change-in-production";
+const IS_PRODUCTION = process.env.NODE_ENV === "production" || process.env.REPLIT_DEPLOYMENT === "1";
+
+// In production, require HMAC secret to be set. In development, use a random secret per session.
+const HMAC_SECRET = (() => {
+  if (process.env.WORKER_HMAC_SECRET) {
+    return process.env.WORKER_HMAC_SECRET;
+  }
+  if (IS_PRODUCTION) {
+    console.error("CRITICAL: WORKER_HMAC_SECRET must be set in production!");
+    throw new Error("WORKER_HMAC_SECRET environment variable is required in production");
+  }
+  // Development: generate random secret per session (webhooks won't work but prevents attacks)
+  return randomBytes(32).toString("hex");
+})();
+
 const TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000; // 5 minutes
 
 export interface SignedPayload {
