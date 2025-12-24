@@ -14,7 +14,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      setLocation("/studio");
+      setLocation("/image-studio");
     }
   }, [isLoading, isAuthenticated, setLocation]);
 

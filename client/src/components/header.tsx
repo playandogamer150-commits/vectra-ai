@@ -4,7 +4,7 @@ import { useTheme } from "@/components/theme-provider";
 import { useI18n, LanguageToggle } from "@/lib/i18n";
 import { BRAND } from "@/lib/constants";
 import { MonoIcon } from "@/components/mono-icon";
-import { Moon, Sun, Menu, X, Image, Library, History, Home, Sparkles } from "lucide-react";
+import { Moon, Sun, Menu, X, Image, Library, History } from "lucide-react";
 import { useState } from "react";
 
 export function Header() {
@@ -14,10 +14,9 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { href: "/studio", label: "Studio", icon: Sparkles },
+    { href: "/image-studio", label: t.nav.imageStudio, icon: Image },
     { href: "/library", label: t.nav.library, icon: Library },
     { href: "/history", label: t.nav.history, icon: History },
-    { href: "/image-studio", label: t.nav.imageStudio, icon: Image },
   ];
 
   return (

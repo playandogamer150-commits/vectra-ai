@@ -8,7 +8,6 @@ import { I18nProvider } from "@/lib/i18n";
 import { Header } from "@/components/header";
 import LandingPage from "@/pages/landing";
 import PricingPage from "@/pages/pricing";
-import StudioPage from "@/pages/studio";
 import LibraryPage from "@/pages/library";
 import HistoryPage from "@/pages/history";
 import ModelsLabStudioPage from "@/pages/modelslab-studio";
@@ -20,7 +19,6 @@ function Router() {
     <Switch>
       <Route path="/" component={LandingPage} />
       <Route path="/pricing" component={PricingPage} />
-      <Route path="/studio" component={StudioPage} />
       <Route path="/library" component={LibraryPage} />
       <Route path="/history" component={HistoryPage} />
       <Route path="/image-studio" component={ModelsLabStudioPage} />
