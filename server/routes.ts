@@ -744,17 +744,19 @@ export async function registerRoutes(
       
       if (hasReferenceImages) {
         // Image-to-image mode with reference character
-        const processedImages = images.map((img: string) => {
-          if (typeof img !== 'string') return '';
-          return img;
-        }).filter((img: string) => img.length > 0);
+        // ModelsLab img2img expects init_image as a single string, not array
+        const firstImage = images.find((img: string) => typeof img === 'string' && img.length > 0);
+        
+        if (!firstImage) {
+          return res.status(400).json({ error: "Invalid reference image" });
+        }
         
         const requestBody = {
           key: apiKey,
           model_id: "newrealityxl-global-nsfw",
           prompt,
           negative_prompt: "painting, drawing, cartoon, anime, illustration, sketch, low quality, blurry, deformed, ugly, bad anatomy, extra limbs, mutated hands, poorly drawn face, disfigured",
-          init_image: processedImages,
+          init_image: firstImage,
           width: dimensions.width,
           height: dimensions.height,
           samples: 1,
@@ -764,6 +766,7 @@ export async function registerRoutes(
           safety_checker: false,
           enhance_prompt: false,
           seed: null,
+          scheduler: "UniPCMultistepScheduler",
         };
         
         console.log("Sending NSFW image-to-image to ModelsLab:", { 
