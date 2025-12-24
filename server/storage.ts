@@ -22,6 +22,7 @@ export interface IStorage {
   getAppUser(id: string): Promise<AppUser | undefined>;
   getAppUserByUsername(username: string): Promise<AppUser | undefined>;
   createAppUser(user: InsertAppUser): Promise<AppUser>;
+  updateAppUser(id: string, data: Partial<Omit<AppUser, "id" | "username" | "password">>): Promise<AppUser | undefined>;
   
   getProfiles(): Promise<LlmProfile[]>;
   getProfile(id: string): Promise<LlmProfile | undefined>;
@@ -133,6 +134,15 @@ export class DatabaseStorage implements IStorage {
   async createAppUser(insertUser: InsertAppUser): Promise<AppUser> {
     const [user] = await db.insert(appUsers).values(insertUser).returning();
     return user;
+  }
+
+  async updateAppUser(id: string, data: Partial<Omit<AppUser, "id" | "username" | "password">>): Promise<AppUser | undefined> {
+    const [updated] = await db
+      .update(appUsers)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(appUsers.id, id))
+      .returning();
+    return updated || undefined;
   }
 
   async getProfiles(): Promise<LlmProfile[]> {

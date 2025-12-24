@@ -11,7 +11,8 @@ import {
   saveVideoRequestSchema,
   createFilterPresetRequestSchema,
   updateFilterPresetRequestSchema,
-  createVideoJobRequestSchema
+  createVideoJobRequestSchema,
+  updateProfileSchema
 } from "@shared/schema";
 import { ZodError } from "zod";
 import { registerLoraRoutes } from "./lora-routes";
@@ -98,6 +99,123 @@ export async function registerRoutes(
   compiler.setData(profiles, blueprints, blocks, filters);
 
   registerLoraRoutes(app);
+
+  // Profile routes
+  app.get("/api/profile", async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      if (userId === DEV_USER_ID) {
+        const user = req.user as any;
+        return res.json({
+          id: DEV_USER_ID,
+          username: user?.claims?.name || "Developer",
+          email: user?.claims?.email || null,
+          plan: "pro",
+          displayName: user?.claims?.name || "Developer",
+          avatarUrl: user?.claims?.profile_image || null,
+          tagline: null,
+          timezone: "America/Sao_Paulo",
+          defaultLanguage: "pt-BR",
+          defaultLlmProfileId: null,
+          theme: "system",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      const appUser = await storage.getAppUser(userId);
+      if (!appUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const user = req.user as any;
+      res.json({
+        ...appUser,
+        email: user?.claims?.email || null,
+        avatarUrl: appUser.avatarUrl || user?.claims?.profile_image || null,
+      });
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      res.status(500).json({ error: "Failed to fetch profile" });
+    }
+  });
+
+  app.put("/api/profile", async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      if (userId === DEV_USER_ID) {
+        return res.json({ success: true, message: "Profile updated (dev mode)" });
+      }
+
+      const data = updateProfileSchema.parse(req.body);
+      const updated = await storage.updateAppUser(userId, data);
+      
+      if (!updated) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ error: "Invalid request", details: error.errors });
+      }
+      console.error("Error updating profile:", error);
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
+  app.get("/api/profile/usage", async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      
+      const history = await storage.getHistory(userId);
+      const loraModels = await storage.getLoraModels(userId);
+      const userBlueprints = await storage.getUserBlueprints(userId);
+      const savedImages = await storage.getSavedImages(userId);
+      const savedVideos = await storage.getSavedVideos(userId);
+      
+      let trainedLorasCount = 0;
+      for (const model of loraModels) {
+        const versions = await storage.getLoraVersions(model.id);
+        trainedLorasCount += versions.filter(v => v.artifactUrl).length;
+      }
+
+      const today = new Date().toISOString().split("T")[0];
+      const promptsToday = history.filter(h => 
+        h.createdAt && h.createdAt.toISOString().split("T")[0] === today
+      ).length;
+
+      const appUser = userId !== DEV_USER_ID ? await storage.getAppUser(userId) : null;
+      const plan = appUser?.plan || "pro";
+
+      res.json({
+        totalPromptsGenerated: history.length,
+        promptsToday,
+        totalImagesGenerated: savedImages.length,
+        totalVideosGenerated: savedVideos.length,
+        blueprintsSaved: userBlueprints.length,
+        loraModelsTrained: trainedLorasCount,
+        plan,
+        limits: {
+          free: {
+            generationsPerDay: 3,
+            maxFilters: 3,
+            maxBlueprints: 5,
+            loraTraining: false,
+          },
+          pro: {
+            generationsPerDay: -1,
+            maxFilters: -1,
+            maxBlueprints: -1,
+            loraTraining: true,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching usage:", error);
+      res.status(500).json({ error: "Failed to fetch usage" });
+    }
+  });
 
   app.get("/api/profiles", async (_req, res) => {
     try {
