@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "wouter";
-import { User, Settings, BarChart3, ArrowRight, Image, History, FolderOpen, Crown, Loader2, Check } from "lucide-react";
+import { User, Settings, BarChart3, ArrowRight, Image, History, FolderOpen, Crown, Loader2, Check, CreditCard, ExternalLink } from "lucide-react";
 
 const TIMEZONES = [
   "America/Sao_Paulo",
@@ -34,6 +34,9 @@ interface ProfileData {
   username: string;
   email: string | null;
   plan: string;
+  planStatus?: string;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
   displayName: string | null;
   avatarUrl: string | null;
   tagline: string | null;
@@ -385,6 +388,35 @@ export default function ProfilePage() {
                     {t.profile.upgradeToPro}
                   </Button>
                 </Link>
+              )}
+
+              {isPro && profile?.stripeCustomerId && (
+                <Button 
+                  className="w-full mt-2" 
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const response = await apiRequest("POST", "/api/stripe/portal", {});
+                      const data = await response.json();
+                      if (data.url) {
+                        window.location.href = data.url;
+                      }
+                    } catch (error) {
+                      toast({
+                        title: t.common.error,
+                        description: language === "pt-BR" 
+                          ? "Não foi possível abrir o portal de pagamento." 
+                          : "Could not open billing portal.",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  data-testid="button-manage-subscription"
+                >
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  {language === "pt-BR" ? "Gerenciar Assinatura" : "Manage Subscription"}
+                  <ExternalLink className="w-3 h-3 ml-2" />
+                </Button>
               )}
             </CardContent>
           </Card>

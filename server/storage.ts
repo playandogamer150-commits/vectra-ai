@@ -22,6 +22,7 @@ export interface IStorage {
   getAppUser(id: string): Promise<AppUser | undefined>;
   getAppUserByUsername(username: string): Promise<AppUser | undefined>;
   createAppUser(user: InsertAppUser): Promise<AppUser>;
+  createAppUserFromReplit(replitId: string, username: string, stripeCustomerId?: string): Promise<AppUser>;
   updateAppUser(id: string, data: Partial<Omit<AppUser, "id" | "username" | "password">>): Promise<AppUser | undefined>;
   
   getProfiles(): Promise<LlmProfile[]>;
@@ -133,6 +134,17 @@ export class DatabaseStorage implements IStorage {
 
   async createAppUser(insertUser: InsertAppUser): Promise<AppUser> {
     const [user] = await db.insert(appUsers).values(insertUser).returning();
+    return user;
+  }
+
+  async createAppUserFromReplit(replitId: string, username: string, stripeCustomerId?: string): Promise<AppUser> {
+    const [user] = await db.insert(appUsers).values({
+      id: replitId,
+      username: username,
+      stripeCustomerId: stripeCustomerId || null,
+      plan: 'free',
+      planStatus: 'active',
+    }).returning();
     return user;
   }
 

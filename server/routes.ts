@@ -17,6 +17,8 @@ import {
 import { ZodError } from "zod";
 import { registerLoraRoutes } from "./lora-routes";
 import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
+import { stripeService } from "./stripeService";
+import { getStripePublishableKey } from "./stripeClient";
 
 const DEV_USER_ID = "dev_user";
 
@@ -1264,6 +1266,126 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error deleting preset:", error);
       res.status(500).json({ error: "Failed to delete preset" });
+    }
+  });
+
+  // Stripe routes
+  app.get("/api/stripe/publishable-key", async (req, res) => {
+    try {
+      const publishableKey = await getStripePublishableKey();
+      res.json({ publishableKey });
+    } catch (error: any) {
+      console.error("Error getting Stripe publishable key:", error);
+      res.status(500).json({ error: "Failed to get Stripe configuration" });
+    }
+  });
+
+  app.get("/api/stripe/products", async (req, res) => {
+    try {
+      const products = await stripeService.listProductsWithPrices();
+      res.json({ products });
+    } catch (error: any) {
+      console.error("Error listing products:", error);
+      res.status(500).json({ error: "Failed to list products" });
+    }
+  });
+
+  app.post("/api/stripe/checkout", async (req, res) => {
+    try {
+      const user = req.user as any;
+      if (!user?.claims?.sub) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const userId = user.claims.sub;
+      const { priceId } = req.body;
+
+      if (!priceId) {
+        return res.status(400).json({ error: "Price ID is required" });
+      }
+
+      let appUser = await storage.getAppUser(userId);
+      
+      if (appUser?.plan === "pro") {
+        return res.status(400).json({ error: "Already subscribed to Pro" });
+      }
+
+      let customerId = appUser?.stripeCustomerId;
+
+      if (!customerId) {
+        const email = user.claims.email || `${user.claims.name || 'user'}@vectra.temp`;
+        const customer = await stripeService.createCustomer(
+          email,
+          userId,
+          user.claims.name || user.claims.sub
+        );
+        customerId = customer.id;
+        
+        if (appUser) {
+          await stripeService.updateUserStripeInfo(userId, { stripeCustomerId: customerId });
+        } else {
+          await storage.createAppUserFromReplit(userId, user.claims.name || "User", customerId);
+        }
+      }
+
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const locale = req.body.locale || req.headers['accept-language']?.split(',')[0] || 'pt-BR';
+      const session = await stripeService.createCheckoutSession(
+        customerId,
+        priceId,
+        `${baseUrl}/pricing?success=true`,
+        `${baseUrl}/pricing?canceled=true`,
+        locale
+      );
+
+      res.json({ url: session.url });
+    } catch (error: any) {
+      console.error("Error creating checkout session:", error);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
+  app.post("/api/stripe/portal", async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const user = req.user as any;
+      
+      if (!user?.claims?.sub) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const appUser = await storage.getAppUser(userId);
+      if (!appUser?.stripeCustomerId) {
+        return res.status(400).json({ error: "No billing account found" });
+      }
+
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const session = await stripeService.createCustomerPortalSession(
+        appUser.stripeCustomerId,
+        `${baseUrl}/profile`
+      );
+
+      res.json({ url: session.url });
+    } catch (error: any) {
+      console.error("Error creating portal session:", error);
+      res.status(500).json({ error: "Failed to access billing portal" });
+    }
+  });
+
+  app.get("/api/stripe/subscription", async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      const appUser = await storage.getAppUser(userId);
+      
+      if (!appUser?.stripeSubscriptionId) {
+        return res.json({ subscription: null });
+      }
+
+      const subscription = await stripeService.getSubscription(appUser.stripeSubscriptionId);
+      res.json({ subscription });
+    } catch (error: any) {
+      console.error("Error getting subscription:", error);
+      res.status(500).json({ error: "Failed to get subscription" });
     }
   });
 

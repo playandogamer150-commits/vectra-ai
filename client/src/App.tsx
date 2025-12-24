@@ -13,6 +13,9 @@ import HistoryPage from "@/pages/history";
 import ModelsLabStudioPage from "@/pages/modelslab-studio";
 import LoRAStudioPage from "@/pages/lora-studio";
 import ProfilePage from "@/pages/profile";
+import TermsPage from "@/pages/terms";
+import PrivacyPage from "@/pages/privacy";
+import SupportPage from "@/pages/support";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -25,6 +28,9 @@ function Router() {
       <Route path="/image-studio" component={ModelsLabStudioPage} />
       <Route path="/lora-studio" component={LoRAStudioPage} />
       <Route path="/profile" component={ProfilePage} />
+      <Route path="/terms" component={TermsPage} />
+      <Route path="/privacy" component={PrivacyPage} />
+      <Route path="/support" component={SupportPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -32,7 +38,8 @@ function Router() {
 
 function AppContent() {
   const [location] = useLocation();
-  const showHeader = location !== "/" && location !== "/pricing";
+  const pagesWithoutHeader = ["/", "/pricing", "/terms", "/privacy", "/support"];
+  const showHeader = !pagesWithoutHeader.includes(location);
 
   return (
     <>

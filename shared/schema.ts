@@ -13,12 +13,21 @@ export const loraProviderEnum = pgEnum("lora_provider", ["webhook_worker", "repl
 export const videoJobStatusEnum = pgEnum("video_job_status", ["queued", "processing", "success", "error"]);
 export const videoTransformStrategyEnum = pgEnum("video_transform_strategy", ["letterbox", "crop", "none"]);
 
+export const planStatusEnum = pgEnum("plan_status", ["active", "canceled", "past_due", "trialing"]);
+
 export const appUsers = pgTable("app_users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
-  password: text("password").notNull(),
+  password: text("password"),
   plan: userPlanEnum("plan").default("free").notNull(),
+  planStatus: planStatusEnum("plan_status").default("active"),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  billingCycleEnd: timestamp("billing_cycle_end"),
   generationsToday: integer("generations_today").default(0).notNull(),
+  imagesGenerated: integer("images_generated").default(0).notNull(),
+  videosGenerated: integer("videos_generated").default(0).notNull(),
+  lorasTrained: integer("loras_trained").default(0).notNull(),
   lastGenerationDate: text("last_generation_date"),
   displayName: text("display_name"),
   avatarUrl: text("avatar_url"),
@@ -279,6 +288,18 @@ export const userBlueprintVersions = pgTable("user_blueprint_versions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const usageLogTypeEnum = pgEnum("usage_log_type", ["prompt", "image", "video", "lora_training"]);
+
+export const usageLogs = pgTable("usage_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  type: usageLogTypeEnum("type").notNull(),
+  quantity: integer("quantity").default(1).notNull(),
+  planSnapshot: userPlanEnum("plan_snapshot").notNull(),
+  metadata: jsonb("metadata").$type<Record<string, any>>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const videoJobs = pgTable("video_jobs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
@@ -302,11 +323,16 @@ export const videoJobs = pgTable("video_jobs", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const usageLogsRelations = relations(usageLogs, ({ one }) => ({
+  user: one(appUsers, { fields: [usageLogs.userId], references: [appUsers.id] }),
+}));
+
 export const appUsersRelations = relations(appUsers, ({ many, one }) => ({
   generatedPrompts: many(generatedPrompts),
   loraModels: many(loraModels),
   activeLora: one(userLoraActive, { fields: [appUsers.id], references: [userLoraActive.userId] }),
   videoJobs: many(videoJobs),
+  usageLogs: many(usageLogs),
 }));
 
 export const generatedPromptsRelations = relations(generatedPrompts, ({ one, many }) => ({
