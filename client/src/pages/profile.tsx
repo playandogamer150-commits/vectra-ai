@@ -13,6 +13,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "wouter";
 import { User, Settings, BarChart3, ArrowRight, Image, History, FolderOpen, Crown, Loader2, Check, CreditCard, ExternalLink } from "lucide-react";
+import { useTheme } from "@/components/theme-provider";
 
 const TIMEZONES = [
   "America/Sao_Paulo",
@@ -42,7 +43,7 @@ interface ProfileData {
   tagline: string | null;
   timezone: string | null;
   defaultLanguage: string | null;
-  defaultLlmProfileId: number | null;
+  defaultLlmProfileId: string | null;
   theme: string | null;
 }
 
@@ -61,20 +62,21 @@ interface UsageData {
 }
 
 interface LLMProfile {
-  id: number;
+  id: string;
   name: string;
 }
 
 export default function ProfilePage() {
   const { t, language, setLanguage } = useI18n();
   const { toast } = useToast();
+  const { setTheme } = useTheme();
   
   const [formData, setFormData] = useState<{
     displayName: string;
     tagline: string;
     timezone: string;
     defaultLanguage: string;
-    defaultLlmProfileId: number | null;
+    defaultLlmProfileId: string | null;
     theme: string;
   }>({
     displayName: "",
@@ -143,6 +145,8 @@ export default function ProfilePage() {
     if (formData.defaultLanguage !== language) {
       setLanguage(formData.defaultLanguage as "en" | "pt-BR");
     }
+    
+    setTheme(formData.theme as "light" | "dark" | "system");
   };
 
   const isPro = usage?.plan === "pro";
@@ -293,10 +297,10 @@ export default function ProfilePage() {
               <div className="space-y-2">
                 <Label htmlFor="defaultProfile">{t.profile.defaultProfile}</Label>
                 <Select
-                  value={formData.defaultLlmProfileId?.toString() || "auto"}
+                  value={formData.defaultLlmProfileId || "auto"}
                   onValueChange={(v) => setFormData(prev => ({ 
                     ...prev, 
-                    defaultLlmProfileId: v === "auto" ? null : parseInt(v)
+                    defaultLlmProfileId: v === "auto" ? null : v
                   }))}
                 >
                   <SelectTrigger id="defaultProfile" data-testid="select-default-profile">
@@ -305,7 +309,7 @@ export default function ProfilePage() {
                   <SelectContent>
                     <SelectItem value="auto">{t.profile.autoSelect}</SelectItem>
                     {profiles?.map((p) => (
-                      <SelectItem key={p.id} value={p.id.toString()}>
+                      <SelectItem key={p.id} value={p.id}>
                         {p.name}
                       </SelectItem>
                     ))}
