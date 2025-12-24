@@ -133,6 +133,20 @@ export default function StudioPage() {
     queryKey: ["/api/user-blueprints"],
   });
 
+  interface UsageData {
+    plan: string;
+    isPro: boolean;
+    daily: {
+      prompts: { used: number; limit: number };
+      images: { used: number; limit: number };
+      videos: { used: number; limit: number };
+    };
+  }
+
+  const { data: usageData } = useQuery<UsageData>({
+    queryKey: ["/api/profile/usage"],
+  });
+
   const generateMutation = useMutation({
     mutationFn: async () => {
       const isUserBlueprint = blueprintTab === "custom" && selectedUserBlueprint;
@@ -202,8 +216,47 @@ export default function StudioPage() {
     <div className="min-h-screen pt-16">
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2" data-testid="text-studio-title">{t.studio.title}</h1>
-          <p className="text-muted-foreground">{t.studio.subtitle}</p>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-semibold mb-2" data-testid="text-studio-title">{t.studio.title}</h1>
+              <p className="text-muted-foreground">{t.studio.subtitle}</p>
+            </div>
+            {usageData && !usageData.isPro && (
+              <Card className="bg-muted/50 border-dashed" data-testid="card-usage-indicator">
+                <CardContent className="p-3">
+                  <div className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wide">
+                    {t.studio.dailyLimits || "Daily Limits"}
+                  </div>
+                  <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className={usageData.daily.prompts.used >= usageData.daily.prompts.limit ? "text-destructive" : ""}>
+                        {usageData.daily.prompts.used}/{usageData.daily.prompts.limit}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Image className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className={usageData.daily.images.used >= usageData.daily.images.limit ? "text-destructive" : ""}>
+                        {usageData.daily.images.used}/{usageData.daily.images.limit}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Video className="w-3.5 h-3.5 text-muted-foreground" />
+                      <span className={usageData.daily.videos.limit === 0 ? "text-muted-foreground" : usageData.daily.videos.used >= usageData.daily.videos.limit ? "text-destructive" : ""}>
+                        {usageData.daily.videos.used}/{usageData.daily.videos.limit}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {usageData?.isPro && (
+              <Badge variant="secondary" className="text-xs" data-testid="badge-pro-plan">
+                <Sparkles className="w-3 h-3 mr-1" />
+                Pro
+              </Badge>
+            )}
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-[320px_1fr] gap-8">

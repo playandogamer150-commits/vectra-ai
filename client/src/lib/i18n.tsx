@@ -131,6 +131,7 @@ const translations = {
       characterPackTitle: "Character Pack Instructions",
       uploadImages: "Upload your reference images to the platform",
       recommendedSettings: "Recommended Settings",
+      dailyLimits: "Daily Limits",
     },
     library: {
       title: "Blueprint Library",
@@ -561,6 +562,7 @@ const translations = {
       characterPackTitle: "Instruções do Character Pack",
       uploadImages: "Envie suas imagens de referência para a plataforma",
       recommendedSettings: "Configurações Recomendadas",
+      dailyLimits: "Limites Diários",
     },
     library: {
       title: "Biblioteca de Blueprints",

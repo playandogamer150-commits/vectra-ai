@@ -271,8 +271,13 @@ export async function registerRoutes(
         h.createdAt && h.createdAt.toISOString().split("T")[0] === today
       ).length;
 
-      const appUser = userId !== DEV_USER_ID ? await storage.getAppUser(userId) : null;
-      const plan = appUser?.plan || "pro";
+      const appUser = await storage.getAppUser(userId);
+      const plan = appUser?.plan || "free";
+      const isPro = plan === "pro";
+
+      const imagesUsedToday = await storage.getUsageToday(userId, "image");
+      const videosUsedToday = await storage.getUsageToday(userId, "video");
+      const promptsUsedToday = await storage.getUsageToday(userId, "prompt");
 
       res.json({
         totalPromptsGenerated: history.length,
@@ -282,15 +287,25 @@ export async function registerRoutes(
         blueprintsSaved: userBlueprints.length,
         loraModelsTrained: trainedLorasCount,
         plan,
+        isPro,
+        daily: {
+          prompts: { used: promptsUsedToday, limit: isPro ? -1 : FREE_LIMITS.promptsPerDay },
+          images: { used: imagesUsedToday, limit: isPro ? -1 : FREE_LIMITS.imagesPerDay },
+          videos: { used: videosUsedToday, limit: isPro ? -1 : FREE_LIMITS.videosPerDay },
+        },
         limits: {
           free: {
-            generationsPerDay: 3,
+            promptsPerDay: FREE_LIMITS.promptsPerDay,
+            imagesPerDay: FREE_LIMITS.imagesPerDay,
+            videosPerDay: FREE_LIMITS.videosPerDay,
             maxFilters: 3,
             maxBlueprints: 5,
             loraTraining: false,
           },
           pro: {
-            generationsPerDay: -1,
+            promptsPerDay: -1,
+            imagesPerDay: -1,
+            videosPerDay: -1,
             maxFilters: -1,
             maxBlueprints: -1,
             loraTraining: true,
@@ -889,12 +904,14 @@ export async function registerRoutes(
       // Truncate prompt to API max length (2000 chars)
       const truncatedPrompt = prompt.length > 2000 ? prompt.substring(0, 2000) : prompt;
       
+      const isBase64 = initImage.startsWith("data:");
       const requestBody = {
         key: apiKey,
         model_id: "realistic-vision-51",
         prompt: truncatedPrompt,
         negative_prompt: "bad quality, blurry, distorted, low resolution, watermark, text",
         init_image: initImage,
+        base64: isBase64 ? "yes" : "no",
         width: dimensions.width,
         height: dimensions.height,
         samples: "1",
