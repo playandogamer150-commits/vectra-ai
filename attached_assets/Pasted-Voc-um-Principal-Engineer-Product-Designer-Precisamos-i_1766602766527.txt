@@ -1,0 +1,134 @@
+Você é um Principal Engineer + Product Designer. Precisamos implementar um **Sistema de Perfil de Usuário** completo no Vectra AI.
+
+**OBJETIVO GERAL**  
+Permitir que cada usuário veja e edite seu próprio perfil, com informações pessoais, preferências, plano/uso e métricas, em um layout minimalista monocromático consistente com a nova identidade do Vectra AI. Tudo isso de forma segura, escalável e profissional.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1) BANCO DE DADOS (Drizzle / Postgres)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+– **users**: adicione colunas (se ainda não existirem):
+  - `display_name` TEXT  
+  - `avatar_url` TEXT (para URL do avatar)  
+  - `tagline` TEXT (biografia curta)  
+  - `timezone` TEXT (padrão: "America/Sao_Paulo")  
+  - `default_llm_profile_id` UUID (FK opcional; define LLM preferido)  
+  - `default_language` VARCHAR(5) (ex: "pt-BR", "en-US")  
+  - `updated_at` TIMESTAMP  
+  - `created_at` TIMESTAMP  
+
+– **user_preferences** (opcional): separe preferências que podem crescer, com campos JSON para futuras extensões (themes, shortcuts, etc.).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2) API (Next.js App Router)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Crie rotas REST autenticadas:
+
+**GET /api/profile**  
+Retorna o próprio perfil do usuário logado (display_name, avatar_url, tagline, timezone, default_llm_profile_id, default_language, plan, usageMetrics).  
+– Validação: deve estar autenticado.
+
+**PUT /api/profile**  
+Atualiza campos permitidos do perfil (display_name, tagline, timezone, default_llm_profile_id, default_language, avatar).  
+– Use Zod para validar: limites de tamanho, formatação de timezone, etc.  
+– Upload de avatar: utilize presigned URL (S3/R2) ou API de upload existente. Retorne a URL para salvar em `avatar_url`.  
+– Proteção: não permitir alterar campos sensíveis (email, role, plan).
+
+**GET /api/profile/usage**  
+Retorna métricas de uso (ex.: `totalPromptsGenerated`, `totalVideoJobs`, `activeBlueprints`, `loraModelsTrained`, `creditsRemaining`).  
+– Calcule via queries em `generated_prompts`, `video_jobs`, `lora_jobs`, `user_blueprints`, `lora_models`.  
+– Inclua “planLimits” (ex.: `freeGenerationLimit`, `proGenerationLimit`, `freeLoraTrainingLimit`, etc.) para comparar.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3) UI/UX (Next.js + shadcn/ui + Tailwind)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Crie uma nova rota **/profile** acessível somente a usuários autenticados.  
+Estrutura:
+
+### **Header (já existente)**  
+– Adicione o Avatar do usuário no topo.  
+– Ao clicar, abrir menu com: “Meu Perfil”, “Configurações”, “Sair”.
+
+### **Página /profile**  
+Divida em cards (design minimalista monocromático). Use componentes `Card`, `Input`, `Textarea`, `Select`, `Button` do shadcn/ui.
+
+**Seção A – Informações pessoais**  
+- Avatar (com botão “Alterar foto” que abre modal ou file picker).  
+- Display Name (campo editável).  
+- Email (apenas leitura).  
+- Tagline/Bio (textarea curto).  
+- Timezone (select pré-carregado com fusos horários; padrão: America/Sao_Paulo).  
+- Language (select: “Português (BR)”, “English (US)”).  
+- Botão “Salvar Alterações”.
+
+**Seção B – Preferências**  
+- Default LLM Profile (select que lista todos os perfis do sistema + “Auto”).  
+- Default Blueprint Category (select opcional se existir).  
+- Theme (light/dark/auto).  
+- Botão “Salvar Preferências”.
+
+**Seção C – Plano e Métricas**  
+- Plano atual (Free / Pro / Enterprise) com badge.  
+- Métricas de uso:  
+  - Promptagens geradas (dia/mês)  
+  - Vídeos criados  
+  - Blueprints salvos  
+  - Loras treinadas  
+- Limites do plano vs uso.  
+- CTA para **Upgrade** se estiver no Free.
+
+**Seção D – Segurança**  
+- Listar provedores de login (email, GitHub, Google) e botões para desconectar.  
+- Link “Alterar senha” ou redirecionamento para Auth.js.  
+- Link “Excluir conta” (se existir funcionalidade de delete).
+
+**Seção E – Acesso rápido** (opcional)  
+- Link para “Meus Blueprints”  
+- Link para “Histórico”  
+- Link para “Estúdio”  
+- Isso torna o perfil um hub central.
+
+### Feedback e Interações  
+- Use Toasts para “Salvo com sucesso!” ou erros.  
+- Use Skeletons ou Spinners em carregamentos.  
+- Validação client-side com Zod e error messages claras.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4) INTEGRAÇÕES E SEGURANÇA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+– Somente o usuário dono do perfil pode acessar/editar seu perfil.  
+– Utilize o session do NextAuth para autenticar e recuperar `user.id`.  
+– Envie cabeçalho `CSRF` e proteja as rotas com verificação anti-CSRF.  
+– Rate limit (MVP: 5 req/min) nas rotas PUT.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5) DESIGN (MONOCHROMÁTICO MINIMALISTA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+– Paleta: preto (#0A0A0A), cinza escuro (#1E1E1E), cinza médio (#6B6B6B), cinza claro (#E5E5E5), branco (#FFFFFF).  
+– Cards com bordas finas, sombra difusa muito leve.  
+– Inputs: radius 12px, fundo cinza escuro, borda 1px cinza médio, texto branco.  
+– Botões: primário em cinza claro com texto preto; secundário com borda.  
+– Ícones: SVG monocromático (ex.: ícone de usuário, fusos, idioma, plano).  
+– Tipografia: Roboto para todos textos; tamanhos escalonados; weight 400/500.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6) PLANOS E FUTURO (PREPARAR PARA ESCALA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+– Permitir fácil adição de campos no perfil (redes sociais, portfólio, etc.).  
+– Estruturar endpoints e tabelas de modo a servir APIs para mobile.  
+– Criar hooks (`useProfile`, `useUpdateProfile`) para consumo pela UI.  
+– Preparar localization (i18n) das strings do perfil (PT/EN).  
+– Deixar espaço na UI para métricas avançadas (tokens usados, segundos de vídeo, etc).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7) CRITÉRIOS DE ACEITE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✔️ Usuário consegue acessar /profile após login.  
+✔️ Consegue ver e editar suas informações pessoais.  
+✔️ Consegue alterar foto de perfil (upload funcional).  
+✔️ Vê suas métricas de uso e plano, com link para upgrade.  
+✔️ Todo design segue a identidade minimalista preto/branco/cinza.  
+✔️ Rotas protegidas e validadas com Zod.  
+✔️ Testado em light e dark mode.  
+✔️ Não há regressões nas outras páginas.
+
+Execute com a mesma qualidade e arquitetura do restante da aplicação (Next.js App Router, Drizzle, shadcn/ui, Zod, Tailwind, i18n, etc.).

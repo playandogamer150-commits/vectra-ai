@@ -20,6 +20,15 @@ export const appUsers = pgTable("app_users", {
   plan: userPlanEnum("plan").default("free").notNull(),
   generationsToday: integer("generations_today").default(0).notNull(),
   lastGenerationDate: text("last_generation_date"),
+  displayName: text("display_name"),
+  avatarUrl: text("avatar_url"),
+  tagline: text("tagline"),
+  timezone: text("timezone").default("America/Sao_Paulo"),
+  defaultLanguage: varchar("default_language", { length: 5 }).default("pt-BR"),
+  defaultLlmProfileId: varchar("default_llm_profile_id"),
+  theme: text("theme").default("system"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const llmProfiles = pgTable("llm_profiles", {
@@ -406,6 +415,17 @@ export const generateRequestSchema = z.object({
 }).refine(data => data.blueprintId || data.userBlueprintId, {
   message: "Either blueprintId or userBlueprintId is required",
 });
+
+export const updateProfileSchema = z.object({
+  displayName: z.string().max(100).optional(),
+  tagline: z.string().max(200).optional(),
+  timezone: z.string().max(50).optional(),
+  defaultLanguage: z.enum(["pt-BR", "en"]).optional(),
+  defaultLlmProfileId: z.string().optional().nullable(),
+  theme: z.enum(["light", "dark", "system"]).optional(),
+});
+
+export type UpdateProfileRequest = z.infer<typeof updateProfileSchema>;
 
 export type InsertAppUser = z.infer<typeof insertAppUserSchema>;
 export type AppUser = typeof appUsers.$inferSelect;
