@@ -377,43 +377,6 @@ export const defaultFilters: FilterDefinition[] = [
       long: "extended detailed description",
     },
   },
-  {
-    key: "sensual_pose",
-    label: "Pose Sensual",
-    schema: { type: "select", options: ["sutil", "confiante", "provocante", "intima", "editorial_hot"] },
-    effect: {
-      sutil: "elegant pose with subtle sensuality, graceful body language, sophisticated allure, soft gaze",
-      confiante: "confident powerful pose, strong eye contact, self-assured body language, commanding presence, empowered stance",
-      provocante: "provocative seductive pose, intense gaze, arched back, expressive body language, flirtatious attitude",
-      intima: "intimate close-up pose, vulnerable and inviting expression, bedroom eyes, soft lips parted, natural intimacy",
-      editorial_hot: "high fashion editorial pose with sensual undertones, model-like posture, elongated limbs, striking and bold",
-    },
-  },
-  {
-    key: "sensual_scenario",
-    label: "Cenário Sensual",
-    schema: { type: "select", options: ["quarto", "banheiro", "piscina", "golden_hour", "estudio", "hotel_luxo"] },
-    effect: {
-      quarto: "intimate bedroom setting, soft bed linens, warm ambient lighting, romantic atmosphere, messy sheets",
-      banheiro: "steamy bathroom environment, wet skin glistening, mirror reflections, towels and water droplets",
-      piscina: "poolside setting, wet swimwear, sun-kissed skin, water reflections, summer vibes",
-      golden_hour: "golden hour outdoor lighting, warm sun glow on skin, natural backlight, soft warm tones",
-      estudio: "professional studio with intimate lighting, single soft light source, dark background, dramatic shadows on body",
-      hotel_luxo: "luxury hotel suite, elegant interior, silk robes, champagne aesthetic, premium sophisticated setting",
-    },
-  },
-  {
-    key: "body_emphasis",
-    label: "Destaque Corporal",
-    schema: { type: "select", options: ["curvas", "silhueta", "textura_pele", "atletico", "natural"] },
-    effect: {
-      curvas: "emphasis on natural body curves, hourglass silhouette, flattering angles highlighting figure",
-      silhueta: "dramatic silhouette against light, body outline, contour definition, shadow play on form",
-      textura_pele: "detailed skin texture, natural skin with pores, realistic imperfections, authentic beauty",
-      atletico: "athletic toned body, muscle definition, fit physique, healthy glow, strength and grace",
-      natural: "natural relaxed body, unposed authentic feel, comfortable in own skin, effortless beauty",
-    },
-  },
 ];
 
 export const defaultBaseModels: BaseModelDefinition[] = [
