@@ -1,0 +1,123 @@
+Você é um Principal Engineer + Product Designer responsável por preparar a Vectra AI para lançamento comercial. Todas as funcionalidades existentes (Estúdio de Imagem, Biblioteca, Histórico, Estúdio LoRA, Blueprints, Perfis) já estão implementadas. Agora vamos **finalizar** o produto para que seja vendável, escalável e compliance-ready.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧭 Visão Geral
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Objetivo: tornar a Vectra AI um SaaS premium pronto para o mercado. Isso inclui:
+- Cobrança e planos
+- Quotas e limites de uso
+- Internacionalização total (PT/EN)
+- Páginas legais
+- Observabilidade, suporte e segurança
+- Otimização de UX e acessibilidade
+- Finalização de design monocromático minimalista
+- Conclusão do sistema de métricas e relatórios
+
+Tudo deve ser consistente com o stack existente (Next.js App Router + TS, Drizzle, shadcn/ui, Tailwind, i18n).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1) Cobrança e Planos (Stripe)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. **Integração com Stripe**:
+   - Use o Stripe Checkout e Customer Portal.
+   - Crie produtos/plans: Free (0), Pro (R$19/mês), Enterprise (custom).
+   - Adicione Webhooks para eventos: subscription_created, invoice_paid, subscription_canceled, payment_failed. Atualize `users.plan` e `users.plan_status`.
+2. **Modelos de Preço**:
+   - Planos base incluem quotas mensais (prompts, imagens, vídeos, Loras) e funcionalidades (API, LoRA training, vídeo 16:9).
+   - Overages (excedentes) devem ser cobrados via modelo usage-based (ex.: R$0,50 por vídeo extra):contentReference[oaicite:0]{index=0}.
+   - Permita assinaturas anuais (com desconto) e proration na troca de planos.
+3. **UI de Plano**:
+   - Na página /pricing, mostre comparativo e CTA “Upgrade via Stripe”.
+   - No perfil (Plano e Uso), mostre: plano atual, quotas usadas, data de renovação e botão “Gerenciar Assinatura” (abre o Stripe Portal).
+   - Enviar emails transacionais (boas-vindas, renovação, falha de pagamento) usando um serviço (SendGrid/Postmark).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2) Quotas e Limites de Uso
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. **Limites por Plano**: configure no back-end (ex.: Free: 10 gerações/dia, 3 LoRA Trainings/mês; Pro: ilimitado, porém com fair use; Enterprise: ilimitado).
+2. **Middleware**: implemente verificação de quotas antes de chamadas de geração (prompts, imagens, vídeos e LoRAs). Se limite ultrapassado:
+   - Para Free: retornar erro 402 com mensagem amigável e link para upgrade.
+   - Para Pro: aplicar custo extra (usage-based) e mostrar balanço.
+3. **Uso de Jobs**: registre cada chamada de geração como job em `usage_logs` (user_id, type, quantity, plan_snapshot, timestamp). Use isso para relatórios e billing usage.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3) Internacionalização Completa
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. **i18n**: Garanta que **toda** string no front-end e e-mails esteja disponível em PT-BR e EN-US.
+2. **Detectar idioma**: usar `accept-language` do navegador; permitir troca manual (ícone no topo).
+3. **Tradução dinâmica**: use `next-intl` ou plugin similar; mantenha JSON de traduções organizado.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4) Páginas Legais e Compliance
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. **Páginas**: adicione rotas públicas:
+   - `/terms` — Termos de Serviço (responsabilidade, uso aceitável, direitos autorais).
+   - `/privacy` — Política de Privacidade (dados coletados, uso, cookies).
+   - `/cookies` (opcional) — Política de Cookies e banner de consentimento.
+2. **Consentimentos**: no momento do cadastro, pedir aceite dos termos.
+3. **LGPD/GDPR**: destaque direitos de exclusão e portabilidade de dados. Permita que o usuário solicite exportação de seus dados.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5) Observabilidade e Confiabilidade
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. **Sentry + OpenTelemetry**: já configurados? Garanta captura de erros, com tags (user_id, plan) e trace para endpoints críticos.
+2. **Logs estruturados**: inclua request_id, user_id, endpoint, tempo de execução. Armazene em BigQuery/Logflare com retenção de 90 dias.
+3. **Monitoramento de Jobs**: painel interno com filas de vídeo/LoRA e status (em processamento, completado, erro). Exponha alertas.
+4. **Rate Limiting**: adicionar rate limit global (ex.: 30 req/min) e por endpoint; bloquear bots e abuso.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6) Suporte e Comunicações
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. **Help Center**: crie rota `/support` com base de conhecimento (FAQ) e formulário de contato com envio via email.
+2. **Central de Notificações**:
+   - Notificações in-app: novos recursos, status de jobs, pagamentos.
+   - Envio de email para eventos relevantes (LoRA concluída, vídeo pronto).
+3. **Chatbot ou Canal**: integrar com plataforma (Discord ou Slack) para suporte em tempo real (opcional).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7) Recursos Avançados para Escala
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. **API Pública**: documentar e expor endpoints (REST ou tRPC) para geração via API externa. Use Bearer Token (JWT) por usuário. Inclua quotas.
+2. **Organizações & Times**: permitir criar “Workspaces” com membros, convites por email, papéis (Owner, Admin, Member).
+3. **Compartilhamento de Blueprints**: habilitar compartilhar blueprint com time ou link público; permitir marketplace futuro.
+4. **Import/Export**:
+   - Exportar histórico de prompts/LoRAs em JSON/CSV.
+   - Importar presets/blueprints de arquivo.
+5. **Analytics Avançado**:
+   - Dashboard (Admin) com métricas de uso, receita, conversão, churn.
+   - Mostrar insights como blueprint mais usado, modelos preferidos, etc.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8) UX e Acessibilidade
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. **Onboarding**: após primeiro login, mostrar tour interativo explicando as principais features (Studio, Biblioteca, LoRA Studio, Histórico).
+2. **Pesquisa e Filtro**:
+   - Buscar blueprints por nome, categoria, tags.
+   - Filtrar histórico por data, tipo, modelo.
+3. **Acessibilidade**: adicionar ARIA labels em inputs, foco visível, contraste. Testar com teclado.
+4. **Ajuste Fino de Design**:
+   - Revisar espaçamentos e responsividade (mobile/tablet).
+   - Garantir consistência do modo claro/escuro.
+   - Refinar cards e gráficos nas seções de uso (ícones, tipografia Roboto, cores de quota).
+   - Adicionar micro animações (carregamento, transições suaves).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+9) Segurança e Privacidade
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. **Autenticação**: usar NextAuth; suportar login social (Google, GitHub, Apple) e Email magic link; permitir MFA (Google Authenticator) para accounts Pro+.
+2. **Autorização**: implementar RBAC para admin (gerenciar planos, ver dados de todos) vs usuário.
+3. **Criptografia**: armazenar secrets fora do repo (env secrets); usar TLS para todos endpoints externos; criptografar LoRA files e uploads.
+4. **Política de Retenção**: limpar dados de logs antigos (90 dias) e histórico de jobs (1 ano) para free.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+10) Critérios de Aceite Final
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ O usuário Free consegue criar conta, usar app com limites, ver uso e ser convidado a upgrade.  
+✅ Usuário Pro paga via Stripe e acessa funcionalidades Premium sem fricção.  
+✅ O sistema cobra sobre-uso (ou bloqueia) conforme definido.  
+✅ Toda UI tem tradução PT/EN, modo claro/escuro, responsividade e acessibilidade.  
+✅ Páginas legais, ajuda e onboarding acessíveis e claras.  
+✅ Todas rotas e APIs têm logs, métricas, rate limit e tratam erros com mensagens amigáveis.  
+✅ Produto apresenta qualidade visual e experiência fluida pronta para venda.
+
+Agora execute esse conjunto de tarefas. Comece listando o plano de ação (em itens e arquivos/pacotes afetados), depois implemente de forma incremental, validando que tudo funciona sem quebrar o que já existe.
