@@ -772,7 +772,7 @@ export async function registerRoutes(
         console.log("Sending NSFW image-to-image to ModelsLab:", { 
           ...requestBody, 
           key: "[REDACTED]",
-          init_image: `[${processedImages.length} images]`,
+          init_image: "[base64 image data]",
         });
         
         const response = await fetch("https://modelslab.com/api/v4/dreambooth/img2img", {
