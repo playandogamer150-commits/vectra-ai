@@ -811,28 +811,29 @@ export async function registerRoutes(
       
       const requestBody = {
         key: apiKey,
-        model_id: "nano-banana-pro",
+        model_id: "realistic-vision-51",
         prompt: truncatedPrompt,
+        negative_prompt: "bad quality, blurry, distorted, low resolution, watermark, text",
         init_image: initImage,
-        aspect_ratio: selectedRatio,
         width: dimensions.width,
         height: dimensions.height,
-        resize: true,
-        output_format: "png",
-        safety_checker: false,
-        enhance_prompt: false,
-        num_inference_steps: 30,
+        samples: "1",
+        num_inference_steps: "30",
+        safety_checker: "no",
+        enhance_prompt: "no",
         guidance_scale: 7.5,
+        strength: 0.7,
+        scheduler: "UniPCMultistepScheduler",
       };
       
-      console.log("Sending to ModelsLab:", { 
+      console.log("Sending to ModelsLab v6 img2img:", { 
         ...requestBody, 
         key: "[REDACTED]",
         init_image: `[image: ${initImage.substring(0, 50)}...]`,
         prompt: `[${truncatedPrompt.length} chars]`,
       });
       
-      const response = await fetch("https://modelslab.com/api/v7/images/image-to-image", {
+      const response = await fetch("https://modelslab.com/api/v6/images/img2img", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
