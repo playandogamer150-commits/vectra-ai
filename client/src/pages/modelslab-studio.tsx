@@ -838,37 +838,40 @@ export default function ModelsLabStudioPage() {
                       </Tabs>
                     </div>
 
-                    {/* Filters */}
+                    {/* Filters - Chip/Badge Style */}
                     {!loadingFilters && filters && filters.length > 0 && (
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         <Label className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
                           <SlidersHorizontal className="w-3 h-3" />
                           {t.studio?.filters || "Filters"}
                         </Label>
-                        <ScrollArea className="h-[150px]">
-                          <div className="space-y-3 pr-4">
-                            {filters.map((filter) => (
-                              <div key={filter.key} className="space-y-1">
-                                <Label className="text-xs">{filter.label}</Label>
-                                <Select
-                                  value={activeFilters[filter.key] || ""}
-                                  onValueChange={(value) => handleFilterChange(filter.key, value)}
-                                >
-                                  <SelectTrigger className="h-8" data-testid={`select-filter-${filter.key}`}>
-                                    <SelectValue placeholder="Select..." />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {filter.schema.options?.map((option: string) => (
-                                      <SelectItem key={option} value={option}>
-                                        {option}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
+                        <div className="space-y-3">
+                          {filters.map((filter) => (
+                            <div key={filter.key} className="space-y-1.5">
+                              <span className="text-xs text-muted-foreground">{filter.label}</span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {filter.schema.options?.map((option: string) => {
+                                  const isSelected = activeFilters[filter.key] === option;
+                                  return (
+                                    <button
+                                      key={option}
+                                      type="button"
+                                      onClick={() => handleFilterChange(filter.key, isSelected ? "" : option)}
+                                      className={`px-2.5 py-1 text-xs rounded-md border transition-colors ${
+                                        isSelected
+                                          ? "bg-primary text-primary-foreground border-primary"
+                                          : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted hover:text-foreground"
+                                      }`}
+                                      data-testid={`filter-chip-${filter.key}-${option}`}
+                                    >
+                                      {option}
+                                    </button>
+                                  );
+                                })}
                               </div>
-                            ))}
-                          </div>
-                        </ScrollArea>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
 
