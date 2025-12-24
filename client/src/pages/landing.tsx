@@ -1,22 +1,20 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from "@/hooks/use-toast";
 import { BRAND } from "@/lib/constants";
 import { MonoIcon } from "@/components/mono-icon";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function LandingPage() {
-  const { toast } = useToast();
   const [, setLocation] = useLocation();
-  const [authTab, setAuthTab] = useState<"login" | "signup">("login");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const { user, isLoading, isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      setLocation("/studio");
+    }
+  }, [isLoading, isAuthenticated, setLocation]);
 
   const features = [
     {
@@ -33,35 +31,17 @@ export default function LandingPage() {
     },
   ];
 
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setIsLoading(true);
-
-    try {
-      const endpoint = authTab === "login" ? "/api/auth/login" : "/api/auth/register";
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-        credentials: "include",
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.message || "Authentication failed");
-        return;
-      }
-
-      toast({ title: authTab === "login" ? "Welcome back!" : "Account created!" });
-      setLocation("/studio");
-    } catch {
-      setError("Something went wrong. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
+  const handleLogin = () => {
+    window.location.href = "/api/login";
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -124,67 +104,27 @@ export default function LandingPage() {
 
               <div className="w-full max-w-md mx-auto lg:mx-0">
                 <div className="bg-card border border-border rounded-xl p-6 shadow-sm" data-testid="auth-card">
-                  <Tabs value={authTab} onValueChange={(v) => setAuthTab(v as "login" | "signup")}>
-                    <TabsList className="grid w-full grid-cols-2 mb-6">
-                      <TabsTrigger value="login" data-testid="tab-login">Login</TabsTrigger>
-                      <TabsTrigger value="signup" data-testid="tab-signup">Create account</TabsTrigger>
-                    </TabsList>
-
-                    <form onSubmit={handleAuth} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          placeholder="you@example.com"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
-                          disabled={isLoading}
-                          data-testid="input-email"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="password">Password</Label>
-                        <Input
-                          id="password"
-                          type="password"
-                          placeholder="Enter password"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          required
-                          disabled={isLoading}
-                          minLength={6}
-                          data-testid="input-password"
-                        />
-                      </div>
-
-                      {error && (
-                        <p className="text-sm text-destructive" data-testid="text-auth-error">{error}</p>
-                      )}
-
-                      <Button
-                        type="submit"
-                        className="w-full"
-                        disabled={isLoading}
-                        data-testid="button-auth-submit"
-                      >
-                        {isLoading ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Please wait...
-                          </>
-                        ) : (
-                          "Continue"
-                        )}
-                      </Button>
-
-                      <p className="text-xs text-center text-muted-foreground pt-2">
-                        By continuing, you agree to our Terms & Privacy.
+                  <div className="space-y-6">
+                    <div className="text-center space-y-2">
+                      <h2 className="text-xl font-medium">Get Started</h2>
+                      <p className="text-sm text-muted-foreground">
+                        Sign in with your account to access all features
                       </p>
-                    </form>
-                  </Tabs>
+                    </div>
+
+                    <Button
+                      onClick={handleLogin}
+                      className="w-full"
+                      size="lg"
+                      data-testid="button-login"
+                    >
+                      Sign in to continue
+                    </Button>
+
+                    <p className="text-xs text-center text-muted-foreground">
+                      Supports Google, GitHub, Apple, and email sign-in
+                    </p>
+                  </div>
 
                   <div className="mt-6 pt-6 border-t border-border">
                     <Link href="/pricing" className="block">

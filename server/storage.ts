@@ -1,9 +1,9 @@
 import { 
-  users, llmProfiles, promptBlueprints, promptBlocks, filters, 
+  appUsers, llmProfiles, promptBlueprints, promptBlocks, filters, 
   generatedPrompts, promptVersions, rateLimits,
   loraModels, loraDatasets, loraDatasetItems, loraVersions, loraJobs, userLoraActive, baseModels,
   userBlueprints, userBlueprintVersions, savedImages, savedVideos, filterPresets, videoJobs,
-  type User, type InsertUser, type LlmProfile, type InsertLlmProfile,
+  type AppUser, type InsertAppUser, type LlmProfile, type InsertLlmProfile,
   type PromptBlueprint, type InsertBlueprint, type PromptBlock, type InsertBlock,
   type Filter, type InsertFilter, type GeneratedPrompt, type InsertGeneratedPrompt,
   type PromptVersion, type InsertPromptVersion,
@@ -19,9 +19,9 @@ import { db } from "./db";
 import { eq, desc, and, sql, lte } from "drizzle-orm";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getAppUser(id: string): Promise<AppUser | undefined>;
+  getAppUserByUsername(username: string): Promise<AppUser | undefined>;
+  createAppUser(user: InsertAppUser): Promise<AppUser>;
   
   getProfiles(): Promise<LlmProfile[]>;
   getProfile(id: string): Promise<LlmProfile | undefined>;
@@ -120,18 +120,18 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
+  async getAppUser(id: string): Promise<AppUser | undefined> {
+    const [user] = await db.select().from(appUsers).where(eq(appUsers.id, id));
     return user || undefined;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.username, username));
+  async getAppUserByUsername(username: string): Promise<AppUser | undefined> {
+    const [user] = await db.select().from(appUsers).where(eq(appUsers.username, username));
     return user || undefined;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
+  async createAppUser(insertUser: InsertAppUser): Promise<AppUser> {
+    const [user] = await db.insert(appUsers).values(insertUser).returning();
     return user;
   }
 
