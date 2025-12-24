@@ -1,14 +1,16 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { BRAND } from "@/lib/constants";
 import { MonoIcon } from "@/components/mono-icon";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function LandingPage() {
   const [, setLocation] = useLocation();
   const { user, isLoading, isAuthenticated } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -32,6 +34,7 @@ export default function LandingPage() {
   ];
 
   const handleLogin = () => {
+    setIsSubmitting(true);
     window.location.href = "/api/login";
   };
 
@@ -186,14 +189,24 @@ export default function LandingPage() {
                       </p>
                     </div>
 
-                    <Button
-                      onClick={handleLogin}
-                      className="w-full"
-                      size="lg"
-                      data-testid="button-login"
-                    >
-                      Sign in to continue
-                    </Button>
+                    {isSubmitting ? (
+                      <div className="space-y-3">
+                        <Skeleton className="h-10 w-full rounded-md" />
+                        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Redirecting...</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        onClick={handleLogin}
+                        className="w-full"
+                        size="lg"
+                        data-testid="button-login"
+                      >
+                        Sign in to continue
+                      </Button>
+                    )}
 
                     <p className="text-xs text-center text-muted-foreground">
                       Supports Google, GitHub, Apple, and email sign-in
