@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/theme-provider";
 import { useI18n, LanguageToggle } from "@/lib/i18n";
-import { Moon, Sun, Zap, Menu, X } from "lucide-react";
+import { Moon, Sun, Zap, Menu, X, Flame } from "lucide-react";
 import { useState } from "react";
 
 export function Header() {
@@ -16,6 +16,7 @@ export function Header() {
     { href: "/library", label: t.nav.library },
     { href: "/history", label: t.nav.history },
     { href: "/image-studio", label: t.nav.imageStudio },
+    { href: "/hot-studio", label: t.nav.hotStudio || "HOT", isHot: true },
   ];
 
   return (
@@ -34,8 +35,10 @@ export function Header() {
               <Button
                 variant={location === item.href ? "secondary" : "ghost"}
                 size="sm"
+                className={(item as { isHot?: boolean }).isHot ? "text-red-500 hover:text-red-400" : ""}
                 data-testid={`link-nav-${item.label.toLowerCase()}`}
               >
+                {(item as { isHot?: boolean }).isHot && <Flame className="w-3 h-3 mr-1" />}
                 {item.label}
               </Button>
             </Link>
@@ -72,10 +75,11 @@ export function Header() {
               <Link key={item.href} href={item.href}>
                 <Button
                   variant={location === item.href ? "secondary" : "ghost"}
-                  className="w-full justify-start"
+                  className={`w-full justify-start ${(item as { isHot?: boolean }).isHot ? "text-red-500 hover:text-red-400" : ""}`}
                   onClick={() => setMobileMenuOpen(false)}
                   data-testid={`link-mobile-nav-${item.label.toLowerCase()}`}
                 >
+                  {(item as { isHot?: boolean }).isHot && <Flame className="w-3 h-3 mr-1" />}
                   {item.label}
                 </Button>
               </Link>

@@ -10,6 +10,7 @@ import LandingPage from "@/pages/landing";
 import LibraryPage from "@/pages/library";
 import HistoryPage from "@/pages/history";
 import ModelsLabStudioPage from "@/pages/modelslab-studio";
+import HotStudioPage from "@/pages/hot-studio";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/library" component={LibraryPage} />
       <Route path="/history" component={HistoryPage} />
       <Route path="/image-studio" component={ModelsLabStudioPage} />
+      <Route path="/hot-studio" component={HotStudioPage} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -700,6 +700,98 @@ export async function registerRoutes(
     }
   });
 
+  // NSFW Ultra-Realistic Generation API (newrealityxl-global-nsfw)
+  app.post("/api/modelslab/generate-nsfw", async (req, res) => {
+    try {
+      const { prompt, aspectRatio } = req.body;
+      
+      if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+        return res.status(400).json({ error: "Prompt is required" });
+      }
+      
+      if (prompt.length > 2000) {
+        return res.status(400).json({ error: "Prompt too long (max 2000 characters)" });
+      }
+      
+      const apiKey = process.env.MODELSLAB_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "ModelsLab API key not configured" });
+      }
+      
+      const validRatios = ["1:1", "9:16", "2:3", "3:4", "4:5", "5:4", "4:3", "3:2", "16:9", "21:9"];
+      const selectedRatio = validRatios.includes(aspectRatio) ? aspectRatio : "1:1";
+      
+      const getDimensions = (ratio: string): { width: string; height: string } => {
+        switch (ratio) {
+          case "16:9": return { width: "1024", height: "576" };
+          case "9:16": return { width: "576", height: "1024" };
+          case "4:3": return { width: "1024", height: "768" };
+          case "3:4": return { width: "768", height: "1024" };
+          case "3:2": return { width: "1024", height: "683" };
+          case "2:3": return { width: "683", height: "1024" };
+          case "5:4": return { width: "1024", height: "819" };
+          case "4:5": return { width: "819", height: "1024" };
+          case "21:9": return { width: "1024", height: "439" };
+          default: return { width: "1024", height: "1024" };
+        }
+      };
+      
+      const dimensions = getDimensions(selectedRatio);
+      
+      const requestBody = {
+        key: apiKey,
+        model_id: "newrealityxl-global-nsfw",
+        prompt,
+        negative_prompt: "painting, drawing, cartoon, anime, illustration, sketch, low quality, blurry, deformed, ugly, bad anatomy, extra limbs, mutated hands, poorly drawn face, disfigured",
+        width: dimensions.width,
+        height: dimensions.height,
+        samples: 1,
+        num_inference_steps: 30,
+        guidance_scale: 7.5,
+        safety_checker: false,
+        enhance_prompt: false,
+        seed: null,
+        scheduler: "UniPCMultistepScheduler",
+      };
+      
+      console.log("Sending NSFW generation to ModelsLab:", { 
+        ...requestBody, 
+        key: "[REDACTED]",
+      });
+      
+      const response = await fetch("https://modelslab.com/api/v4/dreambooth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+      
+      const data = await response.json();
+      
+      if (data.status === "error") {
+        console.error("ModelsLab NSFW error:", data);
+        return res.status(400).json({ error: data.message || "ModelsLab API error" });
+      }
+      
+      res.json(data);
+    } catch (error) {
+      console.error("Error calling ModelsLab NSFW API:", error);
+      res.status(500).json({ error: "Failed to generate NSFW image" });
+    }
+  });
+
+  // Get NSFW-specific filters
+  app.get("/api/filters-nsfw", async (_req, res) => {
+    try {
+      const allFilters = await storage.getFilters();
+      const nsfwFilterKeys = ['body_type', 'pose_style', 'clothing_state', 'scene_setting', 'lighting_mood', 'skin_detail', 'expression', 'camera_angle'];
+      const nsfwFilters = allFilters.filter(f => nsfwFilterKeys.includes(f.key));
+      res.json(nsfwFilters);
+    } catch (error) {
+      console.error("Error fetching NSFW filters:", error);
+      res.status(500).json({ error: "Failed to fetch NSFW filters" });
+    }
+  });
+
   // Check generation status (for async generation)
   // Security: Only allow fetching from trusted ModelsLab domains
   const ALLOWED_MODELSLAB_HOSTS = [
