@@ -104,8 +104,9 @@ export async function registerRoutes(
   app.get("/api/profile", async (req, res) => {
     try {
       const userId = getUserId(req);
+      const user = req.user as any;
+      
       if (userId === DEV_USER_ID) {
-        const user = req.user as any;
         return res.json({
           id: DEV_USER_ID,
           username: user?.claims?.name || "Developer",
@@ -124,11 +125,26 @@ export async function registerRoutes(
       }
 
       const appUser = await storage.getAppUser(userId);
+      
       if (!appUser) {
-        return res.status(404).json({ error: "User not found" });
+        const userProfile = {
+          id: userId,
+          username: user?.claims?.name || "User",
+          email: user?.claims?.email || null,
+          plan: "free" as const,
+          displayName: user?.claims?.name || null,
+          avatarUrl: user?.claims?.profile_image || null,
+          tagline: null,
+          timezone: "America/Sao_Paulo",
+          defaultLanguage: "pt-BR",
+          defaultLlmProfileId: null,
+          theme: "system",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        return res.json(userProfile);
       }
 
-      const user = req.user as any;
       res.json({
         ...appUser,
         email: user?.claims?.email || null,
