@@ -60,8 +60,82 @@ export default function LandingPage() {
       </header>
 
       <main className="pt-14">
-        <section className="min-h-[calc(100vh-56px)] flex items-center">
-          <div className="max-w-6xl mx-auto px-6 py-16 w-full">
+        <section className="min-h-[calc(100vh-56px)] flex items-center relative overflow-hidden">
+          {/* Geometric grid background */}
+          <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+            <svg
+              className="absolute inset-0 w-full h-full"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <defs>
+                <pattern
+                  id="grid-pattern"
+                  width="60"
+                  height="60"
+                  patternUnits="userSpaceOnUse"
+                >
+                  <path
+                    d="M 60 0 L 0 0 0 60"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="0.5"
+                    className="text-foreground/[0.03]"
+                  />
+                </pattern>
+                <pattern
+                  id="grid-pattern-large"
+                  width="180"
+                  height="180"
+                  patternUnits="userSpaceOnUse"
+                >
+                  <path
+                    d="M 180 0 L 0 0 0 180"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="0.75"
+                    className="text-foreground/[0.04]"
+                  />
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#grid-pattern)" />
+              <rect width="100%" height="100%" fill="url(#grid-pattern-large)" />
+            </svg>
+            {/* Diagonal accent lines */}
+            <svg
+              className="absolute inset-0 w-full h-full"
+              xmlns="http://www.w3.org/2000/svg"
+              preserveAspectRatio="none"
+            >
+              <line
+                x1="0%"
+                y1="100%"
+                x2="40%"
+                y2="0%"
+                stroke="currentColor"
+                strokeWidth="0.5"
+                className="text-foreground/[0.02]"
+              />
+              <line
+                x1="20%"
+                y1="100%"
+                x2="60%"
+                y2="0%"
+                stroke="currentColor"
+                strokeWidth="0.5"
+                className="text-foreground/[0.02]"
+              />
+              <line
+                x1="60%"
+                y1="100%"
+                x2="100%"
+                y2="0%"
+                stroke="currentColor"
+                strokeWidth="0.5"
+                className="text-foreground/[0.02]"
+              />
+            </svg>
+          </div>
+          <div className="max-w-6xl mx-auto px-6 py-16 w-full relative z-10">
             <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center">
               <div className="space-y-8">
                 <div className="space-y-4">
