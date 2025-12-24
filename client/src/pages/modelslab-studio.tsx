@@ -194,7 +194,8 @@ export default function ModelsLabStudioPage() {
   const [selectedImageForVideo, setSelectedImageForVideo] = useState<string>("");
   const [videoResult, setVideoResult] = useState<Sora2Response | null>(null);
   const [isPollingVideo, setIsPollingVideo] = useState(false);
-  const [videoAspect, setVideoAspect] = useState<"auto" | "9:16" | "16:9" | "1:1">("16:9");
+  const [videoAspect, setVideoAspect] = useState<"9:16" | "16:9">("16:9");
+  const [detectedAspect, setDetectedAspect] = useState<"9:16" | "16:9" | null>(null);
   const [videoDuration, setVideoDuration] = useState<number>(5);
   const [generateAudio, setGenerateAudio] = useState<boolean>(false);
   const [currentVideoJobId, setCurrentVideoJobId] = useState<string | null>(null);
@@ -288,7 +289,7 @@ export default function ModelsLabStudioPage() {
     mutationFn: async (videoData: { videoUrl: string; prompt: string; thumbnailUrl?: string }) => {
       return apiRequest("POST", "/api/video-gallery", {
         ...videoData,
-        aspectRatio: videoAspect === "auto" ? "16:9" : videoAspect,
+        aspectRatio: videoAspect,
         durationSeconds: videoDuration,
         jobId: currentVideoJobId || undefined,
       });
@@ -331,7 +332,6 @@ export default function ModelsLabStudioPage() {
         prompt: prompt || "Cinematic video with smooth natural motion, professional cinematography",
         targetAspect: videoAspect,
         durationSeconds: videoDuration,
-        modelId: "img2video",
         generationType: "image-to-video",
       });
       return await response.json();
@@ -422,6 +422,34 @@ export default function ModelsLabStudioPage() {
     setVideoGenerationMeta(null);
     setCurrentVideoJobId(null);
     setVideoGenerationStartTime(null);
+  };
+
+  // Detect aspect ratio from image and open video dialog
+  const openVideoDialogWithImage = (imageUrl: string) => {
+    setSelectedImageForVideo(imageUrl);
+    
+    const img = new Image();
+    img.onload = () => {
+      const ratio = img.width / img.height;
+      const detected: "16:9" | "9:16" = ratio >= 1 ? "16:9" : "9:16";
+      setDetectedAspect(detected);
+      setVideoAspect(detected);
+      setShowVideoDialog(true);
+    };
+    img.onerror = () => {
+      setDetectedAspect("16:9");
+      setVideoAspect("16:9");
+      setShowVideoDialog(true);
+    };
+    img.src = imageUrl;
+  };
+
+  // Get model name based on aspect ratio
+  const getVideoModelInfo = (aspect: "16:9" | "9:16") => {
+    if (aspect === "9:16") {
+      return { name: "Seedance 1.0 Pro", description: "Portrait video (9:16)" };
+    }
+    return { name: "Google Veo 3.1", description: "Landscape video (16:9)" };
   };
 
   // Load preset function
@@ -1090,10 +1118,7 @@ export default function ModelsLabStudioPage() {
                         <Button
                           size="icon"
                           variant="secondary"
-                          onClick={() => {
-                            setSelectedImageForVideo(imageUrl);
-                            setShowVideoDialog(true);
-                          }}
+                          onClick={() => openVideoDialogWithImage(imageUrl)}
                           title={t.modelslab.transformToVideo || "Transform to Video"}
                           data-testid={`button-video-${index}`}
                         >
@@ -1114,8 +1139,7 @@ export default function ModelsLabStudioPage() {
                     <Button
                       onClick={() => {
                         if (result.output && result.output.length > 0) {
-                          setSelectedImageForVideo(result.output[0]);
-                          setShowVideoDialog(true);
+                          openVideoDialogWithImage(result.output[0]);
                         }
                       }}
                       className="flex-1"
@@ -1796,38 +1820,45 @@ export default function ModelsLabStudioPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Video className="w-5 h-5" />
-              {t.modelslab.videoDialogTitle || "Generate Video"}
+              {t.modelslab.videoDialogTitle || "Image to Video"}
             </DialogTitle>
             <DialogDescription>
-              {t.modelslab.videoDialogDescription || "Animate your image into a realistic video using Stable Video Diffusion"}
+              {t.modelslab.videoDialogDescription || "Transform your image into a high-quality video"}
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
-            {/* Model Badge */}
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary" className="text-xs">
-                SVD
-              </Badge>
-              <Badge variant="outline" className="text-xs">
-                Image-to-Video
-              </Badge>
+            {/* Auto-detected Model Info */}
+            <div className="p-4 bg-muted/50 rounded-lg border space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Model</span>
+                <Badge variant="secondary">{getVideoModelInfo(videoAspect).name}</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">{t.modelslab.videoAspectRatio || "Aspect Ratio"}</span>
+                <Badge variant="outline">{videoAspect}</Badge>
+              </div>
+              {detectedAspect && (
+                <p className="text-xs text-muted-foreground">
+                  {videoAspect === "16:9" 
+                    ? "Landscape images use Google Veo 3.1"
+                    : "Portrait images use Seedance 1.0 Pro"}
+                </p>
+              )}
             </div>
 
-            {/* Video Options - Only show when not processing */}
+            {/* Aspect Ratio Toggle - Allow user to override */}
             {!isPollingVideo && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>{t.modelslab.videoAspectRatio || "Aspect Ratio"}</Label>
+                  <Label>{t.modelslab.videoAspectRatio || "Output Aspect Ratio"}</Label>
                   <Select value={videoAspect} onValueChange={(v) => setVideoAspect(v as typeof videoAspect)}>
                     <SelectTrigger data-testid="select-video-aspect">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="auto">{t.modelslab.aspectAuto || "Auto (detect from image)"}</SelectItem>
-                      <SelectItem value="9:16">{t.modelslab.aspectPortrait || "9:16 Portrait"}</SelectItem>
-                      <SelectItem value="16:9">{t.modelslab.aspectLandscape || "16:9 Landscape"}</SelectItem>
-                      <SelectItem value="1:1">{t.modelslab.aspectSquare || "1:1 Square"}</SelectItem>
+                      <SelectItem value="16:9">16:9 Landscape (Veo 3.1)</SelectItem>
+                      <SelectItem value="9:16">9:16 Portrait (Seedance 1.0 Pro)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1853,7 +1884,7 @@ export default function ModelsLabStudioPage() {
 
             {/* Video Specs Info */}
             <div className="text-sm text-muted-foreground p-3 bg-muted/30 rounded-lg space-y-1">
-              <p>{t.modelslab.videoSpecs || "High-quality video generation at 16fps."}</p>
+              <p>{t.modelslab.videoSpecs || "Generates ~5 second high-quality videos at 16fps."}</p>
               <p className="text-xs opacity-75">{t.modelslab.videoCostNote || "Video generation may take 1-3 minutes to complete."}</p>
             </div>
 

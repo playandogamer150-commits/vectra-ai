@@ -1,5 +1,5 @@
 import type { VideoProvider, CreateVideoJobInput, CreateJobResult, JobStatusResult, VideoJobStatus } from "../contracts";
-import { getDefaultVideoModel, getVideoModel, isValidVideoModel, type VideoModelConfig } from "../model-registry";
+import { getModelForAspectRatio, type VideoModelConfig, type VideoAspectRatio } from "../model-registry";
 
 const MODELSLAB_BASE_URL = "https://modelslab.com";
 
@@ -22,25 +22,22 @@ export class ModelsLabProvider implements VideoProvider {
   }
 
   async createJob(input: CreateVideoJobInput): Promise<CreateJobResult> {
-    const modelId = input.modelId || getDefaultVideoModel().id;
+    const aspectRatio = this.normalizeAspectRatio(input.targetAspect);
     
-    if (!isValidVideoModel(modelId)) {
-      console.error(`[ModelsLab] Invalid model_id: ${modelId}`);
+    if (aspectRatio !== "16:9" && aspectRatio !== "9:16") {
       return {
         success: false,
         status: "error",
-        error: `Invalid model: ${modelId}. Valid models: seedance-1-0-pro (image-to-video), seedance-1-5-pro (text-to-video)`,
+        error: "Only 16:9 (landscape) or 9:16 (portrait) aspect ratios are supported for video generation.",
       };
     }
 
-    const model = getVideoModel(modelId);
+    const model = getModelForAspectRatio(aspectRatio);
+    
+    console.log(`[VideoService] Auto-selected model ${model.id} (${model.displayName}) for aspect ratio ${aspectRatio}`);
 
     try {
-      if (model.generationType === "text-to-video") {
-        return await this.createTextToVideoJob(input, model);
-      } else {
-        return await this.createImageToVideoJob(input, model);
-      }
+      return await this.createImageToVideoJob(input, model, aspectRatio);
     } catch (error) {
       console.error("[ModelsLab] createJob error:", error);
       return {
@@ -49,6 +46,11 @@ export class ModelsLabProvider implements VideoProvider {
         error: error instanceof Error ? error.message : "Unknown error",
       };
     }
+  }
+  
+  private normalizeAspectRatio(aspect: string | undefined): VideoAspectRatio {
+    if (aspect === "9:16") return "9:16";
+    return "16:9";
   }
 
   private async createTextToVideoJob(input: CreateVideoJobInput, model: VideoModelConfig): Promise<CreateJobResult> {
@@ -95,7 +97,7 @@ export class ModelsLabProvider implements VideoProvider {
     return this.parseCreateResponse(data);
   }
 
-  private async createImageToVideoJob(input: CreateVideoJobInput, model: VideoModelConfig): Promise<CreateJobResult> {
+  private async createImageToVideoJob(input: CreateVideoJobInput, model: VideoModelConfig, aspectRatio: VideoAspectRatio): Promise<CreateJobResult> {
     if (!input.sourceImageUrl) {
       return {
         success: false,
@@ -107,18 +109,20 @@ export class ModelsLabProvider implements VideoProvider {
     const requestBody = {
       key: this.apiKey,
       model_id: model.modelIdParam,
-      init_image: [input.sourceImageUrl],
+      init_image: input.sourceImageUrl,
       prompt: input.prompt || "Cinematic video with natural smooth movement, professional cinematography",
       negative_prompt: input.negativePrompt || "low quality, blurry, distorted, amateur, static, frozen",
-      duration: String(input.durationSeconds),
+      duration: String(input.durationSeconds || 5),
       ...(input.seed && { seed: input.seed }),
     };
 
-    const endpoint = `${MODELSLAB_BASE_URL}/api/v7/video-fusion/image-to-video`;
+    const endpoint = `${MODELSLAB_BASE_URL}${model.endpoint}`;
     
     console.log("[ModelsLab] Image-to-Video Request:", {
       endpoint,
       model_id: model.modelIdParam,
+      model_display: model.displayName,
+      aspectRatio,
       duration: input.durationSeconds,
     });
 

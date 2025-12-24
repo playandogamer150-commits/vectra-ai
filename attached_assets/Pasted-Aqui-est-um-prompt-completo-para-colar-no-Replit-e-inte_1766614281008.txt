@@ -1,0 +1,104 @@
+Aqui está um **prompt completo** para colar no Replit e integrar os dois modelos de vídeo do ModelsLab com roteamento obrigatório por proporção da imagem:
+
+---
+
+````
+Você é um Principal Engineer responsável pela integração de novos modelos no módulo de Vídeo do Vectra AI.
+
+🧩 CONTEXTO:
+– O aplicativo já integra o ModelsLab para gerar vídeos (fluxo de jobs assíncronos).  
+– Precisamos adicionar dois modelos **Image→Video** do ModelsLab, usando sempre a **mesma URL base** (`https://modelslab.com/api/v7/video-fusion/image-to-video`) com **diferentes model_id**.  
+– A chave de API já está disponível nas variáveis de ambiente (`MODELSLAB_API_KEY`) — use a chave: `Mi7a4vA8vmQ4nMtufHLOz2VDvK6Y6clhxfVAAfEOmZI5yHaAft2S1r9lPPY1` se ainda não estiver no `.env`.
+
+🔗 MODELOS A INTEGRAR:
+1. **Google / Veo 3.1** – image2video  
+   - `model_id`: **"veo-3.1"** (confirme com a documentação)  
+   - Suporta **apenas vídeos 16:9** (landscape).  
+   - Documentação: https://modelslab.com/models/google/veo3.1-image2video/api  
+
+2. **Byteplus / Seedance 1.0 Pro (I2V)**  
+   - `model_id`: **"seedance-1.0-pro-i2v"**  
+   - Suporta **apenas vídeos 9:16** (portrait).  
+   - Documentação: https://modelslab.com/models/byteplus/seedance-1.0-pro-i2v  
+
+Ambos utilizam os seguintes parâmetros no payload (JSON):
+
+```json
+{
+  "init_image": "<URL da imagem de entrada>",
+  "prompt": "<prompt final>",
+  "model_id": "<model_id>",
+  "key": "<API_KEY>"
+}
+````
+
+🛠️ O QUE IMPLEMENTAR:
+
+1. **Registrar modelos no provider**
+   Crie/atualize o arquivo `videogen/providers/modelslab.ts` (ou equivalente) com um “registry” dos modelos:
+
+```ts
+export const MODELSLAB_VIDEO_MODELS = {
+  VEO_3_1: {
+    id: "veo-3.1",
+    aspect: "16:9",
+    description: "Google Veo 3.1 – apenas 16:9",
+  },
+  SEEDANCE_1_0_PRO_I2V: {
+    id: "seedance-1.0-pro-i2v",
+    aspect: "9:16",
+    description: "Seedance 1.0 Pro I2V – apenas 9:16",
+  },
+};
+```
+
+2. **Roteamento por proporção (no backend)**
+   Na função que cria o job de vídeo (`videogen/service.ts`), determine o modelo com base na proporção (ou aspecto escolhido):
+
+```ts
+const selectedModel = (aspectRatio === "9:16")
+  ? MODELSLAB_VIDEO_MODELS.SEEDANCE_1_0_PRO_I2V
+  : MODELSLAB_VIDEO_MODELS.VEO_3_1;
+```
+
+– Se a imagem/orientação for vertical (width < height), defina `aspectRatio = "9:16"`.
+– Se horizontal (width ≥ height), use `aspectRatio = "16:9"`.
+– Não permita 1:1 ou outras proporções; exiba mensagem “Apenas 16:9 ou 9:16 são suportados para vídeo”.
+– Envie o payload com `model_id` apropriado e `key` (via env).
+
+3. **UI / Fluxo do Estúdio de Imagem**
+   – Na tela “Transformar em Vídeo”, elimine a escolha manual de modelo; faça detecção automática da proporção da imagem selecionada.
+   – Mostre qual modelo será utilizado (ex.: “Gerar vídeo usando Veo 3.1 (16:9)” ou “Seedance 1.0 Pro (9:16)”).
+   – Informe ao usuário que a outra proporção não é suportada.
+   – Desabilite “Generate” até que haja uma imagem compatível.
+   – Se o usuário muda a proporção do output (9:16 vs. 16:9), troque automaticamente o modelo.
+
+4. **Persistência e Job Status**
+   – Inclua o `model_id` e `model_name` no campo `params_json` da tabela `video_jobs`.
+   – No status card do vídeo, exiba o modelo utilizado (Veo 3.1 ou Seedance 1.0 Pro).
+   – Mantenha polling e salvamento como já implementado (webhook/poll).
+
+5. **Tratamento de erros**
+   – Se a API retornar `resolution` inválida (ex.: enviar 16:9 para Seedance), capture e retorne erro ao usuário.
+   – Se a API responder com `unauthorized`, verifique `MODELSLAB_API_KEY`.
+   – Logar erros em Sentry e via console com `user_id`, `model_id` e `aspectRatio`.
+
+6. **Chave de API**
+   – Use `process.env.MODELSLAB_API_KEY` como default; adicione a chave fornecida se não existir.
+   – Não exponha a chave no front-end; sempre envie do servidor.
+
+✅ **Critérios de Aceite**
+– Gerar vídeo 16:9 sempre usa Veo 3.1; gerar vídeo 9:16 sempre usa Seedance 1.0 Pro.
+– A UI informa claramente qual modelo será usado e não deixa o usuário escolher errado.
+– Jobs são criados, salvos e renderizados normalmente, com campo `model_id`.
+– Erros de proporção/modelo são tratados com mensagem amigável.
+– Não há regressão nas funcionalidades existentes.
+
+Execute essa integração de forma organizada (crie o registry, ajuste serviço, UI, validações) e garanta que o produto esteja pronto para utilizar esses modelos de forma transparente.
+
+```
+
+---
+
+Este prompt orienta o Replit a integrar os modelos “Veo 3.1” e “Seedance 1.0 Pro I2V” do ModelsLab, determinando automaticamente o modelo conforme a proporção da imagem (16:9 ou 9:16) e garantindo que o fluxo de geração de vídeo permaneça seguro, consistente e sem escolhas incompatíveis.
+```

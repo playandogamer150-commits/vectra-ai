@@ -1,5 +1,6 @@
-export type VideoModelId = "seedance-1-5-pro" | "img2video" | "kling";
+export type VideoModelId = "veo-3.1" | "seedance-1.0-pro-i2v";
 export type VideoGenerationType = "text-to-video" | "image-to-video";
+export type VideoAspectRatio = "16:9" | "9:16";
 
 export interface VideoModelConfig {
   id: VideoModelId;
@@ -7,66 +8,49 @@ export interface VideoModelConfig {
   provider: "modelslab";
   endpoint: string;
   modelIdParam: string;
-  supportsAudio: boolean;
-  supportsAspectRatio: boolean;
+  supportedAspectRatio: VideoAspectRatio;
   qualityTier: "standard" | "high" | "ultra";
   generationType: VideoGenerationType;
-  isDefault: boolean;
   maxDurationSeconds: number;
   minDurationSeconds: number;
 }
 
 export const VIDEO_MODEL_REGISTRY: Record<VideoModelId, VideoModelConfig> = {
-  "seedance-1-5-pro": {
-    id: "seedance-1-5-pro",
-    displayName: "Seedance 1.5 Pro",
+  "veo-3.1": {
+    id: "veo-3.1",
+    displayName: "Google Veo 3.1",
     provider: "modelslab",
-    endpoint: "/api/v7/video-fusion/text-to-video",
-    modelIdParam: "seedance-1-5-pro",
-    supportsAudio: true,
-    supportsAspectRatio: true,
+    endpoint: "/api/v7/video-fusion/image-to-video",
+    modelIdParam: "veo-3.1",
+    supportedAspectRatio: "16:9",
     qualityTier: "ultra",
-    generationType: "text-to-video",
-    isDefault: false,
+    generationType: "image-to-video",
     maxDurationSeconds: 8,
     minDurationSeconds: 2,
   },
-  "img2video": {
-    id: "img2video",
-    displayName: "Image to Video",
+  "seedance-1.0-pro-i2v": {
+    id: "seedance-1.0-pro-i2v",
+    displayName: "Seedance 1.0 Pro",
     provider: "modelslab",
     endpoint: "/api/v7/video-fusion/image-to-video",
-    modelIdParam: "img2video",
-    supportsAudio: false,
-    supportsAspectRatio: false,
-    qualityTier: "high",
-    generationType: "image-to-video",
-    isDefault: true,
-    maxDurationSeconds: 8,
-    minDurationSeconds: 2,
-  },
-  "kling": {
-    id: "kling",
-    displayName: "Kling I2V",
-    provider: "modelslab",
-    endpoint: "/api/v7/video-fusion/image-to-video",
-    modelIdParam: "kling",
-    supportsAudio: false,
-    supportsAspectRatio: false,
+    modelIdParam: "seedance-1.0-pro-i2v",
+    supportedAspectRatio: "9:16",
     qualityTier: "ultra",
     generationType: "image-to-video",
-    isDefault: false,
-    maxDurationSeconds: 5,
+    maxDurationSeconds: 8,
     minDurationSeconds: 2,
   },
 };
 
-export function getDefaultVideoModel(): VideoModelConfig {
-  const defaultModel = Object.values(VIDEO_MODEL_REGISTRY).find(m => m.isDefault);
-  if (!defaultModel) {
-    throw new Error("No default video model configured");
+export function getModelForAspectRatio(aspectRatio: VideoAspectRatio): VideoModelConfig {
+  if (aspectRatio === "9:16") {
+    return VIDEO_MODEL_REGISTRY["seedance-1.0-pro-i2v"];
   }
-  return defaultModel;
+  return VIDEO_MODEL_REGISTRY["veo-3.1"];
+}
+
+export function getDefaultVideoModel(): VideoModelConfig {
+  return VIDEO_MODEL_REGISTRY["veo-3.1"];
 }
 
 export function getVideoModel(modelId: string): VideoModelConfig {
