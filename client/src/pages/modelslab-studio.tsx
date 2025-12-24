@@ -67,44 +67,6 @@ interface GeneratedPromptResult {
 
 type FilterValue = Record<string, string>;
 
-// Helper function to convert .base64 URLs to proper image data URLs
-async function processBase64Urls(urls: string[]): Promise<string[]> {
-  const processedUrls: string[] = [];
-  
-  for (const url of urls) {
-    if (url.endsWith('.base64')) {
-      try {
-        // Fetch the base64 content from the file
-        const response = await fetch(url);
-        const base64Content = await response.text();
-        // Convert to a proper data URL (assume JPEG/PNG)
-        const cleanBase64 = base64Content.trim();
-        // Check if it's already a data URL or just raw base64
-        if (cleanBase64.startsWith('data:')) {
-          processedUrls.push(cleanBase64);
-        } else {
-          // Detect image type from base64 header
-          let mimeType = 'image/png';
-          if (cleanBase64.startsWith('/9j/')) {
-            mimeType = 'image/jpeg';
-          } else if (cleanBase64.startsWith('iVBOR')) {
-            mimeType = 'image/png';
-          }
-          processedUrls.push(`data:${mimeType};base64,${cleanBase64}`);
-        }
-      } catch (error) {
-        console.error('Failed to fetch base64 content:', error);
-        // Fallback to original URL
-        processedUrls.push(url);
-      }
-    } else {
-      processedUrls.push(url);
-    }
-  }
-  
-  return processedUrls;
-}
-
 export default function ModelsLabStudioPage() {
   const { toast } = useToast();
   const { t } = useI18n();
@@ -681,9 +643,7 @@ export default function ModelsLabStudioPage() {
         setIsPolling(true);
         pollForResult(data.fetch_result);
       } else if (data.status === "success" && data.output) {
-        // Process base64 URLs before setting result
-        const processedOutput = await processBase64Urls(data.output);
-        setResult({ ...data, output: processedOutput });
+        setResult(data);
         toast({
           title: t.modelslab.success,
           description: t.modelslab.imageGenerated,
@@ -715,9 +675,7 @@ export default function ModelsLabStudioPage() {
         const data = await res.json() as ModelsLabResponse;
         
         if (data.status === "success" && data.output) {
-          // Process base64 URLs before setting result
-          const processedOutput = await processBase64Urls(data.output);
-          setResult({ ...data, output: processedOutput });
+          setResult(data);
           setIsPolling(false);
           toast({
             title: t.modelslab.success,
