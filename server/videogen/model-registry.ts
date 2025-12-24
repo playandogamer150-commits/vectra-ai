@@ -1,4 +1,4 @@
-export type VideoModelId = "seedance-1-5-pro" | "svd";
+export type VideoModelId = "seedance-1-5-pro" | "seedance-1-0-pro" | "cogvideox-i2v";
 export type VideoGenerationType = "text-to-video" | "image-to-video";
 
 export interface VideoModelConfig {
@@ -31,18 +31,32 @@ export const VIDEO_MODEL_REGISTRY: Record<VideoModelId, VideoModelConfig> = {
     maxDurationSeconds: 8,
     minDurationSeconds: 2,
   },
-  "svd": {
-    id: "svd",
-    displayName: "Stable Video Diffusion",
+  "seedance-1-0-pro": {
+    id: "seedance-1-0-pro",
+    displayName: "Seedance 1.0 Pro I2V",
     provider: "modelslab",
     endpoint: "/api/v7/video-fusion/image-to-video",
-    modelIdParam: "svd",
+    modelIdParam: "seedance-1-0-pro",
+    supportsAudio: false,
+    supportsAspectRatio: false,
+    qualityTier: "ultra",
+    generationType: "image-to-video",
+    isDefault: true,
+    maxDurationSeconds: 8,
+    minDurationSeconds: 2,
+  },
+  "cogvideox-i2v": {
+    id: "cogvideox-i2v",
+    displayName: "CogVideoX I2V",
+    provider: "modelslab",
+    endpoint: "/api/v7/video-fusion/image-to-video",
+    modelIdParam: "cogvideox-i2v",
     supportsAudio: false,
     supportsAspectRatio: false,
     qualityTier: "high",
     generationType: "image-to-video",
-    isDefault: true,
-    maxDurationSeconds: 8,
+    isDefault: false,
+    maxDurationSeconds: 6,
     minDurationSeconds: 2,
   },
 };
