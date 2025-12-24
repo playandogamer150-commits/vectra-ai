@@ -36,20 +36,22 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className="min-h-screen pt-16">
-      <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-semibold mb-2" data-testid="text-history-title">{t.history.title}</h1>
+    <div className="min-h-screen pt-14 bg-background">
+      <div className="max-w-4xl mx-auto px-6 md:px-8 py-10">
+        <div className="mb-10">
+          <h1 className="text-2xl md:text-3xl font-semibold tracking-tight mb-2" data-testid="text-history-title">
+            {t.history.title}
+          </h1>
           <p className="text-muted-foreground">{t.history.subtitle}</p>
         </div>
 
         {isLoading ? (
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
-              <Card key={i}>
-                <CardContent className="p-6">
+              <Card key={i} className="bg-card border-border/50">
+                <CardContent className="p-5">
                   <div className="flex items-start gap-4">
-                    <Skeleton className="w-10 h-10 rounded-lg shrink-0" />
+                    <Skeleton className="w-11 h-11 rounded-xl shrink-0" />
                     <div className="flex-1 space-y-2">
                       <Skeleton className="h-5 w-1/3" />
                       <Skeleton className="h-4 w-full" />
@@ -61,15 +63,17 @@ export default function HistoryPage() {
             ))}
           </div>
         ) : !history || history.length === 0 ? (
-          <Card className="text-center py-16">
-            <CardContent>
-              <HistoryIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+          <Card className="bg-card border-border/50 text-center py-20">
+            <CardContent className="pt-0">
+              <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-5">
+                <HistoryIcon className="w-7 h-7 text-muted-foreground" />
+              </div>
               <h3 className="text-lg font-medium mb-2">{t.history.noHistory}</h3>
-              <p className="text-muted-foreground mb-6">
+              <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
                 {t.history.noHistoryDesc}
               </p>
               <Link href="/studio">
-                <Button className="gap-2">
+                <Button className="gap-2 rounded-xl">
                   <Zap className="w-4 h-4" />
                   {t.history.goToStudio}
                 </Button>
@@ -77,57 +81,60 @@ export default function HistoryPage() {
             </CardContent>
           </Card>
         ) : (
-          <ScrollArea className="h-[calc(100vh-250px)]">
-            <div className="space-y-4 pr-4">
+          <ScrollArea className="h-[calc(100vh-220px)]">
+            <div className="space-y-3 pr-4">
               {history.map((item) => (
-                <Card key={item.id} className="group" data-testid={`card-history-${item.id}`}>
-                  <CardContent className="p-6">
+                <Card key={item.id} className="group bg-card border-border/50 transition-all duration-150 hover:border-border" data-testid={`card-history-${item.id}`}>
+                  <CardContent className="p-5">
                     <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <div className="w-11 h-11 rounded-xl bg-accent flex items-center justify-center shrink-0">
                         <FileText className="w-5 h-5 text-primary" />
                       </div>
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <h3 className="font-medium truncate">
+                          <h3 className="font-medium text-sm">
                             {item.metadata?.blueprintName || "Untitled"}
                           </h3>
-                          <Badge variant="secondary" className="shrink-0">
+                          <Badge variant="secondary" className="shrink-0 text-xs">
                             {item.metadata?.profileName}
                           </Badge>
                           <Badge 
                             variant={item.score >= 80 ? "default" : item.score >= 60 ? "secondary" : "outline"}
-                            className="gap-1 shrink-0"
+                            className="gap-1 shrink-0 text-xs"
                           >
                             <Gauge className="w-3 h-3" />
-                            {t.history.score}: {item.score}
+                            {item.score}
                           </Badge>
                         </div>
                         
-                        <p className="text-sm text-muted-foreground line-clamp-2 mb-3 font-mono">
+                        <p className="text-sm text-muted-foreground line-clamp-2 mb-3 font-mono leading-relaxed">
                           {item.compiledPrompt}
                         </p>
                         
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
+                          <span className="flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5" />
                             {formatDate(item.createdAt)}
                           </span>
-                          <span>Seed: <code className="font-mono bg-muted px-1 rounded">{item.seed}</code></span>
+                          <span>
+                            Seed: <code className="font-mono bg-muted px-1.5 py-0.5 rounded-md text-foreground">{item.seed}</code>
+                          </span>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8 rounded-lg"
                           onClick={() => handleCopy(item.compiledPrompt)}
                           data-testid={`button-copy-${item.id}`}
                         >
                           <Copy className="w-4 h-4" />
                         </Button>
                         <Link href={`/studio?seed=${item.seed}&blueprint=${item.blueprintId}&profile=${item.profileId}`}>
-                          <Button variant="ghost" size="icon" data-testid={`button-replay-${item.id}`}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" data-testid={`button-replay-${item.id}`}>
                             <Play className="w-4 h-4" />
                           </Button>
                         </Link>

@@ -1,184 +1,268 @@
 # PromptForge Design Guidelines
 
-## Design Approach
+## Design Language: Soft Minimal Editorial UI / Calm Tech Design
 
-**Selected Approach:** Design System (Linear-inspired technical workspace)
-
-**Justification:** PromptForge is a professional productivity tool requiring clarity, efficiency, and sophisticated UI controls. Linear's design language perfectly balances technical precision with modern aesthetics - ideal for a studio-style application handling complex inputs and outputs.
+A content-first, quiet UI that is premium, comfortable for extended use, and maintains high legibility.
 
 **Key Principles:**
-- Precision over decoration: Every element serves a functional purpose
-- Technical clarity: Information hierarchy guides power users efficiently
-- Professional restraint: Sophisticated without being flashy
-- Studio-grade interface: Workspace tools that feel powerful and refined
+- Content-first: UI recedes to let content shine
+- Calm tech: Professional without being cold
+- Editorial precision: Clear hierarchy, generous whitespace
+- Quiet confidence: Subtle interactions, no visual noise
+
+---
+
+## Color Palette
+
+### Light Mode
+| Token | HSL | Hex | Usage |
+|-------|-----|-----|-------|
+| background | 240 5% 97% | #F7F7F8 | Page background |
+| surface (card) | 0 0% 100% | #FFFFFF | Cards, panels |
+| border | 220 9% 91% | #E6E7EB | Subtle borders |
+| foreground | 220 13% 10% | #191B1F | Headings, strong text |
+| muted-foreground | 220 9% 46% | #6B7280 | Secondary text |
+| primary | 292 84% 61% | #D946EF | Accent (Fuchsia) |
+| accent-2 | 263 70% 58% | #7C3AED | Secondary accent (Violet) |
+| success | 142 76% 36% | #16A34A | Success states |
+| warning | 38 92% 50% | #F59E0B | Warning states |
+| destructive | 0 72% 51% | #EF4444 | Error states |
+
+### Dark Mode (No pure black)
+| Token | HSL | Hex | Usage |
+|-------|-----|-----|-------|
+| background | 225 14% 7% | #0F1115 | Page background |
+| surface (card) | 222 20% 10% | #141824 | Cards, panels |
+| border | 222 16% 18% | #232A3B | Subtle borders |
+| foreground | 220 9% 95% | #F3F4F6 | Headings, strong text |
+| muted-foreground | 220 9% 64% | #9CA3AF | Secondary text |
+| primary | 292 84% 55% | #C026D3 | Accent (Fuchsia) |
+| accent-2 | 263 70% 68% | #8B5CF6 | Secondary accent (Violet) |
 
 ---
 
 ## Typography
 
 **Font Stack:**
-- Primary: Inter (Google Fonts) - UI text, labels, body
-- Monospace: JetBrains Mono - code output, seeds, technical data
+- Primary: Inter (with system fallback)
+- Monospace: JetBrains Mono
 
-**Hierarchy:**
-- Hero Headlines: text-5xl/text-6xl font-bold (landing only)
-- Page Titles: text-3xl font-semibold
-- Section Headers: text-xl font-semibold
-- Component Labels: text-sm font-medium uppercase tracking-wide text-opacity-60
-- Body Text: text-base font-normal
-- Technical Data: text-sm font-mono
-- Captions/Meta: text-xs font-medium text-opacity-50
+**Type Scale:**
+| Level | Size | Line Height | Weight | Usage |
+|-------|------|-------------|--------|-------|
+| H1 | 32px (2rem) | 1.25 | Semibold | Page titles |
+| H2 | 24px (1.5rem) | 1.33 | Semibold | Section headers |
+| H3 | 18px (1.125rem) | 1.44 | Semibold | Card titles |
+| Body | 14px (0.875rem) | 1.57 | Regular | Main content |
+| Small | 12px (0.75rem) | 1.5 | Regular | Captions, labels |
 
----
-
-## Layout System
-
-**Spacing Primitives:** Tailwind units of 2, 4, 6, 8, 12, 16, 24
-- Micro spacing (component internals): p-2, gap-2
-- Standard spacing (between elements): p-4, gap-4, mb-6
-- Section spacing: p-8, py-12, gap-8
-- Page margins: p-16, py-24 (desktop)
-
-**Grid System:**
-- Container: max-w-7xl mx-auto px-8
-- Studio workspace: 2-column split (sidebar + main), lg:grid-cols-[280px_1fr]
-- Library grid: grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6
-- Filter panels: flex flex-wrap gap-4
+**Letter Spacing:**
+- Headings: -0.015em (tracking-tight)
+- Body: 0em (tracking-normal)
+- Labels: 0.025em (tracking-wide)
 
 ---
 
-## Component Library
+## Spacing & Layout
 
-### Navigation
-**Top Bar:** Fixed header (h-16) with logo left, navigation center, user/account right. Backdrop blur background, border-b separator.
+### Spacing Scale
+| Token | Value | Usage |
+|-------|-------|-------|
+| xs | 4px | Micro gaps |
+| sm | 8px | Small gaps, padding |
+| md | 16px | Standard gaps |
+| lg | 24px | Section gaps |
+| xl | 32px | Large sections |
+| 2xl | 48px | Page sections |
 
-### Studio Workspace Components
+### Editorial Layout
+- **Page padding:** 24-32px
+- **Card padding:** 20-28px
+- **Gap between elements:** 16-24px
+- **Section spacing:** 48-80px
+- **Max content width:** 1280px (7xl)
 
-**Profile/Blueprint Selectors:**
-- Card-based selection with radio behavior
-- Each card: p-4, border, rounded-lg, hover state with subtle elevation
-- Active state: border accent, background tint
-- Display: name (font-semibold), description (text-sm opacity-60), metadata badges
-
-**Filter Panel:**
-- Organized in collapsible sections
-- Each filter: label + control (chips for discrete, slider for continuous)
-- Chips: px-3 py-1.5 rounded-full, multi-select with active state
-- Sliders: custom range inputs with value display
-
-**Input Form:**
-- Vertical stack with generous spacing (gap-6)
-- Labels: text-sm font-medium mb-2
-- Text inputs: p-3 rounded-lg border, focus ring
-- Textareas: min-h-32 for context fields
-- Seed field: monospace font with "randomize" icon button inline
-
-**Generate Button:**
-- Primary CTA: px-8 py-4 text-base font-semibold rounded-lg
-- Full width on mobile, auto width on desktop
-- Loading state with spinner
-
-**Output Display:**
-- Dedicated panel with clear visual separation
-- Header with metadata badges (profile, blueprint, score)
-- Prompt text: font-mono p-6 rounded-lg background subtle
-- Action row: Copy, Export JSON, Save Version, Share (icons + labels)
-- Warnings: amber accent with icon, collapsible details
-- Score visualization: progress bar or circular gauge
-
-### Library Components
-
-**Blueprint Cards:**
-- Hover-lift effect (transform subtle)
-- Preview thumbnail area (16:9 aspect ratio placeholder)
-- Content: title (font-semibold text-lg), category badge, description (2 lines max), block count indicator
-- Footer: "Use Blueprint" button
-
-### History Components
-
-**History List:**
-- Table-like rows with: timestamp, blueprint name, score badge, prompt preview (truncated), replay seed button
-- Click row to expand full details
-- Filters: date range, blueprint type, score threshold
+### Grid Structure
+- Two-column layout for studios (controls left, results right)
+- Generous whitespace between sections
+- Separation through spacing, not heavy dividers
 
 ---
 
-## Page Layouts
+## Border Radius
 
-### Landing Page
-**Hero Section (h-screen max-h-[600px]):**
-- Centered layout max-w-4xl
-- Headline + subheadline + CTA stack
-- Below fold: 3-column feature grid highlighting "Infinite Blueprints", "Reproducible Results", "Filter Precision"
-- Social proof section: "Trusted by prompt engineers" with placeholder logos
-- Pricing comparison table (Free vs Pro) with feature checkmarks
-- Footer with links, newsletter signup
-
-**Hero Image:** Abstract visualization of prompt compilation - geometric shapes flowing into structured text formation (suggest Midjourney/DALL-E generation with keywords: "abstract data flow, blueprint wireframes, minimalist tech illustration, purple and blue gradient")
-
-### Studio Page
-**Layout Structure:**
-- Left Sidebar (280px): Profile selector (sticky top), Blueprint selector (scrollable)
-- Main Area: 
-  - Top: Filter Panel (collapsible horizontal chips)
-  - Middle: Input Form (max-w-2xl)
-  - Bottom: Generate button + Output panel (conditional render)
-- Responsive: sidebar becomes drawer on mobile
-
-### Library Page
-- Page header with search bar and category filters
-- Blueprint grid (3 columns desktop, 2 tablet, 1 mobile)
-- Each card showcases blueprint with visual preview area
-
-### History Page
-- Search + filter bar (sticky)
-- Sortable table with pagination
-- Empty state with "Generate your first prompt" CTA
+| Element | Radius | Tailwind |
+|---------|--------|----------|
+| Base | 14px | rounded-DEFAULT |
+| Buttons/Inputs | 12px | rounded-md |
+| Cards | 16px | rounded-lg |
+| Badges/Chips | 8px | rounded-sm |
 
 ---
 
-## Animations
+## Shadows
 
-**Minimal, purposeful only:**
-- Page transitions: 150ms ease fade
-- Card hovers: transform scale(1.02) + shadow in 200ms
-- Collapsible sections: height transition 300ms ease
-- Loading states: subtle pulse on skeleton elements
-- No scroll-triggered animations
+Minimal and diffuse - only for elevation cues.
 
----
+| Shadow | Usage |
+|--------|-------|
+| shadow-editorial | Cards, subtle elevation |
+| shadow-editorial-md | Popovers, dropdowns |
+| shadow-editorial-lg | Modals, dialogs |
 
-## Images
-
-**Hero Image (Landing):**
-- Position: Full-width background with gradient overlay
-- Description: Abstract visualization of prompt compilation process - flowing data streams converging into structured blueprint format, modern tech aesthetic, depth and dimensionality, color scheme: deep purples, electric blues, subtle gradients
-- Treatment: Subtle blur overlay, centered content with backdrop-blur card
-
-**Blueprint Cards (Library):**
-- Each blueprint displays category-appropriate preview
-- Examples: "minecraft_style_food" shows pixelated food grid, "cctv_detection" shows surveillance aesthetic, "lookbook_9frame" shows 3x3 fashion layout
-- Aspect ratio: 16:9, object-fit: cover
+**When to use shadows:**
+- Modals and dialogs
+- Dropdown menus and popovers
+- Floating tooltips
+- Cards on scroll (sticky elements)
 
 ---
 
-## Accessibility & States
+## Borders
 
-- Focus indicators: 2px ring with offset
-- Hover states: opacity-80 or subtle background shift
-- Active states: background deepening + scale(0.98)
-- Disabled states: opacity-40 + cursor-not-allowed
-- Form validation: inline errors with red accent, success with green checkmark
-- Loading skeletons: pulsing placeholder blocks matching content structure
-- Keyboard navigation: full tab order, escape to close modals/drawers
+- **Width:** 1px always
+- **Style:** Solid
+- **Opacity:** Low (use border tokens)
+- **Rule:** Avoid borders when contrast is sufficient
 
 ---
 
-## Production Checklist
+## Icons
 
-- Responsive breakpoints: sm(640px), md(768px), lg(1024px), xl(1280px)
-- Dark mode consideration: design supports but not required for MVP
-- Empty states: all lists/grids have illustrated empty state with CTA
-- Error states: user-friendly messages with retry actions
-- Loading states: skeleton screens matching final content structure
-- Touch targets: minimum 44px for mobile interactive elements
+**Library:** lucide-react
+
+| Size | Tailwind | Usage |
+|------|----------|-------|
+| 16px | w-4 h-4 | Inline text, badges |
+| 18px | w-4.5 h-4.5 | Buttons, inputs |
+| 20px | w-5 h-5 | Navigation, actions |
+| 24px | w-6 h-6 | Headers, empty states |
+
+**Style:**
+- Stroke width: 1.5px (default)
+- Always use currentColor
+- Align with text baseline
+
+---
+
+## Components
+
+### Buttons
+
+| Variant | Background | Text | Usage |
+|---------|------------|------|-------|
+| Primary | Fuchsia | White | Main CTAs |
+| Secondary | Gray | Dark | Secondary actions |
+| Ghost | Transparent | Current | Tertiary actions |
+| Destructive | Red | White | Dangerous actions |
+
+**States:**
+- Hover: Subtle background elevation (--elevate-1)
+- Active: More elevation (--elevate-2)
+- Disabled: 50% opacity, no pointer
+- Focus: Accent ring with 2px offset
+
+**Sizes:**
+- Default: h-10 (40px)
+- Small: h-8 (32px)
+- Large: h-12 (48px)
+- Icon: h-10 w-10
+
+### Cards
+
+- Background: card (white/dark surface)
+- Border: 1px card-border
+- Radius: 16px (rounded-lg)
+- Padding: 20-28px (p-5 to p-7)
+- **Rule:** Never nest cards
+
+### Inputs
+
+- Height: 40px (h-10)
+- Border: 1px input color
+- Radius: 12px (rounded-md)
+- Focus: Primary ring
+- Placeholder: muted-foreground
+
+### Badges
+
+- Height: 24px (small variant)
+- Padding: 4px 8px
+- Radius: 8px (rounded-sm)
+- Font: 12px medium
+
+---
+
+## Motion
+
+Subtle and functional - never distracting.
+
+| Type | Duration | Easing | Usage |
+|------|----------|--------|-------|
+| Micro | 150ms | ease-out | Hovers, toggles |
+| Standard | 200ms | ease-out | State changes |
+| Complex | 250ms | ease-in-out | Modals, drawers |
+
+**Guidelines:**
+- Use fade for appearance/disappearance
+- Use slide for drawers/sheets (8px offset)
+- No bounce or spring physics
+- Skeleton loaders for async content
+
+---
+
+## Page Structure
+
+### Header/Navigation
+- Height: 56px (h-14)
+- Background: transparent or blur
+- Border: subtle bottom border
+- Content: Logo left, tabs center, actions right
+- **Rule:** No heavy boxes or backgrounds
+
+### Content Layout
+- Two-column for workspaces
+- Left column: Controls, filters (max-w-md)
+- Right column: Results, previews (flex-1)
+- Generous padding between sections
+
+### Card Structure
+- Title: H3 or text-base font-semibold
+- Description: text-sm text-muted-foreground
+- Content: Gap-4 between elements
+- Actions: Bottom aligned or inline
+
+---
+
+## Accessibility
+
+- **Contrast:** WCAG AA minimum (4.5:1 for text)
+- **Focus:** Visible ring on all interactive elements
+- **Touch targets:** 44px minimum
+- **Labels:** All inputs have associated labels
+- **ARIA:** Appropriate attributes on custom components
+
+---
+
+## Dark Mode Rules
+
+1. No pure black (#000000) anywhere
+2. Maintain calm, warm undertones
+3. Borders slightly lighter than background
+4. Shadows more prominent (higher opacity)
+5. Same visual hierarchy as light mode
+6. Text contrast adequate (not too bright)
+
+---
+
+## Implementation Checklist
+
+- [ ] All pages use editorial-container utility
+- [ ] Cards have consistent padding (p-5 or p-6)
+- [ ] Gaps are consistent (gap-4 to gap-6)
+- [ ] No heavy borders or shadows
+- [ ] Typography scale is respected
+- [ ] Icons are correct sizes
+- [ ] Dark mode is fully supported
+- [ ] Focus states are visible
+- [ ] Motion is subtle (150-250ms)

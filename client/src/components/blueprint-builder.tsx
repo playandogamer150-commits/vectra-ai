@@ -29,11 +29,11 @@ import { Plus, X, GripVertical, Save, Loader2 } from "lucide-react";
 interface UserBlueprintData {
   id?: string;
   name: string;
-  description: string;
+  description: string | null;
   category: string;
   tags: string[];
   blocks: string[];
-  constraints: string[];
+  constraints?: string[] | Record<string, unknown>;
   compatibleProfiles: string[];
 }
 

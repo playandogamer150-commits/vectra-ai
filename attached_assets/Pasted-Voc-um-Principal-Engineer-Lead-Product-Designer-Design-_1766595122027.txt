@@ -1,0 +1,185 @@
+Você é um Principal Engineer + Lead Product Designer (Design Systems).
+Vamos fazer um REDESIGN COMPLETO do app PromptForge para um novo estilo premium.
+Isso NÃO é um ajuste pontual: é uma MIGRAÇÃO VISUAL TOTAL do produto.
+
+NOME DO ESTILO:
+"Soft Minimal Editorial UI / Calm Tech Design" (content-first, quiet UI)
+
+OBJETIVO:
+Atualizar TODO o design do PromptForge (todas as telas) para um visual premium, silencioso, editorial e confortável para uso prolongado, mantendo funcionalidades intactas.
+A mudança deve ser coesa e consistente: tokens -> componentes -> layouts -> páginas.
+
+STACK:
+- Next.js App Router + TypeScript
+- Tailwind CSS
+- shadcn/ui (base de componentes)
+- lucide-react (ícones)
+- class-variance-authority (variants)
+- Radix UI (via shadcn)
+- preferir CSS variables + Tailwind theme
+
+ANTES DE CODAR:
+1) Faça um inventário de telas e componentes existentes (Studio, Biblioteca, Histórico, Estúdio LoRA, Modais, etc.)
+2) Crie um plano de migração por etapas e liste arquivos/pastas afetados.
+3) Garanta que não quebra nada funcional.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1) DESIGN SYSTEM (OBRIGATÓRIO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Criar um Design System no projeto:
+
+A) DESIGN TOKENS (CSS Variables)
+- Criar/atualizar: client/src/styles/globals.css (ou equivalente)
+- Definir tokens para:
+  - cores (bg/surface/elevation/border/text)
+  - tipografia
+  - radius
+  - spacing scale
+  - shadows (mínimas)
+  - focus ring
+  - states (hover/active/disabled)
+  - charts (se existir)
+- Deve suportar LIGHT e DARK mantendo o mesmo "calm tech".
+
+PALETA (sugestão base — ajuste se necessário):
+LIGHT:
+- background: #F7F7F8
+- surface: #FFFFFF
+- surface-2: #FAFAFB
+- border: #E6E7EB
+- text-strong: #111827
+- text: #1F2937
+- text-muted: #6B7280
+- accent-soft: #E8D5FF
+- accent: #D946EF
+- accent-2: #7C3AED
+- success: #16A34A
+- warning: #F59E0B
+- danger: #EF4444
+
+DARK (calm, sem preto puro):
+- background: #0F1115
+- surface: #141824
+- surface-2: #101522
+- border: #232A3B
+- text-strong: #F3F4F6
+- text: #E5E7EB
+- text-muted: #9CA3AF
+- accent-soft: #2A1D3A
+- accent: #C026D3
+- accent-2: #8B5CF6
+
+B) TIPOGRAFIA
+- Fonte: Inter (ou system font fallback)
+- Escala:
+  - H1 32/40 semibold
+  - H2 24/32 semibold
+  - H3 18/26 semibold
+  - body 14/22 regular
+  - small 12/18 regular
+- Textos longos confortáveis, alta legibilidade.
+
+C) RADIUS / SHADOW / BORDAS
+- radius base: 14px
+- inputs/buttons: 12px
+- cards: 16px
+- bordas finas: 1px com baixa opacidade
+- sombras mínimas e difusas (apenas em popovers/modais)
+
+D) GRID E LAYOUT
+- Layout editorial:
+  - containers largos
+  - bastante white space
+  - seções separadas por espaço, não por linhas agressivas
+- paddings padrão:
+  - page: 24–32px
+  - card: 20–28px
+- gap padrão: 16–24px
+
+E) ÍCONES
+- lucide-react
+- stroke 1.5
+- tamanho 16/18/20
+- sempre alinhado com o baseline do texto
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2) COMPONENT LIBRARY (REFACTOR)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Padronize componentes do PromptForge com variants consistentes:
+- Button (primary/secondary/ghost/destructive)
+- Input / Textarea / Select
+- Card / Panel
+- Tabs
+- Badge
+- Modal/Drawer
+- Tooltip
+- Toast/Notification
+
+Regras:
+- Nada de cores agressivas.
+- Hover é sutil (mudança leve de bg/border).
+- Focus ring elegante (accent com opacidade).
+- Estados disabled claros.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3) LAYOUTS DE PÁGINA (COERÊNCIA TOTAL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Atualizar todas as páginas:
+- Header/Nav superior:
+  - minimal, sem “box” pesado
+  - tabs discretas (Início, Estúdio, Biblioteca, Histórico, Estúdio LoRA)
+  - toggles (idioma/tema) alinhados
+- Conteúdo em duas colunas (quando apropriado):
+  - esquerda: controles (cards)
+  - direita: resultado (panel grande)
+- Cards de controles com título pequeno, descrição muted e controles bem espaçados.
+
+Padrão do Estúdio (exatamente o feel editorial):
+- Painéis “Imagens de Referência”, “Motor de Prompts”, “Resultado”
+- Borda suave, background surface-2 e card branco.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4) UI MOTION (SUTIL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Transições 150–250ms
+- Fade/slide leve para modal/drawer
+- Nada de bounce
+- Skeleton loader em surfaces
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5) DARK MODE (OBRIGATÓRIO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Manter o mesmo “quiet UI”
+- Nada de preto puro
+- Bordas e text contrast adequados
+- Garantir legibilidade em inputs, tabs, cards e resultado
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6) ACESSIBILIDADE E QUALIDADE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Contraste mínimo aceitável
+- Focus visible sempre
+- Tamanho de clique 40px+
+- Labels e aria em inputs
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7) ENTREGA EM ETAPAS (SEM QUEBRAR PRODUÇÃO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Etapa 1: Tokens + theme + base components
+Etapa 2: Layout shell + header/nav + páginas principais (Studio/Biblioteca/Histórico)
+Etapa 3: Modais/drawers + forms + tabelas
+Etapa 4: Ajustes finos, dark mode polish, acessibilidade
+
+Critério de aceite:
+- UI consistente em todo app
+- nenhuma tela com estilo antigo
+- componentes não duplicados
+- tema claro e escuro perfeitos
+- app continua funcional
+
+IMPORTANTÍSSIMO:
+- Isso é uma atualização visual COMPLETA.
+- Você deve substituir o design antigo pelo novo.
+- Não criar “tema paralelo”. Migrar de verdade.
+
+Agora execute esse redesign.
