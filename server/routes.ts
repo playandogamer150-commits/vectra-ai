@@ -751,12 +751,16 @@ export async function registerRoutes(
           return res.status(400).json({ error: "Invalid reference image" });
         }
         
+        // Remove data URL prefix if present (keep only base64 data)
+        const cleanBase64 = firstImage.replace(/^data:image\/[a-z]+;base64,/, '');
+        
         const requestBody = {
           key: apiKey,
           model_id: "newrealityxl-global-nsfw",
           prompt,
           negative_prompt: "painting, drawing, cartoon, anime, illustration, sketch, low quality, blurry, deformed, ugly, bad anatomy, extra limbs, mutated hands, poorly drawn face, disfigured",
-          init_image: firstImage,
+          init_image: cleanBase64,
+          base64: "yes",
           width: dimensions.width,
           height: dimensions.height,
           samples: 1,
