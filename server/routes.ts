@@ -803,11 +803,17 @@ export async function registerRoutes(
       
       const dimensions = getDimensions(selectedRatio);
       
+      // Use only the first image - ModelsLab image-to-image expects a single init_image
+      const initImage = processedImages[0];
+      
+      // Truncate prompt to API max length (2000 chars)
+      const truncatedPrompt = prompt.length > 2000 ? prompt.substring(0, 2000) : prompt;
+      
       const requestBody = {
         key: apiKey,
         model_id: "nano-banana-pro",
-        prompt,
-        init_image: processedImages,
+        prompt: truncatedPrompt,
+        init_image: initImage,
         aspect_ratio: selectedRatio,
         width: dimensions.width,
         height: dimensions.height,
@@ -822,9 +828,8 @@ export async function registerRoutes(
       console.log("Sending to ModelsLab:", { 
         ...requestBody, 
         key: "[REDACTED]",
-        init_image: `[${processedImages.length} images]`,
-        width: dimensions.width,
-        height: dimensions.height,
+        init_image: `[image: ${initImage.substring(0, 50)}...]`,
+        prompt: `[${truncatedPrompt.length} chars]`,
       });
       
       const response = await fetch("https://modelslab.com/api/v7/images/image-to-image", {
