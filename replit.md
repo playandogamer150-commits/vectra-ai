@@ -177,6 +177,8 @@ Workers receive signed payloads with:
 Workers must sign responses with HMAC and include `X-Signature` + `X-Timestamp` headers.
 
 ## Recent Changes
+- 2024-12-24: Removed HOT Studio and NSFW features (navigation, routes, API endpoints, filters)
+- 2024-12-24: Updated design system to "Soft Minimal Editorial UI / Calm Tech Design"
 - 2024-12-23: Upgraded to Seedance 1.5 Pro text-to-video with generate_audio support
 - 2024-12-23: Created VideoModelRegistry to enforce single model and block Seedance 1.0
 - 2024-12-23: Migrated video generation from WAN 2.1/SVD to Seedance 1.0 Pro I2V (more stable API)

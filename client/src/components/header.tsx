@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/theme-provider";
 import { useI18n, LanguageToggle } from "@/lib/i18n";
-import { Moon, Sun, Sparkles, Menu, X, Flame, Image, Library, History, Home } from "lucide-react";
+import { Moon, Sun, Sparkles, Menu, X, Image, Library, History, Home } from "lucide-react";
 import { useState } from "react";
 
 export function Header() {
@@ -16,7 +16,6 @@ export function Header() {
     { href: "/library", label: t.nav.library, icon: Library },
     { href: "/history", label: t.nav.history, icon: History },
     { href: "/image-studio", label: t.nav.imageStudio, icon: Image },
-    { href: "/hot-studio", label: t.nav.hotStudio || "HOT", icon: Flame, isHot: true },
   ];
 
   return (
@@ -43,7 +42,6 @@ export function Header() {
                       ? "text-foreground bg-secondary/80" 
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                     }
-                    ${item.isHot ? "text-red-500 hover:text-red-400" : ""}
                   `}
                   data-testid={`link-nav-${item.label.toLowerCase()}`}
                 >
@@ -95,7 +93,6 @@ export function Header() {
                         ? "text-foreground bg-secondary/80" 
                         : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                       }
-                      ${item.isHot ? "text-red-500 hover:text-red-400" : ""}
                     `}
                     onClick={() => setMobileMenuOpen(false)}
                     data-testid={`link-mobile-nav-${item.label.toLowerCase()}`}
