@@ -124,6 +124,14 @@ export default function ModelsLabStudioPage() {
     queryKey: ["/api/video-gallery"],
   });
 
+  // User profile for default settings
+  const { data: userProfile } = useQuery<{ defaultLlmProfileId: string | null }>({
+    queryKey: ["/api/profile"],
+    select: (data: { defaultLlmProfileId?: string | null }) => ({
+      defaultLlmProfileId: data.defaultLlmProfileId || null,
+    }),
+  });
+
   // Auto-populate from URL parameters (blueprint from library)
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -164,6 +172,16 @@ export default function ModelsLabStudioPage() {
       setSelectedProfile(profileId);
     }
   }, [t, toast]);
+
+  // Set default profile from user preferences if not already set
+  useEffect(() => {
+    if (!selectedProfile && userProfile?.defaultLlmProfileId && profiles) {
+      const profileExists = profiles.some(p => p.id === userProfile.defaultLlmProfileId);
+      if (profileExists) {
+        setSelectedProfile(userProfile.defaultLlmProfileId);
+      }
+    }
+  }, [userProfile, profiles, selectedProfile]);
 
   // Gallery state
   const [showGallery, setShowGallery] = useState(false);
