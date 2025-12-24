@@ -1,4 +1,4 @@
-# PromptForge Design Guidelines
+# Vectra AI Design Guidelines
 
 ## Design Language: Soft Minimal Editorial UI / Calm Tech Design
 

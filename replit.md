@@ -1,7 +1,7 @@
-# PromptForge - Infinite Prompt Generator
+# Vectra AI - AI-Powered Prompt Engineering
 
 ## Overview
-PromptForge is a professional prompt engineering studio with blueprints, filters, and reproducible seeds for generating production-grade prompts for any LLM.
+Vectra AI is a professional AI prompt engineering studio with blueprints, filters, and reproducible seeds for generating production-grade prompts for any LLM.
 
 ## Tech Stack
 - **Frontend**: React + Vite + TypeScript

@@ -1132,8 +1132,8 @@ export default function ModelsLabStudioPage() {
                                 imageUrls: result.output,
                                 generatedAt: new Date().toISOString(),
                               };
-                              await exportToPDF(exportData, 'promptforge-export', {
-                                title: t.modelslab.exportTitle || "PromptForge Export",
+                              await exportToPDF(exportData, 'vectra-ai-export', {
+                                title: t.modelslab.exportTitle || "Vectra AI Export",
                                 prompt: t.modelslab.exportPrompt || "Prompt",
                                 seed: t.modelslab.exportSeed || "Seed",
                                 aspectRatio: t.modelslab.exportAspectRatio || "Aspect Ratio",
@@ -1436,7 +1436,7 @@ export default function ModelsLabStudioPage() {
                                       generatedAt: new Date(img.createdAt).toISOString(),
                                     };
                                     await exportToPDF(exportData, `image-${img.id}`, {
-                                      title: t.modelslab.exportTitle || "PromptForge Export",
+                                      title: t.modelslab.exportTitle || "Vectra AI Export",
                                       prompt: t.modelslab.exportPrompt || "Prompt",
                                       seed: t.modelslab.exportSeed || "Seed",
                                       aspectRatio: t.modelslab.exportAspectRatio || "Aspect Ratio",

@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/theme-provider";
 import { useI18n, LanguageToggle } from "@/lib/i18n";
+import { APP_NAME } from "@/lib/constants";
 import { Moon, Sun, Sparkles, Menu, X, Image, Library, History, Home } from "lucide-react";
 import { useState } from "react";
 
@@ -22,10 +23,10 @@ export function Header() {
     <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-background/60 backdrop-blur-xl border-b border-border/50">
       <div className="max-w-7xl mx-auto h-full px-6 md:px-8 flex items-center justify-between gap-6">
         <Link href="/" className="flex items-center gap-2.5 shrink-0 group" data-testid="link-home-logo">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent-2 flex items-center justify-center shadow-editorial transition-transform group-hover:scale-105">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#A855F7] to-[#EC4899] flex items-center justify-center shadow-sm transition-transform group-hover:scale-105">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
-          <span className="text-base font-semibold tracking-tight" data-testid="text-logo">PromptForge</span>
+          <span className="text-base font-semibold tracking-tight" data-testid="text-logo">{APP_NAME}</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-0.5">

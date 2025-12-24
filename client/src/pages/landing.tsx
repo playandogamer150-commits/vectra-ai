@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useI18n } from "@/lib/i18n";
+import { APP_NAME } from "@/lib/constants";
 import { Zap, Repeat, Sliders, Check, ArrowRight, Sparkles, Layers, Target } from "lucide-react";
 
 export default function LandingPage() {
@@ -204,10 +205,10 @@ export default function LandingPage() {
       <footer className="py-10 px-6 md:px-8 border-t border-border/50">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent-2 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#A855F7] to-[#EC4899] flex items-center justify-center">
               <Sparkles className="w-4 h-4 text-white" />
             </div>
-            <span className="font-semibold">PromptForge</span>
+            <span className="font-semibold">{APP_NAME}</span>
           </div>
           <p className="text-sm text-muted-foreground">
             {t.landing.footer}
