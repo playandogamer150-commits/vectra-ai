@@ -331,7 +331,7 @@ export default function ModelsLabStudioPage() {
         prompt: prompt || "Cinematic video with smooth natural motion, professional cinematography",
         targetAspect: videoAspect,
         durationSeconds: videoDuration,
-        modelId: "seedance-1-0-pro",
+        modelId: "img2video",
         generationType: "image-to-video",
       });
       return await response.json();
