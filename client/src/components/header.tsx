@@ -4,14 +4,35 @@ import { useTheme } from "@/components/theme-provider";
 import { useI18n, LanguageToggle } from "@/lib/i18n";
 import { BRAND } from "@/lib/constants";
 import { MonoIcon } from "@/components/mono-icon";
-import { Moon, Sun, Menu, X, Image, Library, History } from "lucide-react";
+import { Moon, Sun, Menu, X, Image, Library, History, User, LogOut, Settings } from "lucide-react";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+interface UserProfile {
+  id: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  plan: string;
+}
 
 export function Header() {
   const { theme, toggleTheme } = useTheme();
   const { t } = useI18n();
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const { data: profile } = useQuery<UserProfile>({
+    queryKey: ["/api/profile"],
+  });
 
   const navItems = [
     { href: "/image-studio", label: t.nav.imageStudio, icon: Image },
@@ -63,6 +84,55 @@ export function Header() {
           >
             {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </Button>
+
+          {profile && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="w-9 h-9 rounded-lg"
+                  data-testid="button-user-menu"
+                >
+                  <Avatar className="h-7 w-7">
+                    <AvatarImage src={profile.avatarUrl || undefined} alt={profile.displayName || profile.username} />
+                    <AvatarFallback className="text-xs">
+                      {(profile.displayName || profile.username || "U").charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <div className="px-2 py-1.5">
+                  <p className="text-sm font-medium truncate">{profile.displayName || profile.username}</p>
+                  <p className="text-xs text-muted-foreground truncate">@{profile.username}</p>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => setLocation("/profile")}
+                  data-testid="menu-item-profile"
+                >
+                  <User className="w-4 h-4 mr-2" />
+                  {t.profile.title}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setLocation("/library")}
+                  data-testid="menu-item-blueprints"
+                >
+                  <Settings className="w-4 h-4 mr-2" />
+                  {t.profile.goToBlueprints}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => window.location.href = "/api/logout"}
+                  data-testid="menu-item-logout"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           <Button
             size="icon"
