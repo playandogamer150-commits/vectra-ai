@@ -49,6 +49,16 @@ async function checkLoraPermission(req: Request, res: Response, next: NextFuncti
     return next();
   }
   
+  const userId = getUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  
+  const appUser = await storage.getAppUser(userId);
+  if (appUser?.plan === "pro") {
+    return next();
+  }
+  
   return res.status(403).json({
     error: "LoRA training requires a Pro subscription",
     isPremiumRequired: true,

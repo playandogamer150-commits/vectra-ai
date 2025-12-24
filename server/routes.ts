@@ -45,6 +45,50 @@ function requireAuth(req: Request, res: any): string | null {
   return userId;
 }
 
+const IS_PRO_OVERRIDE = process.env.ADMIN_OVERRIDE === "true" || process.env.PLAN_PRO_OVERRIDE === "true";
+
+const FREE_LIMITS = {
+  promptsPerDay: 10,
+  imagesPerDay: 5,
+  videosPerDay: 0,
+};
+
+async function checkGenerationLimits(userId: string, type: "prompt" | "image" | "video"): Promise<{ allowed: boolean; reason?: string; isPro: boolean }> {
+  if (IS_PRO_OVERRIDE) {
+    return { allowed: true, isPro: true };
+  }
+  
+  const appUser = await storage.getAppUser(userId);
+  const isPro = appUser?.plan === "pro";
+  
+  if (isPro) {
+    return { allowed: true, isPro: true };
+  }
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const usageToday = await storage.getUsageToday(userId, type);
+  const limit = type === "prompt" ? FREE_LIMITS.promptsPerDay 
+    : type === "image" ? FREE_LIMITS.imagesPerDay 
+    : FREE_LIMITS.videosPerDay;
+  
+  if (usageToday >= limit) {
+    const limitName = type === "prompt" ? "prompt" : type === "image" ? "image" : "video";
+    return { 
+      allowed: false, 
+      reason: `Daily ${limitName} limit reached (${limit}/${limit}). Upgrade to Pro for unlimited.`,
+      isPro: false,
+    };
+  }
+  
+  return { allowed: true, isPro: false };
+}
+
+async function logUsage(userId: string, type: "prompt" | "image" | "video"): Promise<void> {
+  await storage.logUsage(userId, type);
+}
+
 async function seedDatabase() {
   const existingProfiles = await storage.getProfiles();
   if (existingProfiles.length === 0) {
@@ -766,6 +810,19 @@ export async function registerRoutes(
   // ModelsLab Nano Banana Pro API
   app.post("/api/modelslab/generate", async (req, res) => {
     try {
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const limitCheck = await checkGenerationLimits(userId, "image");
+      if (!limitCheck.allowed) {
+        return res.status(403).json({ 
+          error: limitCheck.reason,
+          isPremiumRequired: true,
+        });
+      }
+
       const { prompt, images, aspectRatio } = req.body;
       
       if (!prompt) {
@@ -869,6 +926,8 @@ export async function registerRoutes(
         return res.status(400).json({ error: data.message || "ModelsLab API error" });
       }
       
+      await logUsage(userId, "image");
+      
       res.json(data);
     } catch (error) {
       console.error("Error calling ModelsLab API:", error);
@@ -934,6 +993,19 @@ export async function registerRoutes(
   // Uses ModelsLab Wan 2.1 I2V model for high quality video from any image
   app.post("/api/sora2/generate", async (req, res) => {
     try {
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const limitCheck = await checkGenerationLimits(userId, "video");
+      if (!limitCheck.allowed) {
+        return res.status(403).json({ 
+          error: limitCheck.reason,
+          isPremiumRequired: true,
+        });
+      }
+
       const { prompt, imageUrl } = req.body;
       
       if (!imageUrl) {
@@ -1033,12 +1105,26 @@ export async function registerRoutes(
   // ============ VIDEO GENERATION (Job System) ============
   app.post("/api/videogen/jobs", async (req, res) => {
     try {
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const limitCheck = await checkGenerationLimits(userId, "video");
+      if (!limitCheck.allowed) {
+        return res.status(403).json({ 
+          error: limitCheck.reason,
+          isPremiumRequired: true,
+        });
+      }
+
       const validated = createVideoJobRequestSchema.parse(req.body);
       
       const { createVideoJob } = await import("./videogen/service");
-      const result = await createVideoJob(DEV_USER_ID, validated);
+      const result = await createVideoJob(userId, validated);
       
       if (result.success) {
+        await logUsage(userId, "video");
         const job = await storage.getVideoJob(result.jobId!);
         res.status(201).json(job);
       } else {

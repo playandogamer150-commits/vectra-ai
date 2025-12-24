@@ -2,7 +2,7 @@ import {
   appUsers, llmProfiles, promptBlueprints, promptBlocks, filters, 
   generatedPrompts, promptVersions, rateLimits,
   loraModels, loraDatasets, loraDatasetItems, loraVersions, loraJobs, userLoraActive, baseModels,
-  userBlueprints, userBlueprintVersions, savedImages, savedVideos, filterPresets, videoJobs,
+  userBlueprints, userBlueprintVersions, savedImages, savedVideos, filterPresets, videoJobs, usageLogs,
   type AppUser, type InsertAppUser, type LlmProfile, type InsertLlmProfile,
   type PromptBlueprint, type InsertBlueprint, type PromptBlock, type InsertBlock,
   type Filter, type InsertFilter, type GeneratedPrompt, type InsertGeneratedPrompt,
@@ -119,6 +119,10 @@ export interface IStorage {
   updateVideoJob(id: string, data: Partial<InsertVideoJob>): Promise<VideoJob | undefined>;
   findVideoJobByIdempotency(userId: string, idempotencyKey: string): Promise<VideoJob | undefined>;
   getVideoJobsNeedingPoll(): Promise<VideoJob[]>;
+  
+  // Usage Tracking
+  getUsageToday(userId: string, type: "prompt" | "image" | "video" | "lora_training"): Promise<number>;
+  logUsage(userId: string, type: "prompt" | "image" | "video" | "lora_training"): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -663,6 +667,34 @@ export class DatabaseStorage implements IStorage {
         eq(videoJobs.status, "processing"),
         lte(videoJobs.nextPollAt, new Date())
       ));
+  }
+
+  // Usage Tracking
+  async getUsageToday(userId: string, type: "prompt" | "image" | "video" | "lora_training"): Promise<number> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const result = await db.select({ total: sql<number>`COALESCE(SUM(${usageLogs.quantity}), 0)` })
+      .from(usageLogs)
+      .where(and(
+        eq(usageLogs.userId, userId),
+        eq(usageLogs.type, type),
+        sql`${usageLogs.createdAt} >= ${today}`
+      ));
+    
+    return Number(result[0]?.total || 0);
+  }
+
+  async logUsage(userId: string, type: "prompt" | "image" | "video" | "lora_training"): Promise<void> {
+    const appUser = await this.getAppUser(userId);
+    const plan = appUser?.plan || "free";
+    
+    await db.insert(usageLogs).values({
+      userId,
+      type,
+      quantity: 1,
+      planSnapshot: plan,
+    });
   }
 }
 
