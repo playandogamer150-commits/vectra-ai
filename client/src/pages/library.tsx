@@ -287,7 +287,7 @@ export default function LibraryPage() {
                         </span>
                       </div>
                       
-                      <Link href={`/studio?blueprint=${blueprint.id}`} className="block">
+                      <Link href={`/image-studio?blueprint=${blueprint.id}`} className="block">
                         <Button 
                           variant="ghost" 
                           className="w-full justify-between rounded-lg group/btn"
@@ -405,7 +405,7 @@ export default function LibraryPage() {
                         </span>
                       </div>
                       
-                      <Link href={`/studio?userBlueprint=${blueprint.id}`} className="block">
+                      <Link href={`/image-studio?userBlueprint=${blueprint.id}`} className="block">
                         <Button 
                           variant="ghost" 
                           className="w-full justify-between rounded-lg group/btn"

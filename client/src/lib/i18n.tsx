@@ -320,6 +320,8 @@ const translations = {
       presetDeleted: "Preset deleted",
       presetLoaded: "Preset loaded",
       noPresets: "No saved presets. Enable filters and save a preset to get started.",
+      blueprintLoaded: "Blueprint loaded",
+      blueprintLoadedDesc: "Blueprint settings applied to the studio",
       // VEO 3.1 Video Generation
       transformToVideo: "Transform to Video",
       transformToVideoFull: "Transform to Video",
@@ -748,6 +750,8 @@ const translations = {
       presetDeleted: "Predefinição excluída",
       presetLoaded: "Predefinição carregada",
       noPresets: "Nenhuma predefinição salva. Ative filtros e salve uma predefinição para começar.",
+      blueprintLoaded: "Blueprint carregado",
+      blueprintLoadedDesc: "Configurações do blueprint aplicadas ao estúdio",
       // VEO 3.1 Video Generation
       transformToVideo: "Transformar em Vídeo",
       transformToVideoFull: "Transformar em Vídeo",

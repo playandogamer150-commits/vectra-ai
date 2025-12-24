@@ -89,7 +89,7 @@ export default function HistoryPage() {
             <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
               {t.history.noHistoryDesc}
             </p>
-            <Link href="/studio">
+            <Link href="/image-studio">
               <Button className="gap-2">
                 <Zap className="w-4 h-4" />
                 {t.history.goToStudio}
@@ -156,7 +156,7 @@ export default function HistoryPage() {
                       >
                         <Copy className="w-4 h-4" />
                       </Button>
-                      <Link href={`/studio?seed=${item.seed}&blueprint=${item.blueprintId}&profile=${item.profileId}`}>
+                      <Link href={`/image-studio?seed=${item.seed}&blueprint=${item.blueprintId}&profile=${item.profileId}`}>
                         <Button 
                           variant="ghost" 
                           size="icon" 

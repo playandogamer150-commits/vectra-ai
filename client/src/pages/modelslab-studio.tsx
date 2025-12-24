@@ -124,6 +124,47 @@ export default function ModelsLabStudioPage() {
     queryKey: ["/api/video-gallery"],
   });
 
+  // Auto-populate from URL parameters (blueprint from library)
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const blueprintId = searchParams.get("blueprint");
+    const userBlueprintId = searchParams.get("userBlueprint");
+    const seedParam = searchParams.get("seed");
+    const profileId = searchParams.get("profile");
+
+    if (blueprintId || userBlueprintId) {
+      setUsePromptEngine(true);
+      
+      if (blueprintId) {
+        setSelectedBlueprint(blueprintId);
+        setBlueprintTab("system");
+        setSelectedUserBlueprint("");
+      }
+      
+      if (userBlueprintId) {
+        setSelectedUserBlueprint(userBlueprintId);
+        setBlueprintTab("custom");
+        setSelectedBlueprint("");
+      }
+
+      // Clear URL params after processing
+      window.history.replaceState({}, "", "/image-studio");
+      
+      toast({
+        title: t.modelslab.blueprintLoaded || "Blueprint loaded",
+        description: t.modelslab.blueprintLoadedDesc || "Blueprint settings applied to the studio",
+      });
+    }
+
+    if (seedParam) {
+      setSeed(seedParam);
+    }
+
+    if (profileId) {
+      setSelectedProfile(profileId);
+    }
+  }, [t, toast]);
+
   // Gallery state
   const [showGallery, setShowGallery] = useState(false);
   const [showVideoGallery, setShowVideoGallery] = useState(false);
