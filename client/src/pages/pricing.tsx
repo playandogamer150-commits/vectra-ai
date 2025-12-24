@@ -132,7 +132,7 @@ export default function PricingPage() {
       ],
       cta: language === "pt-BR" ? "Assinar Pro" : "Upgrade to Pro",
       variant: "default" as const,
-      priceId: "price_pro_monthly",
+      priceId: language === "pt-BR" ? "price_1Si1TxBuzUxsFLiDZ7rTnB7w" : "price_1Si1TxBuzUxsFLiDPgywDBQE",
     },
     {
       id: "enterprise",
