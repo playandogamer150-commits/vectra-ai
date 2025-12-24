@@ -126,25 +126,14 @@ export async function registerRoutes(
         });
       }
 
-      const appUser = await storage.getAppUser(userId);
+      let appUser = await storage.getAppUser(userId);
       
       if (!appUser) {
-        const userProfile = {
-          id: userId,
-          username: user?.claims?.name || "User",
-          email: user?.claims?.email || null,
-          plan: "free" as const,
-          displayName: user?.claims?.name || null,
-          avatarUrl: user?.claims?.profile_image || null,
-          tagline: null,
-          timezone: "America/Sao_Paulo",
-          defaultLanguage: "pt-BR",
-          defaultLlmProfileId: null,
-          theme: "system",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        return res.json(userProfile);
+        // Create the user in the database on first access
+        appUser = await storage.createAppUserFromReplit(
+          userId,
+          user?.claims?.name || "User"
+        );
       }
 
       res.json({
@@ -161,15 +150,27 @@ export async function registerRoutes(
   app.put("/api/profile", async (req, res) => {
     try {
       const userId = getUserId(req);
+      const user = req.user as any;
+      
       if (userId === DEV_USER_ID) {
         return res.json({ success: true, message: "Profile updated (dev mode)" });
       }
 
       const data = updateProfileSchema.parse(req.body);
+      
+      // Check if user exists, create if not (upsert pattern)
+      let appUser = await storage.getAppUser(userId);
+      if (!appUser) {
+        appUser = await storage.createAppUserFromReplit(
+          userId,
+          user?.claims?.name || "User"
+        );
+      }
+      
       const updated = await storage.updateAppUser(userId, data);
       
       if (!updated) {
-        return res.status(404).json({ error: "User not found" });
+        return res.status(500).json({ error: "Failed to update profile" });
       }
 
       res.json(updated);
