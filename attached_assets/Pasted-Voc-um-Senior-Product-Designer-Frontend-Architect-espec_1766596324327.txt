@@ -1,0 +1,111 @@
+Você é um Senior Product Designer + Frontend Architect especializado em SaaS premium.
+
+OBJETIVO:
+Atualizar COMPLETAMENTE o design das abas:
+1) Biblioteca de Blueprints
+2) Histórico de Gerações
+
+O design deve seguir o NOVO DESIGN SYSTEM do app (Soft Minimal AI SaaS),
+mantendo consistência visual com o restante da interface já atualizada.
+
+IMPORTANTE:
+Esta atualização SUBSTITUI o design antigo.
+Não é ajuste incremental — é redesign completo mantendo a mesma funcionalidade.
+
+========================
+ESTILO VISUAL (OBRIGATÓRIO)
+========================
+- Estilo: Soft Minimal / Editorial SaaS / Calm Tech
+- Sensação: profissional, criativo, silencioso, premium
+- Nada chamativo ou “gamer”
+- Visual digno de produto que será vendido
+
+========================
+CORES (PALETA BASE)
+========================
+- Background principal: #FFFFFF ou #FAFAFA
+- Cards: #FFFFFF com sombra MUITO sutil
+- Borda dos cards: rgba(0,0,0,0.04)
+- Texto primário: #0F172A
+- Texto secundário: #64748B
+- Accent principal (brand): Gradiente roxo-rosa suave
+  Ex: #A855F7 → #EC4899
+- Estados ativos: cor de accent com 8–12% de opacidade
+- Nada de preto puro em grandes áreas
+
+========================
+TIPOGRAFIA
+========================
+- Fonte principal: Inter ou equivalente
+- Títulos:
+  - font-weight: 600–700
+  - espaçamento confortável
+- Corpo:
+  - font-weight: 400–500
+- Microtextos:
+  - claros, legíveis, sem poluição
+
+========================
+ABA 1 — BIBLIOTECA DE BLUEPRINTS
+========================
+Layout:
+- Grid responsivo (3 colunas desktop, 2 tablet, 1 mobile)
+- Cards grandes, respiráveis
+
+Blueprint Card:
+- Ícone grande no topo (line icon, rounded)
+- Nome do Blueprint (destaque)
+- Descrição curta (2 linhas máx)
+- Tags em pills suaves (categoria, estilo)
+- CTA elegante:
+  “Usar Blueprint →”
+- Hover:
+  - leve elevação
+  - sombra suave
+  - borda com accent sutil
+
+Filtros:
+- Pills horizontais com scroll suave
+- Estado ativo destacado com background leve
+- Campo de busca clean, sem bordas agressivas
+
+========================
+ABA 2 — HISTÓRICO DE GERAÇÕES
+========================
+Layout:
+- Lista vertical com cards largos
+- Sensação de timeline / registro profissional
+
+History Card:
+- Ícone do tipo de geração
+- Nome do blueprint usado
+- Modelo (ex: Midjourney V6) em badge
+- Data e hora em microtexto
+- Seed visível (copiável)
+- Botões:
+  - Reutilizar
+  - Ver resultado
+- Card clicável inteiro
+- Hover suave, sem animações exageradas
+
+========================
+INTERAÇÕES E UX
+========================
+- Todas as transições: 150–220ms ease-in-out
+- Nada de pop-ups desnecessários
+- Feedback visual discreto
+- Foco total em legibilidade e clareza
+
+========================
+REGRAS IMPORTANTES
+========================
+- Não usar cores duras
+- Não usar sombras fortes
+- Não usar bordas grossas
+- Não usar fontes decorativas
+- Não quebrar consistência visual com outras abas
+
+RESULTADO ESPERADO:
+Um design moderno, criativo e profissional,
+compatível com SaaS premium de IA,
+pronto para venda e escala comercial.
