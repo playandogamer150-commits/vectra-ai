@@ -952,6 +952,38 @@ export async function registerRoutes(
         return res.status(400).json({ error: data.message || "ModelsLab API error" });
       }
       
+      // Process base64 URLs if present - convert them to proper data URLs
+      if (data.status === "success" && data.output && Array.isArray(data.output)) {
+        const processedOutput: string[] = [];
+        for (const url of data.output) {
+          if (typeof url === 'string' && url.endsWith('.base64')) {
+            try {
+              // Fetch the base64 content from the file
+              const base64Response = await fetchWithTimeout(url, {
+                method: "GET",
+              }, 30000);
+              const base64Content = await base64Response.text();
+              const cleanBase64 = base64Content.trim();
+              
+              // Detect image type from base64 header
+              let mimeType = 'image/png';
+              if (cleanBase64.startsWith('/9j/')) {
+                mimeType = 'image/jpeg';
+              } else if (cleanBase64.startsWith('iVBOR')) {
+                mimeType = 'image/png';
+              }
+              processedOutput.push(`data:${mimeType};base64,${cleanBase64}`);
+            } catch (err) {
+              console.error('Failed to fetch base64 content:', err);
+              processedOutput.push(url); // Fallback to original
+            }
+          } else {
+            processedOutput.push(url);
+          }
+        }
+        data.output = processedOutput;
+      }
+      
       await logUsage(userId, "image");
       
       res.json(data);

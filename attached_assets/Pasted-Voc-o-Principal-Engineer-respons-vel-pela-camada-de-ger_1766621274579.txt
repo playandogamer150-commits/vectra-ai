@@ -1,0 +1,32 @@
+Você é o Principal Engineer responsável pela camada de geração e exibição de imagens da Vectra AI. Temos um bug: a imagem gerada por ModelsLab v6 aparece nos logs como sucesso, mas **não é exibida no preview** do Estúdio de Imagem. O endpoint `/api/generate` retorna um link base64 (ex.: `...generations/0-4c40b41f-5675-4ea4-a47c-ff9153437467.base64`), mas a UI espera um URL de imagem (PNG/JPG).
+
+TAREFAS:
+
+1. **Diagnóstico do Fluxo de Geração**
+   - Ao chamar `/api/modelslab/generate`, o ModelsLab retorna `output: [ "<link>.base64" ]` quando usa “realistic-vision-51”.
+   - Nosso backend salva esse link no banco como `imageUrl`, mas a UI tenta renderizá-lo diretamente, resultando em imagem quebrada.
+
+2. **Decodificação e Conversão**
+   - Crie uma função `decodeAndUploadBase64Image` no backend (pasta `server/services/modelsLab.ts` ou similar) que:
+     1. Detecta quando o link termina com `.base64`.
+     2. Faz download do arquivo base64.
+     3. Decodifica o conteúdo base64 para `Buffer` (é um PNG ou JPEG).
+     4. Faz upload do buffer decodificado para o nosso bucket R2/S3 com extensão `.png` e retorna a URL pública do novo arquivo.
+   - Atualize o workflow de geração para usar essa função antes de persistir `imageUrl` no banco.
+
+3. **Atualização do Banco/API**
+   - As rotas `/api/generate` e `/api/gallery` devem armazenar e retornar apenas URLs de imagens válidas (png/jpg), não `.base64`.
+   - Para gerações antigas com `.base64`, implemente uma rotina de migração ou decodifique “on the fly” quando solicitado.
+
+4. **Ajustes na UI**
+   - No Estúdio de Imagem (`client/src/app/image-studio/page.tsx` ou equivalente), garanta que o componente de preview renderiza imagens a partir de URLs normais (ou `data:image/png;base64,` quando apropriado).
+   - Adicione um estado de carregamento (“Gerando...”) até que a nova URL esteja pronta.
+   - Exiba mensagens de erro claras se a geração falhar.
+
+5. **Observabilidade**
+   - Logar eventos quando ocorrer decodificação ou falha de download/upload.
+   - Adicionar testes de integração para garantir que:
+     - Geração com retorno `.base64` exibe preview corretamente.
+     - Geração com retorno `.png` continua funcionando.
+
+Critério de aceite: Ao gerar uma imagem no Estúdio de Imagem, a miniatura aparece imediatamente no painel de Resultado, sem extensões `.base64`. Gerações antigas são corrigidas automaticamente. Nenhuma regressão nas rotas ou na galeria.
