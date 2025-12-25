@@ -50,7 +50,7 @@ const IS_PRO_OVERRIDE = process.env.ADMIN_OVERRIDE === "true" || process.env.PLA
 const FREE_LIMITS = {
   promptsPerDay: 10,
   imagesHqPerDay: 5,       // Nano Banana Pro (ultra-realistic)
-  imagesStandardPerDay: 10, // Realistic Vision 51 (standard)
+  imagesStandardPerDay: 5, // Realistic Vision 51 (standard) - 5 additional after HQ exhausted
   videosPerDay: 0,
 };
 
@@ -60,6 +60,7 @@ interface ImageQuotaResult {
   isPro: boolean;
   modelId: string;
   imageQuality: "hq" | "standard";
+  hqExhausted?: boolean;  // True when HQ quota just became exhausted (first standard image)
   quotas?: {
     hq: { used: number; limit: number };
     standard: { used: number; limit: number };
@@ -97,11 +98,14 @@ async function checkImageQuotaAndModel(userId: string): Promise<ImageQuotaResult
   
   // If HQ exhausted, check standard quota (Realistic Vision 51)
   if (usage.standard < FREE_LIMITS.imagesStandardPerDay) {
+    // hqExhausted=true signals frontend to show popup about model downgrade
+    const isFirstStandardImage = usage.standard === 0;
     return { 
       allowed: true, 
       isPro: false, 
       modelId: "realistic-vision-51", 
       imageQuality: "standard",
+      hqExhausted: isFirstStandardImage, // Show popup only on first standard image
       quotas,
     };
   }
@@ -1090,6 +1094,7 @@ export async function registerRoutes(
         ...data,
         modelUsed: selectedModel,
         imageQuality: imageQuota.imageQuality,
+        hqExhausted: imageQuota.hqExhausted || false,
         quotas: imageQuota.quotas,
       });
     } catch (error) {

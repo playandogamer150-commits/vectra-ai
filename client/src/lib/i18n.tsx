@@ -384,6 +384,9 @@ const translations = {
       exportImages: "Images",
       exportSuccess: "Export completed",
       exportError: "Export failed",
+      hqLimitReached: "HQ Image Limit Reached",
+      hqLimitMessage: "You have used your 5 high-quality images (Nano Banana Pro). The next 5 free generations will use the Realistic Vision 5.1 model.",
+      upgradeToPro: "Upgrade to Pro (unlimited)",
     },
     profile: {
       title: "My Profile",
@@ -815,6 +818,9 @@ const translations = {
       exportImages: "Imagens",
       exportSuccess: "Exportação concluída",
       exportError: "Falha na exportação",
+      hqLimitReached: "Limite de Imagens HQ Atingido",
+      hqLimitMessage: "Você utilizou suas 5 imagens de alta qualidade (Nano Banana Pro). As próximas 5 gerações gratuitas usarão o modelo Realistic Vision 5.1.",
+      upgradeToPro: "Upgrade para Pro (ilimitado)",
     },
     profile: {
       title: "Meu Perfil",

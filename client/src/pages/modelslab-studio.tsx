@@ -34,6 +34,13 @@ interface ModelsLabResponse {
   fetch_result?: string;
   eta?: number;
   message?: string;
+  modelUsed?: string;
+  imageQuality?: "hq" | "standard";
+  hqExhausted?: boolean;
+  quotas?: {
+    hq: { used: number; limit: number };
+    standard: { used: number; limit: number };
+  };
 }
 
 interface Sora2Response {
@@ -93,6 +100,13 @@ export default function ModelsLabStudioPage() {
   // Result state
   const [result, setResult] = useState<ModelsLabResponse | null>(null);
   const [isPolling, setIsPolling] = useState(false);
+  
+  // HQ quota exhausted popup state
+  const [showHqExhaustedPopup, setShowHqExhaustedPopup] = useState(false);
+  const [currentQuotas, setCurrentQuotas] = useState<{
+    hq: { used: number; limit: number };
+    standard: { used: number; limit: number };
+  } | null>(null);
 
   // Queries for Prompt Engine
   const { data: profiles, isLoading: loadingProfiles } = useQuery<LlmProfile[]>({
@@ -639,14 +653,25 @@ export default function ModelsLabStudioPage() {
       return res.json() as Promise<ModelsLabResponse>;
     },
     onSuccess: async (data) => {
+      // Update quotas if available
+      if (data.quotas) {
+        setCurrentQuotas(data.quotas);
+      }
+      
+      // Show HQ exhausted popup if this is the first standard image
+      if (data.hqExhausted) {
+        setShowHqExhaustedPopup(true);
+      }
+      
       if (data.status === "processing" && data.fetch_result) {
         setIsPolling(true);
         pollForResult(data.fetch_result);
       } else if (data.status === "success" && data.output) {
         setResult(data);
+        const modelLabel = data.imageQuality === "hq" ? "Nano Banana Pro" : "Realistic Vision 5.1";
         toast({
           title: t.modelslab.success,
-          description: t.modelslab.imageGenerated,
+          description: `${t.modelslab.imageGenerated} (${modelLabel})`,
         });
       } else if (data.status === "error") {
         toast({
@@ -1997,6 +2022,54 @@ export default function ModelsLabStudioPage() {
                 </Button>
               </>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* HQ Quota Exhausted Popup */}
+      <Dialog open={showHqExhaustedPopup} onOpenChange={setShowHqExhaustedPopup}>
+        <DialogContent className="max-w-md" data-testid="dialog-hq-exhausted">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-amber-500" />
+              {t.modelslab.hqLimitReached || "Limite de Imagens HQ Atingido"}
+            </DialogTitle>
+            <DialogDescription className="text-left space-y-3 pt-2">
+              <p>
+                {t.modelslab.hqLimitMessage || "Você utilizou suas 5 imagens de alta qualidade (Nano Banana Pro). As próximas 5 gerações gratuitas usarão o modelo Realistic Vision 5.1."}
+              </p>
+              {currentQuotas && (
+                <div className="bg-muted/50 rounded-lg p-3 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Imagens HQ (Nano Banana Pro):</span>
+                    <span className="font-medium">{currentQuotas.hq.used}/{currentQuotas.hq.limit}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Imagens Standard (Realistic Vision 5.1):</span>
+                    <span className="font-medium">{currentQuotas.standard.used}/{currentQuotas.standard.limit}</span>
+                  </div>
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setShowHqExhaustedPopup(false)}
+              data-testid="button-hq-popup-ok"
+            >
+              OK
+            </Button>
+            <Button
+              onClick={() => {
+                setShowHqExhaustedPopup(false);
+                window.location.href = "/pricing";
+              }}
+              data-testid="button-hq-popup-upgrade"
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              {t.modelslab.upgradeToPro || "Upgrade para Pro (ilimitado)"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

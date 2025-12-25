@@ -1,0 +1,59 @@
+Você é o Principal Engineer responsável por gerenciar os modelos de geração de imagens na Vectra AI. Foi solicitado ajustar o plano Free para usar **Nano Banana Pro** (não a LoRA v1) como modelo de alta qualidade, com um limite de 5 gerações. Depois disso, o Free terá direito a mais 5 gerações utilizando **Realistic Vision 5.1**. O plano Pro permanecerá com uso ilimitado do Nano Banana Pro. Também devemos notificar o usuário quando o modelo mudar, por meio de um pop‑up. A página de documentação do Nano Banana Pro (Image Edit) confirma que o `model_id` é `nano-banana-pro` e que o modelo oferece geração de imagem de ultra‑alta qualidade:contentReference[oaicite:0]{index=0}:contentReference[oaicite:1]{index=1}.
+
+### 🎯 Objetivo
+Implementar quotas distintas no plano Free (5 HQ + 5 Standard) com roteamento automático de modelo, aplicar o modelo Nano Banana Pro para HQ, Realistic Vision 5.1 para Standard, e criar um pop‑up informativo quando a quota HQ expirar.
+
+### 🧩 Tarefas técnicas
+
+1. **Atualização das quotas e controladores**  
+   - Definir dois contadores para o plano Free:  
+     - `hq_images_used`: máximo 5 por dia.  
+     - `standard_images_used`: máximo 5 adicionais.  
+   - Para planos Pro e Enterprise, `hq_images_used` é ilimitado; `standard_images_used` não se aplica.  
+   - Persistir esses valores no banco (tabela `usage_logs` ou `profiles_usage`) e resetar diariamente (timezone: America/Sao_Paulo).
+
+2. **Roteamento de modelo no backend**  
+   - No endpoint `/api/generate` (geração de imagem):  
+     - Se `hq_images_used < 5` → atribuir:
+       ```json
+       { 
+         "model_id": "nano-banana-pro",
+         "lora_model": null
+       }
+       ```
+       (usar o endpoint `/api/v7/images/image-to-image` com `model_id` `nano-banana-pro`, conforme documentação:contentReference[oaicite:2]{index=2}; se necessário, adaptar payload para aceitar `prompt` sem `init_image` ou usar o endpoint de text-to-image equivalente).  
+       - Ajustar parâmetros HQ: `steps = 40`, `guidance_scale = 8.0`.  
+     - Caso contrário, se `standard_images_used < 5` → atribuir:
+       ```json
+       {
+         "model_id": "realistic-vision-51"
+       }
+       ```
+       - Parâmetros Standard: `steps = 30`, `guidance_scale = 7.5`.  
+     - Caso ambos limites tenham sido alcançados → retornar erro 402 informando que o limite do plano Free foi atingido e sugerir upgrade.  
+   - Registrar `imageQuality` como `"hq"` ou `"standard"` e persistir em `metadata`.  
+   - Incrementar os contadores no banco após cada geração bem-sucedida.
+
+3. **Notificação e pop‑up no Front‑End**  
+   - Adicionar um componente de `Modal` ou `Dialog` que exibe mensagem quando `hq_images_used` atinge 5:  
+     - Título: “Limite de Imagens HQ Utilizado”  
+     - Corpo: “Você utilizou suas 5 imagens de alta qualidade (Nano Banana Pro). As próximas 5 gerações gratuitas usarão o modelo Realistic Vision 5.1.”  
+     - Botões: “OK” e “Upgrade para Pro (ilimitado)”  
+   - Exibir esse modal automaticamente ao tentar gerar a 6ª imagem HQ ou imediatamente quando o backend retornar que a quota HQ expirou.  
+   - Desabilitar o pop‑up após o usuário aceitar; não mostrar mais até nova renovação de quota (diária).
+
+4. **Atualização de UI e métricas**  
+   - Mostrar no painel de “LIMITES DIÁRIOS” dois contadores:  
+     - “Imagens HQ (Nano Banana Pro): {hq_used}/5”  
+     - “Imagens Standard (Realistic Vision 5.1): {standard_used}/5”  
+   - Atualizar esses valores em tempo real após cada geração.  
+   - Quando o usuário estiver no plano Pro, mostrar apenas “Imagens HQ: Ilimitadas” e ocultar o contador Standard.
+
+5. **Critérios de aceitação**  
+   - Usuário Free gera no máximo 10 imagens por dia: as primeiras 5 com Nano Banana Pro, as 5 seguintes com Realistic Vision 5.1.  
+   - Usuário Pro gera imagens ilimitadas com Nano Banana Pro.  
+   - Pop‑up é exibido exatamente uma vez quando a quota HQ é atingida.  
+   - O plano Free não sofre regressões em outras quotas (promptagens, vídeos, LoRAs).  
+   - Logs de geração registram `model_id` e `imageQuality` para auditoria.
+
+Implemente essas alterações, ajuste a camada de serviço (generations), crie o pop‑up no front-end, atualize a UI de quotas e o modelo de dados, e realize testes unitários e de integração para garantir que tudo funcione de ponta a ponta.
