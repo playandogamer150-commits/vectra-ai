@@ -236,8 +236,16 @@ export class ModelsLabProvider implements VideoProvider {
     }
 
     const sensitivePatterns = [
-      /\b(kanye\s*west|ye\s+west|elon\s*musk|taylor\s*swift|donald\s*trump|joe\s*biden|barack\s*obama|kim\s*kardashian|beyonce|rihanna|drake|eminem|snoop\s*dogg|jay\s*z|lebron\s*james|michael\s*jordan|cristiano\s*ronaldo|lionel\s*messi|putin|xi\s*jinping|mark\s*zuckerberg|jeff\s*bezos|bill\s*gates|steve\s*jobs|oprah|ellen\s*degeneres|johnny\s*depp|amber\s*heard|will\s*smith|chris\s*rock|andrew\s*tate|mr\s*beast|pewdiepie|logan\s*paul|jake\s*paul|jhony\s*dang|johnny\s*dang)\b/gi,
-      /\b(celebrity|celebridade|famoso|famous\s+person)\b/gi,
+      // Politicians, business leaders
+      /\b(kanye\s*west|ye\s+west|elon\s*musk|donald\s*trump|joe\s*biden|barack\s*obama|putin|xi\s*jinping|mark\s*zuckerberg|jeff\s*bezos|bill\s*gates|steve\s*jobs|andrew\s*tate)\b/gi,
+      // Musicians and singers
+      /\b(taylor\s*swift|kim\s*kardashian|beyonce|rihanna|drake|eminem|snoop\s*dogg|jay\s*z|lady\s*gaga|ariana\s*grande|billie\s*eilish|selena\s*gomez|justin\s*bieber|dua\s*lipa|ed\s*sheeran|post\s*malone|bad\s*bunny|shakira|jennifer\s*lopez|j\s*lo|cardi\s*b|nicki\s*minaj|miley\s*cyrus|katy\s*perry|demi\s*lovato|bruno\s*mars|the\s*weeknd|weeknd|travis\s*scott|lizzo|harry\s*styles|olivia\s*rodrigo|kendrick\s*lamar|j\s*cole|lil\s*wayne|future|kanye|ye)\b/gi,
+      // Actors and TV personalities
+      /\b(oprah|ellen\s*degeneres|johnny\s*depp|amber\s*heard|will\s*smith|chris\s*rock|mr\s*beast|pewdiepie|logan\s*paul|jake\s*paul|jhony\s*dang|johnny\s*dang)\b/gi,
+      // Sports personalities
+      /\b(lebron\s*james|michael\s*jordan|cristiano\s*ronaldo|lionel\s*messi|neymar|mbappe)\b/gi,
+      // Generic terms
+      /\b(celebrity|celebridade|famoso|famous\s+person|artista|singer|cantor|cantora|rapper)\b/gi,
     ];
 
     let cleanPrompt = prompt;
