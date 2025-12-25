@@ -118,6 +118,8 @@ export class ModelsLabProvider implements VideoProvider {
       prompt: safePrompt,
       negative_prompt: input.negativePrompt || "low quality, blurry, distorted, amateur, static, frozen",
       duration: String(input.durationSeconds || 5),
+      aspect_ratio: aspectRatio,
+      resolution: "720p",
       ...(input.seed && { seed: input.seed }),
     };
 
