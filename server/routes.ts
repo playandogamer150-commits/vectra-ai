@@ -69,8 +69,8 @@ interface ImageQuotaResult {
 
 // ModelsLab model IDs - verified from their API documentation
 const MODELSLAB_MODELS = {
-  HQ: "realistic-vision-51",       // Best quality photorealistic model
-  STANDARD: "anything-v3",          // Faster, lower quality fallback
+  HQ: "nano-banana-pro",           // Google Nano Banana Pro - best quality, 4K, multi-image fusion
+  STANDARD: "realistic-vision-51", // Realistic Vision 5.1 - fallback for free tier
 };
 
 async function checkImageQuotaAndModel(userId: string): Promise<ImageQuotaResult> {
@@ -381,13 +381,13 @@ export async function registerRoutes(
               used: imageUsageByQuality.hq, 
               limit: isPro ? -1 : FREE_LIMITS.imagesHqPerDay,
               model: MODELSLAB_MODELS.HQ,
-              label: "Realistic Vision 5.1 (HQ)",
+              label: "Nano Banana Pro (HQ)",
             },
             standard: { 
               used: imageUsageByQuality.standard, 
               limit: isPro ? -1 : FREE_LIMITS.imagesStandardPerDay,
               model: MODELSLAB_MODELS.STANDARD,
-              label: "Anything V3 (Standard)",
+              label: "Realistic Vision 5.1 (Standard)",
             },
           },
           videos: { used: videosUsedToday, limit: isPro ? -1 : FREE_LIMITS.videosPerDay },
@@ -1019,37 +1019,69 @@ export async function registerRoutes(
       // Select model based on quota check (HQ = nano-banana-pro, Standard = realistic-vision-51)
       const selectedModel = imageQuota.modelId;
       const isHqModel = imageQuota.imageQuality === "hq";
+      const isNanoBananaPro = selectedModel === "nano-banana-pro";
       
-      const requestBody = {
-        key: apiKey,
-        model_id: selectedModel,
-        prompt: truncatedPrompt,
-        negative_prompt: "bad quality, blurry, distorted, low resolution, watermark, text",
-        init_image: initImage,
-        base64: isBase64 ? "yes" : "no",
-        width: dimensions.width,
-        height: dimensions.height,
-        samples: "1",
-        num_inference_steps: isHqModel ? "40" : "30",  // More steps for HQ model
-        safety_checker: "no",
-        enhance_prompt: "no",
-        guidance_scale: isHqModel ? 8.0 : 7.5,
-        strength: 0.7,
-        scheduler: "UniPCMultistepScheduler",
-      };
+      // Nano Banana Pro uses v7 API with different parameters
+      let requestBody: any;
+      let apiEndpoint: string;
       
-      console.log(`Sending to ModelsLab v6 img2img (${selectedModel} - ${imageQuota.imageQuality}):`, { 
+      if (isNanoBananaPro) {
+        // Nano Banana Pro - v7 API with multi-image fusion support
+        // Convert aspect ratio to Nano Banana format
+        const aspectRatioMap: Record<string, string> = {
+          "1:1": "1:1",
+          "16:9": "16:9",
+          "9:16": "9:16",
+          "4:3": "4:3",
+          "3:4": "3:4",
+          "5:4": "4:3",
+          "4:5": "3:4",
+          "21:9": "16:9",
+        };
+        const nanoBananaRatio = aspectRatioMap[selectedRatio] || "1:1";
+        
+        requestBody = {
+          key: apiKey,
+          model_id: "nano-banana-pro",
+          prompt: truncatedPrompt,
+          init_image: processedImages, // Array of images for multi-image fusion
+          aspect_ratio: nanoBananaRatio,
+        };
+        apiEndpoint = "https://modelslab.com/api/v7/images/image-to-image";
+      } else {
+        // Realistic Vision 5.1 - v6 API (standard fallback)
+        requestBody = {
+          key: apiKey,
+          model_id: selectedModel,
+          prompt: truncatedPrompt,
+          negative_prompt: "bad quality, blurry, distorted, low resolution, watermark, text",
+          init_image: initImage,
+          base64: isBase64 ? "yes" : "no",
+          width: dimensions.width,
+          height: dimensions.height,
+          samples: "1",
+          num_inference_steps: "30",
+          safety_checker: "no",
+          enhance_prompt: "no",
+          guidance_scale: 7.5,
+          strength: 0.7,
+          scheduler: "UniPCMultistepScheduler",
+        };
+        apiEndpoint = "https://modelslab.com/api/v6/images/img2img";
+      }
+      
+      console.log(`Sending to ModelsLab ${isNanoBananaPro ? 'v7 Nano Banana Pro' : 'v6 img2img'} (${selectedModel} - ${imageQuota.imageQuality}):`, { 
         ...requestBody, 
         key: "[REDACTED]",
-        init_image: `[image: ${initImage.substring(0, 50)}...]`,
+        init_image: isNanoBananaPro ? `[${processedImages.length} images]` : `[image: ${initImage.substring(0, 50)}...]`,
         prompt: `[${truncatedPrompt.length} chars]`,
       });
       
-      const response = await fetchWithTimeout("https://modelslab.com/api/v6/images/img2img", {
+      const response = await fetchWithTimeout(apiEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
-      }, 60000); // 60s timeout for image generation
+      }, 90000); // 90s timeout for Nano Banana Pro (larger model)
       
       const data = await response.json();
       
