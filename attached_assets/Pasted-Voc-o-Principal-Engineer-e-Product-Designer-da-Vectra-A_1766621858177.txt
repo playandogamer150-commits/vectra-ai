@@ -1,0 +1,75 @@
+Você é o Principal Engineer e Product Designer da Vectra AI. Atualmente, usuários do plano gratuito conseguem gerar imagens ilimitadas com o modelo “realistic-vision-51”, e os filtros já foram parcialmente corrigidos. Agora precisamos **implementar uma regra de quota e roteamento de modelos por plano**, de modo que:
+
+- **Plano Free**:
+  - Pode gerar **até 5 imagens** usando o **modelo Nano Banana Pro** (ultra-realista).
+  - Após esgotar essas 5, pode gerar **até 10 imagens adicionais** usando o **modelo realistic-vision-51**.
+  - Após 15 imagens no total (5 + 10), bloqueia novas gerações até a renovação ou upgrade para o Pro.
+
+- **Planos pagos** permanecem com limitações definidas anteriormente (ilimitado ou quotas próprias).
+
+🎯 **Objetivo**: Controlar e exibir quotas de imagens ultra e standard, selecionar o modelo correto conforme quotas restantes e fornecer feedback ao usuário.
+
+━━━━━━━━━━━━━━━━━━━━━━━
+1. Banco de Dados / Modelos
+━━━━━━━━━━━━━━━━━━━━━━━
+1.1 **Estenda a tabela `usage_logs` (ou similar) para controlar quotas por tipo**:
+   - Colunas sugeridas: `high_quality_images_used` (int), `standard_images_used` (int), `date` (date), `user_id`.
+   - Zere ou renove esses contadores conforme a política (dia, semana ou mês). Para início, zere diariamente.
+
+1.2 **Atualize os métodos do repositório** (`getUsageByUserId`, `incrementUsage`, etc.) para lidar com dois contadores.
+
+━━━━━━━━━━━━━━━━━━━━━━━
+2. Backend – Lógica de Geração
+━━━━━━━━━━━━━━━━━━━━━━━
+2.1 **Função de verificação de quota**:
+   - Ao receber `/api/generate` (para imagens):
+     1. Recupere o usage atual do usuário.
+     2. Se `high_quality_images_used < 5` → selecione `model_id = "nano-banana-pro"` e incremente `high_quality_images_used`.
+     3. Senão se `standard_images_used < 10` → selecione `model_id = "realistic-vision-51"` e incremente `standard_images_used`.
+     4. Senão → retorne 402 / 429 com mensagem: “Limite diário do plano gratuito atingido. Faça upgrade para continuar”.
+
+2.2 **Persistir o modelo usado**:
+   - Salve `model_id` no campo `metadata` da geração e em `usage_logs` para auditoria.
+
+2.3 **Webhook de renovação** (opcional):
+   - Crie job diário (cron) para resetar contadores à meia-noite do fuso do usuário (`America/Sao_Paulo`).
+
+━━━━━━━━━━━━━━━━━━━━━━━
+3. Frontend – Feedback ao Usuário
+━━━━━━━━━━━━━━━━━━━━━━━
+3.1 **Mostre quotas no UI**:
+   - No canto superior (onde já existe “LIMITES DIÁRIOS”), adicione campos:
+     - `Imagens Ultra: x/5`
+     - `Imagens Standard: y/10`
+   - Atualize essa informação após cada geração.
+
+3.2 **Mensagens claras**:
+   - Quando faltarem quotas Ultra: “Você esgotou suas 5 imagens de alta qualidade. As próximas 10 utilizações usarão um modelo standard.”
+   - Quando atingir 15 gerações totais: “Limite diário do plano Free atingido. Por favor, atualize para Pro para continuar gerando imagens.”
+
+3.3 **Bloqueio de botão**:
+   - Desabilite “Gerar Imagem” e exiba tooltip com a mensagem acima se quota esgotada.
+
+3.4 **Upgrade CTA**:
+   - Adicione botão “Upgrade to Pro” ao lado da mensagem de limite atingido, redirecionando para `/pricing`.
+
+━━━━━━━━━━━━━━━━━━━━━━━
+4. Testes
+━━━━━━━━━━━━━━━━━━━━━━━
+4.1 **Unit tests** (backend):
+   - Verificar que o primeiro até quinto request usa `nano-banana-pro`, o sexto até décimo quinto usa `realistic-vision-51`, e o 16º resulta em erro.
+
+4.2 **E2E tests** (frontend):
+   - Simular usuário Free fazendo 6 gerações e confirmar que a 6ª usa RealisticVision51.
+   - Simular 15 gerações e confirmar que o botão de gerar desativa com mensagem.
+
+━━━━━━━━━━━━━━━━━━━━━━━
+5. Critérios de Aceite
+━━━━━━━━━━━━━━━━━━━━━━━
+✔ Usuários do plano Free podem gerar no máximo 15 imagens/dia (5 ultra + 10 standard).  
+✔ O modelo selecionado é automático com base nas quotas.  
+✔ As quotas são persistidas e renovadas diariamente.  
+✔ A UI mostra claramente quantas imagens restam de cada tipo e oferece CTA para upgrade quando limites são atingidos.  
+✔ Não há regressão nos planos Pro/Enterprise.  
+
+Implemente essa lógica nas camadas de back-end e front-end, garanta testes e observabilidade, e atualize as mensagens em PT/EN.

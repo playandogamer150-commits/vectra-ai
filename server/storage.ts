@@ -685,7 +685,35 @@ export class DatabaseStorage implements IStorage {
     return Number(result[0]?.total || 0);
   }
 
-  async logUsage(userId: string, type: "prompt" | "image" | "video" | "lora_training"): Promise<void> {
+  async getImageUsageTodayByQuality(userId: string): Promise<{ hq: number; standard: number }> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const hqResult = await db.select({ total: sql<number>`COALESCE(SUM(${usageLogs.quantity}), 0)` })
+      .from(usageLogs)
+      .where(and(
+        eq(usageLogs.userId, userId),
+        eq(usageLogs.type, "image"),
+        sql`${usageLogs.createdAt} >= ${today}`,
+        sql`${usageLogs.metadata}->>'imageQuality' = 'hq'`
+      ));
+    
+    const standardResult = await db.select({ total: sql<number>`COALESCE(SUM(${usageLogs.quantity}), 0)` })
+      .from(usageLogs)
+      .where(and(
+        eq(usageLogs.userId, userId),
+        eq(usageLogs.type, "image"),
+        sql`${usageLogs.createdAt} >= ${today}`,
+        sql`${usageLogs.metadata}->>'imageQuality' = 'standard'`
+      ));
+    
+    return {
+      hq: Number(hqResult[0]?.total || 0),
+      standard: Number(standardResult[0]?.total || 0),
+    };
+  }
+
+  async logUsage(userId: string, type: "prompt" | "image" | "video" | "lora_training", metadata?: Record<string, any>): Promise<void> {
     const appUser = await this.getAppUser(userId);
     const plan = appUser?.plan || "free";
     
@@ -694,6 +722,7 @@ export class DatabaseStorage implements IStorage {
       type,
       quantity: 1,
       planSnapshot: plan,
+      metadata: metadata || null,
     });
   }
 }

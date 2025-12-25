@@ -49,9 +49,75 @@ const IS_PRO_OVERRIDE = process.env.ADMIN_OVERRIDE === "true" || process.env.PLA
 
 const FREE_LIMITS = {
   promptsPerDay: 10,
-  imagesPerDay: 5,
+  imagesHqPerDay: 5,       // Nano Banana Pro (ultra-realistic)
+  imagesStandardPerDay: 10, // Realistic Vision 51 (standard)
   videosPerDay: 0,
 };
+
+interface ImageQuotaResult {
+  allowed: boolean;
+  reason?: string;
+  isPro: boolean;
+  modelId: string;
+  imageQuality: "hq" | "standard";
+  quotas?: {
+    hq: { used: number; limit: number };
+    standard: { used: number; limit: number };
+  };
+}
+
+async function checkImageQuotaAndModel(userId: string): Promise<ImageQuotaResult> {
+  if (IS_PRO_OVERRIDE) {
+    return { allowed: true, isPro: true, modelId: "nano-banana-pro", imageQuality: "hq" };
+  }
+  
+  const appUser = await storage.getAppUser(userId);
+  const isPro = appUser?.plan === "pro";
+  
+  if (isPro) {
+    return { allowed: true, isPro: true, modelId: "nano-banana-pro", imageQuality: "hq" };
+  }
+  
+  const usage = await storage.getImageUsageTodayByQuality(userId);
+  const quotas = {
+    hq: { used: usage.hq, limit: FREE_LIMITS.imagesHqPerDay },
+    standard: { used: usage.standard, limit: FREE_LIMITS.imagesStandardPerDay },
+  };
+  
+  // Check HQ quota first (Nano Banana Pro)
+  if (usage.hq < FREE_LIMITS.imagesHqPerDay) {
+    return { 
+      allowed: true, 
+      isPro: false, 
+      modelId: "nano-banana-pro", 
+      imageQuality: "hq",
+      quotas,
+    };
+  }
+  
+  // If HQ exhausted, check standard quota (Realistic Vision 51)
+  if (usage.standard < FREE_LIMITS.imagesStandardPerDay) {
+    return { 
+      allowed: true, 
+      isPro: false, 
+      modelId: "realistic-vision-51", 
+      imageQuality: "standard",
+      quotas,
+    };
+  }
+  
+  // Both quotas exhausted
+  const totalUsed = usage.hq + usage.standard;
+  const totalLimit = FREE_LIMITS.imagesHqPerDay + FREE_LIMITS.imagesStandardPerDay;
+  return { 
+    allowed: false, 
+    reason: `Limite diário de imagens atingido (${totalUsed}/${totalLimit}). Faça upgrade para Pro para continuar.`,
+    isPro: false,
+    modelId: "",
+    imageQuality: "standard",
+    quotas,
+  };
+}
 
 async function checkGenerationLimits(userId: string, type: "prompt" | "image" | "video"): Promise<{ allowed: boolean; reason?: string; isPro: boolean }> {
   if (IS_PRO_OVERRIDE) {
@@ -65,16 +131,21 @@ async function checkGenerationLimits(userId: string, type: "prompt" | "image" | 
     return { allowed: true, isPro: true };
   }
   
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // For images, use the tiered quota system
+  if (type === "image") {
+    const imageQuota = await checkImageQuotaAndModel(userId);
+    return { 
+      allowed: imageQuota.allowed, 
+      reason: imageQuota.reason,
+      isPro: imageQuota.isPro,
+    };
+  }
   
   const usageToday = await storage.getUsageToday(userId, type);
-  const limit = type === "prompt" ? FREE_LIMITS.promptsPerDay 
-    : type === "image" ? FREE_LIMITS.imagesPerDay 
-    : FREE_LIMITS.videosPerDay;
+  const limit = type === "prompt" ? FREE_LIMITS.promptsPerDay : FREE_LIMITS.videosPerDay;
   
   if (usageToday >= limit) {
-    const limitName = type === "prompt" ? "prompt" : type === "image" ? "image" : "video";
+    const limitName = type === "prompt" ? "prompt" : "video";
     return { 
       allowed: false, 
       reason: `Daily ${limitName} limit reached (${limit}/${limit}). Upgrade to Pro for unlimited.`,
@@ -85,8 +156,8 @@ async function checkGenerationLimits(userId: string, type: "prompt" | "image" | 
   return { allowed: true, isPro: false };
 }
 
-async function logUsage(userId: string, type: "prompt" | "image" | "video"): Promise<void> {
-  await storage.logUsage(userId, type);
+async function logUsage(userId: string, type: "prompt" | "image" | "video", metadata?: Record<string, any>): Promise<void> {
+  await storage.logUsage(userId, type, metadata);
 }
 
 async function seedDatabase() {
@@ -275,9 +346,12 @@ export async function registerRoutes(
       const plan = appUser?.plan || "free";
       const isPro = plan === "pro";
 
-      const imagesUsedToday = await storage.getUsageToday(userId, "image");
+      const imageUsageByQuality = await storage.getImageUsageTodayByQuality(userId);
       const videosUsedToday = await storage.getUsageToday(userId, "video");
       const promptsUsedToday = await storage.getUsageToday(userId, "prompt");
+      
+      const totalImagesUsed = imageUsageByQuality.hq + imageUsageByQuality.standard;
+      const totalImagesLimit = FREE_LIMITS.imagesHqPerDay + FREE_LIMITS.imagesStandardPerDay;
 
       res.json({
         totalPromptsGenerated: history.length,
@@ -290,13 +364,29 @@ export async function registerRoutes(
         isPro,
         daily: {
           prompts: { used: promptsUsedToday, limit: isPro ? -1 : FREE_LIMITS.promptsPerDay },
-          images: { used: imagesUsedToday, limit: isPro ? -1 : FREE_LIMITS.imagesPerDay },
+          images: { 
+            used: totalImagesUsed, 
+            limit: isPro ? -1 : totalImagesLimit,
+            hq: { 
+              used: imageUsageByQuality.hq, 
+              limit: isPro ? -1 : FREE_LIMITS.imagesHqPerDay,
+              model: "nano-banana-pro",
+              label: "Ultra (HQ)",
+            },
+            standard: { 
+              used: imageUsageByQuality.standard, 
+              limit: isPro ? -1 : FREE_LIMITS.imagesStandardPerDay,
+              model: "realistic-vision-51",
+              label: "Standard",
+            },
+          },
           videos: { used: videosUsedToday, limit: isPro ? -1 : FREE_LIMITS.videosPerDay },
         },
         limits: {
           free: {
             promptsPerDay: FREE_LIMITS.promptsPerDay,
-            imagesPerDay: FREE_LIMITS.imagesPerDay,
+            imagesHqPerDay: FREE_LIMITS.imagesHqPerDay,
+            imagesStandardPerDay: FREE_LIMITS.imagesStandardPerDay,
             videosPerDay: FREE_LIMITS.videosPerDay,
             maxFilters: 3,
             maxBlueprints: 5,
@@ -304,7 +394,8 @@ export async function registerRoutes(
           },
           pro: {
             promptsPerDay: -1,
-            imagesPerDay: -1,
+            imagesHqPerDay: -1,
+            imagesStandardPerDay: -1,
             videosPerDay: -1,
             maxFilters: -1,
             maxBlueprints: -1,
@@ -822,7 +913,7 @@ export async function registerRoutes(
     }
   });
 
-  // ModelsLab Nano Banana Pro API
+  // ModelsLab Image Generation API (Nano Banana Pro for HQ, Realistic Vision 51 for Standard)
   app.post("/api/modelslab/generate", async (req, res) => {
     try {
       const userId = getUserId(req);
@@ -830,11 +921,12 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Authentication required" });
       }
 
-      const limitCheck = await checkGenerationLimits(userId, "image");
-      if (!limitCheck.allowed) {
+      const imageQuota = await checkImageQuotaAndModel(userId);
+      if (!imageQuota.allowed) {
         return res.status(403).json({ 
-          error: limitCheck.reason,
+          error: imageQuota.reason,
           isPremiumRequired: true,
+          quotas: imageQuota.quotas,
         });
       }
 
@@ -914,9 +1006,13 @@ export async function registerRoutes(
         }
       }
       
+      // Select model based on quota check (HQ = nano-banana-pro, Standard = realistic-vision-51)
+      const selectedModel = imageQuota.modelId;
+      const isHqModel = imageQuota.imageQuality === "hq";
+      
       const requestBody = {
         key: apiKey,
-        model_id: "realistic-vision-51",
+        model_id: selectedModel,
         prompt: truncatedPrompt,
         negative_prompt: "bad quality, blurry, distorted, low resolution, watermark, text",
         init_image: initImage,
@@ -924,15 +1020,15 @@ export async function registerRoutes(
         width: dimensions.width,
         height: dimensions.height,
         samples: "1",
-        num_inference_steps: "30",
+        num_inference_steps: isHqModel ? "40" : "30",  // More steps for HQ model
         safety_checker: "no",
         enhance_prompt: "no",
-        guidance_scale: 7.5,
+        guidance_scale: isHqModel ? 8.0 : 7.5,
         strength: 0.7,
         scheduler: "UniPCMultistepScheduler",
       };
       
-      console.log("Sending to ModelsLab v6 img2img:", { 
+      console.log(`Sending to ModelsLab v6 img2img (${selectedModel} - ${imageQuota.imageQuality}):`, { 
         ...requestBody, 
         key: "[REDACTED]",
         init_image: `[image: ${initImage.substring(0, 50)}...]`,
@@ -984,9 +1080,18 @@ export async function registerRoutes(
         data.output = processedOutput;
       }
       
-      await logUsage(userId, "image");
+      await logUsage(userId, "image", { 
+        imageQuality: imageQuota.imageQuality, 
+        modelId: selectedModel,
+      });
       
-      res.json(data);
+      // Include quota info and model used in response
+      res.json({
+        ...data,
+        modelUsed: selectedModel,
+        imageQuality: imageQuota.imageQuality,
+        quotas: imageQuota.quotas,
+      });
     } catch (error) {
       console.error("Error calling ModelsLab API:", error);
       res.status(500).json({ error: "Failed to generate image" });
