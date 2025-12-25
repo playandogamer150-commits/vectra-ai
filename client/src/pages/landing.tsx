@@ -7,9 +7,9 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useI18n, LanguageToggle } from "@/lib/i18n";
-import sampleFashion from "@assets/generated_images/fashion_editorial_portrait_photo.png";
-import sampleCar from "@assets/generated_images/luxury_sports_car_concept.png";
-import samplePerfume from "@assets/generated_images/luxury_perfume_product_shot.png";
+import sampleStudio from "@assets/b89ed159-462b-4443-bf08-017117234da7_1766695047798.jpg";
+import sampleCCTV1 from "@assets/297690cb-8aa0-43bf-8ece-0ae0a369f228_1766695063959.jpg";
+import sampleCCTV2 from "@assets/10c8d038-5f4b-40e8-89a3-a1252b78630e_1766695069995.jpg";
 
 export default function LandingPage() {
   const [, setLocation] = useLocation();
@@ -251,51 +251,51 @@ export default function LandingPage() {
             <div className="grid md:grid-cols-3 gap-6">
               <div className="relative rounded-xl overflow-hidden aspect-[4/5] group">
                 <img 
-                  src={sampleFashion} 
-                  alt="Fashion Editorial" 
+                  src={sampleStudio} 
+                  alt="Music Studio Dubai" 
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
                   <p className="text-sm font-medium">
-                    {language === "pt-BR" ? "Editorial de Moda" : "Fashion Editorial"}
+                    {language === "pt-BR" ? "Estúdio de Música" : "Music Studio"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {language === "pt-BR" ? "Fotografia profissional de beleza" : "Professional beauty photography"}
+                    {language === "pt-BR" ? "Sessão noturna em Dubai" : "Night session in Dubai"}
                   </p>
                 </div>
               </div>
               
               <div className="relative rounded-xl overflow-hidden aspect-[4/5] group">
                 <img 
-                  src={sampleCar} 
-                  alt="Automotive Concept" 
+                  src={sampleCCTV1} 
+                  alt="CCTV Detection" 
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
                   <p className="text-sm font-medium">
-                    {language === "pt-BR" ? "Conceito Automotivo" : "Automotive Concept"}
+                    {language === "pt-BR" ? "Estética CCTV" : "CCTV Aesthetic"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {language === "pt-BR" ? "Design de produto premium" : "Premium product design"}
+                    {language === "pt-BR" ? "Detecção e vigilância realista" : "Realistic detection and surveillance"}
                   </p>
                 </div>
               </div>
               
               <div className="relative rounded-xl overflow-hidden aspect-[4/5] group">
                 <img 
-                  src={samplePerfume} 
-                  alt="Luxury Product" 
+                  src={sampleCCTV2} 
+                  alt="Street Scene" 
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
                   <p className="text-sm font-medium">
-                    {language === "pt-BR" ? "Produto de Luxo" : "Luxury Product"}
+                    {language === "pt-BR" ? "Cena Urbana" : "Urban Scene"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {language === "pt-BR" ? "Publicidade de cosméticos" : "Cosmetics advertising"}
+                    {language === "pt-BR" ? "Fotorrealismo de rua" : "Street photorealism"}
                   </p>
                 </div>
               </div>
