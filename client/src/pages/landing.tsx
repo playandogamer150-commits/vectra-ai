@@ -1,15 +1,33 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { BRAND } from "@/lib/constants";
 import { MonoIcon } from "@/components/mono-icon";
-import { Loader2 } from "lucide-react";
+import { Loader2, Sparkles, Layers, Wand2, Download, Clock, Users, Image, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useI18n, LanguageToggle } from "@/lib/i18n";
+import { motion, useInView } from "framer-motion";
 import sampleStudio from "@assets/b89ed159-462b-4443-bf08-017117234da7_1766695047798.jpg";
 import sampleCCTV1 from "@assets/297690cb-8aa0-43bf-8ece-0ae0a369f228_1766695063959.jpg";
 import sampleCCTV2 from "@assets/10c8d038-5f4b-40e8-89a3-a1252b78630e_1766695069995.jpg";
+
+function AnimatedSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+  
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, y: 40 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 40 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
 
 export default function LandingPage() {
   const [, setLocation] = useLocation();
@@ -235,11 +253,139 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Social Proof Section */}
+        <section className="py-16 px-6 border-b border-border">
+          <AnimatedSection>
+            <div className="max-w-6xl mx-auto">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Image className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-3xl md:text-4xl font-light">500K+</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {language === "pt-BR" ? "Imagens Geradas" : "Images Generated"}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Users className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-3xl md:text-4xl font-light">12K+</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {language === "pt-BR" ? "Usuários Ativos" : "Active Users"}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Layers className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-3xl md:text-4xl font-light">50+</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {language === "pt-BR" ? "Blueprints" : "Blueprints"}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Zap className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-3xl md:text-4xl font-light">99.9%</span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {language === "pt-BR" ? "Uptime" : "Uptime"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </AnimatedSection>
+        </section>
+
+        {/* How It Works Section */}
+        <section className="py-20 px-6">
+          <AnimatedSection>
+            <div className="max-w-6xl mx-auto">
+              <div className="text-center mb-16">
+                <h2 className="text-2xl md:text-3xl font-medium mb-3">
+                  {language === "pt-BR" ? "Como Funciona" : "How It Works"}
+                </h2>
+                <p className="text-muted-foreground max-w-xl mx-auto">
+                  {language === "pt-BR" 
+                    ? "Crie prompts profissionais em 4 passos simples"
+                    : "Create professional prompts in 4 simple steps"}
+                </p>
+              </div>
+              
+              <div className="grid md:grid-cols-4 gap-8">
+                <div className="text-center group">
+                  <div className="w-14 h-14 rounded-full border border-border flex items-center justify-center mx-auto mb-4 transition-colors group-hover:border-foreground/30">
+                    <Layers className="w-6 h-6" />
+                  </div>
+                  <div className="text-xs text-muted-foreground mb-2">01</div>
+                  <h3 className="font-medium mb-2">
+                    {language === "pt-BR" ? "Escolha o Blueprint" : "Choose Blueprint"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {language === "pt-BR" 
+                      ? "Selecione entre dezenas de templates profissionais"
+                      : "Select from dozens of professional templates"}
+                  </p>
+                </div>
+                
+                <div className="text-center group">
+                  <div className="w-14 h-14 rounded-full border border-border flex items-center justify-center mx-auto mb-4 transition-colors group-hover:border-foreground/30">
+                    <Wand2 className="w-6 h-6" />
+                  </div>
+                  <div className="text-xs text-muted-foreground mb-2">02</div>
+                  <h3 className="font-medium mb-2">
+                    {language === "pt-BR" ? "Configure Filtros" : "Configure Filters"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {language === "pt-BR" 
+                      ? "Ajuste estética, câmera e estilo temporal"
+                      : "Adjust aesthetics, camera and temporal style"}
+                  </p>
+                </div>
+                
+                <div className="text-center group">
+                  <div className="w-14 h-14 rounded-full border border-border flex items-center justify-center mx-auto mb-4 transition-colors group-hover:border-foreground/30">
+                    <Sparkles className="w-6 h-6" />
+                  </div>
+                  <div className="text-xs text-muted-foreground mb-2">03</div>
+                  <h3 className="font-medium mb-2">
+                    {language === "pt-BR" ? "Gere o Prompt" : "Generate Prompt"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {language === "pt-BR" 
+                      ? "Compile prompts otimizados para cada modelo"
+                      : "Compile optimized prompts for each model"}
+                  </p>
+                </div>
+                
+                <div className="text-center group">
+                  <div className="w-14 h-14 rounded-full border border-border flex items-center justify-center mx-auto mb-4 transition-colors group-hover:border-foreground/30">
+                    <Download className="w-6 h-6" />
+                  </div>
+                  <div className="text-xs text-muted-foreground mb-2">04</div>
+                  <h3 className="font-medium mb-2">
+                    {language === "pt-BR" ? "Crie Imagens" : "Create Images"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {language === "pt-BR" 
+                      ? "Use o prompt em qualquer modelo de IA"
+                      : "Use the prompt in any AI model"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </AnimatedSection>
+        </section>
+
+        {/* Showcase Section */}
         <section className="py-20 px-6 bg-card/30">
-          <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-12">
-              <h2 className="text-2xl md:text-3xl font-medium mb-3">
-                {language === "pt-BR" ? "Criado com Vectra AI" : "Created with Vectra AI"}
+          <AnimatedSection>
+            <div className="max-w-6xl mx-auto">
+              <div className="text-center mb-12">
+                <h2 className="text-2xl md:text-3xl font-medium mb-3">
+                  {language === "pt-BR" ? "Criado com Vectra AI" : "Created with Vectra AI"}
               </h2>
               <p className="text-muted-foreground max-w-xl mx-auto">
                 {language === "pt-BR" 
@@ -301,8 +447,27 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+          </AnimatedSection>
         </section>
       </main>
+
+      {/* Floating CTA Button */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1, duration: 0.5 }}
+        className="fixed bottom-6 right-6 z-50"
+      >
+        <Button
+          onClick={handleLogin}
+          size="lg"
+          className="shadow-lg gap-2"
+          data-testid="button-floating-cta"
+        >
+          <Clock className="w-4 h-4" />
+          {language === "pt-BR" ? "Oferta Limitada" : "Limited Offer"}
+        </Button>
+      </motion.div>
 
       <footer className="py-8 px-6 border-t border-border">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
