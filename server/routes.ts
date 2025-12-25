@@ -1477,6 +1477,57 @@ export async function registerRoutes(
     }
   });
 
+  // ============ VIDEO/MEDIA PROXY (for CORS) ============
+  // Proxy endpoint to serve R2 videos without CORS issues
+  app.get("/api/proxy/media", async (req, res) => {
+    try {
+      const url = req.query.url as string;
+      if (!url) {
+        return res.status(400).json({ error: "URL parameter required" });
+      }
+
+      // Only allow proxying from our R2 bucket
+      const allowedDomains = [
+        "pub-3626123a908346a7a8be8d9295f44e26.r2.dev",
+        "modelslab.com",
+        "cdn.modelslab.com",
+        "cdn2.stablediffusionapi.com",
+      ];
+      
+      const parsedUrl = new URL(url);
+      if (!allowedDomains.some(d => parsedUrl.hostname.includes(d))) {
+        return res.status(403).json({ error: "Domain not allowed" });
+      }
+
+      const response = await fetchWithTimeout(url, {}, 60000);
+      
+      if (!response.ok) {
+        return res.status(response.status).json({ error: "Failed to fetch media" });
+      }
+
+      // Forward content type and other headers
+      const contentType = response.headers.get("content-type");
+      if (contentType) {
+        res.setHeader("Content-Type", contentType);
+      }
+      
+      const contentLength = response.headers.get("content-length");
+      if (contentLength) {
+        res.setHeader("Content-Length", contentLength);
+      }
+      
+      // Allow caching
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      
+      // Stream the response
+      const arrayBuffer = await response.arrayBuffer();
+      res.send(Buffer.from(arrayBuffer));
+    } catch (error) {
+      console.error("Error proxying media:", error);
+      res.status(500).json({ error: "Failed to proxy media" });
+    }
+  });
+
   // ============ SAVED VIDEOS (Video Gallery) ============
   app.get("/api/video-gallery", async (_req, res) => {
     try {

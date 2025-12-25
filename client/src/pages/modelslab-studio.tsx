@@ -74,6 +74,17 @@ interface GeneratedPromptResult {
 
 type FilterValue = Record<string, string>;
 
+function getProxiedVideoUrl(url: string): string {
+  if (!url) return url;
+  const needsProxy = url.includes("r2.dev") || 
+                     url.includes("modelslab.com") || 
+                     url.includes("stablediffusionapi.com");
+  if (needsProxy) {
+    return `/api/proxy/media?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
+
 function VideoThumbnail({ 
   src, 
   poster, 
@@ -142,7 +153,7 @@ function VideoThumbnail({
       <canvas ref={canvasRef} className="hidden" />
       <video
         ref={videoRef}
-        src={src}
+        src={getProxiedVideoUrl(src)}
         poster={thumbnail || undefined}
         className={className}
         data-testid={testId}
@@ -1455,12 +1466,11 @@ export default function ModelsLabStudioPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <video 
-                  src={videoResult.output[0]} 
+                  src={getProxiedVideoUrl(videoResult.output[0])} 
                   controls 
                   autoPlay
                   loop
                   playsInline
-                  crossOrigin="anonymous"
                   className="w-full rounded-lg border aspect-video bg-black"
                   data-testid="video-result-main"
                   onError={(e) => {
