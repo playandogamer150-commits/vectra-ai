@@ -1364,8 +1364,13 @@ export default function ModelsLabStudioPage() {
                   controls 
                   autoPlay
                   loop
+                  playsInline
+                  crossOrigin="anonymous"
                   className="w-full rounded-lg border aspect-video bg-black"
                   data-testid="video-result-main"
+                  onError={(e) => {
+                    console.error("Video playback error:", e, "URL:", videoResult.output?.[0]);
+                  }}
                 />
                 
                 {/* Video Metadata */}
@@ -1690,6 +1695,8 @@ export default function ModelsLabStudioPage() {
                         data-testid={`video-gallery-${video.id}`}
                         muted
                         loop
+                        playsInline
+                        crossOrigin="anonymous"
                         onMouseEnter={(e) => e.currentTarget.play()}
                         onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }}
                       />
