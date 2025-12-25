@@ -67,16 +67,22 @@ interface ImageQuotaResult {
   };
 }
 
+// ModelsLab model IDs - verified from their API documentation
+const MODELSLAB_MODELS = {
+  HQ: "realistic-vision-51",       // Best quality photorealistic model
+  STANDARD: "anything-v3",          // Faster, lower quality fallback
+};
+
 async function checkImageQuotaAndModel(userId: string): Promise<ImageQuotaResult> {
   if (IS_PRO_OVERRIDE) {
-    return { allowed: true, isPro: true, modelId: "nano-banana-pro", imageQuality: "hq" };
+    return { allowed: true, isPro: true, modelId: MODELSLAB_MODELS.HQ, imageQuality: "hq" };
   }
   
   const appUser = await storage.getAppUser(userId);
   const isPro = appUser?.plan === "pro";
   
   if (isPro) {
-    return { allowed: true, isPro: true, modelId: "nano-banana-pro", imageQuality: "hq" };
+    return { allowed: true, isPro: true, modelId: MODELSLAB_MODELS.HQ, imageQuality: "hq" };
   }
   
   const usage = await storage.getImageUsageTodayByQuality(userId);
@@ -85,25 +91,25 @@ async function checkImageQuotaAndModel(userId: string): Promise<ImageQuotaResult
     standard: { used: usage.standard, limit: FREE_LIMITS.imagesStandardPerDay },
   };
   
-  // Check HQ quota first (Nano Banana Pro)
+  // Check HQ quota first (Realistic Vision 5.1 - best quality)
   if (usage.hq < FREE_LIMITS.imagesHqPerDay) {
     return { 
       allowed: true, 
       isPro: false, 
-      modelId: "nano-banana-pro", 
+      modelId: MODELSLAB_MODELS.HQ, 
       imageQuality: "hq",
       quotas,
     };
   }
   
-  // If HQ exhausted, check standard quota (Realistic Vision 51)
+  // If HQ exhausted, check standard quota (Anything V3 - faster)
   if (usage.standard < FREE_LIMITS.imagesStandardPerDay) {
     // hqExhausted=true signals frontend to show popup about model downgrade
     const isFirstStandardImage = usage.standard === 0;
     return { 
       allowed: true, 
       isPro: false, 
-      modelId: "realistic-vision-51", 
+      modelId: MODELSLAB_MODELS.STANDARD, 
       imageQuality: "standard",
       hqExhausted: isFirstStandardImage, // Show popup only on first standard image
       quotas,
@@ -374,14 +380,14 @@ export async function registerRoutes(
             hq: { 
               used: imageUsageByQuality.hq, 
               limit: isPro ? -1 : FREE_LIMITS.imagesHqPerDay,
-              model: "nano-banana-pro",
-              label: "Ultra (HQ)",
+              model: MODELSLAB_MODELS.HQ,
+              label: "Realistic Vision 5.1 (HQ)",
             },
             standard: { 
               used: imageUsageByQuality.standard, 
               limit: isPro ? -1 : FREE_LIMITS.imagesStandardPerDay,
-              model: "realistic-vision-51",
-              label: "Standard",
+              model: MODELSLAB_MODELS.STANDARD,
+              label: "Anything V3 (Standard)",
             },
           },
           videos: { used: videosUsedToday, limit: isPro ? -1 : FREE_LIMITS.videosPerDay },

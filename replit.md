@@ -178,13 +178,14 @@ Workers must sign responses with HMAC and include `X-Signature` + `X-Timestamp` 
 
 ## Recent Changes
 - 2024-12-25: Implemented tiered image quota system for Free plan:
-  - 5 HQ images/day (Nano Banana Pro, 40 steps, guidance 8.0)
-  - 5 Standard images/day (Realistic Vision 5.1, 30 steps, guidance 7.5)
+  - 5 HQ images/day (Realistic Vision 5.1, 40 steps, guidance 8.0)
+  - 5 Standard images/day (Anything V3, 30 steps, guidance 7.5)
   - Auto-downgrade from HQ to Standard when HQ quota exhausted
   - Popup notification when HQ quota expires with upgrade CTA
-  - Pro plan: unlimited HQ images (Nano Banana Pro only)
+  - Pro plan: unlimited HQ images (Realistic Vision 5.1 only)
   - Usage tracked via metadata: `{ imageQuality: "hq" | "standard", modelId: string }`
   - New storage method: `getImageUsageTodayByQuality()` for tiered tracking
+  - Model IDs: MODELSLAB_MODELS.HQ = "realistic-vision-51", MODELSLAB_MODELS.STANDARD = "anything-v3"
 - 2024-12-24: Security hardening for commercial launch:
   - Fixed authentication bypass: `getUserId()` returns null in production without auth, `requireAuth()` helper for 401
   - Added ownership verification on LoRA endpoints (`/api/lora/models/:id`, `/api/lora/jobs/:id`)

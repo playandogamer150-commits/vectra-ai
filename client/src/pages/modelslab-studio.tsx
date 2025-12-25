@@ -2041,11 +2041,11 @@ export default function ModelsLabStudioPage() {
               {currentQuotas && (
                 <div className="bg-muted/50 rounded-lg p-3 space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Imagens HQ (Nano Banana Pro):</span>
+                    <span className="text-muted-foreground">Imagens HQ (Realistic Vision 5.1):</span>
                     <span className="font-medium">{currentQuotas.hq.used}/{currentQuotas.hq.limit}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Imagens Standard (Realistic Vision 5.1):</span>
+                    <span className="text-muted-foreground">Imagens Standard (Anything V3):</span>
                     <span className="font-medium">{currentQuotas.standard.used}/{currentQuotas.standard.limit}</span>
                   </div>
                 </div>
