@@ -1691,12 +1691,16 @@ export default function ModelsLabStudioPage() {
                       <video
                         src={video.videoUrl}
                         poster={video.thumbnailUrl || undefined}
-                        className="w-full h-full object-cover rounded-lg border"
+                        className="w-full h-full object-cover rounded-lg border bg-black"
                         data-testid={`video-gallery-${video.id}`}
                         muted
                         loop
                         playsInline
-                        crossOrigin="anonymous"
+                        preload="metadata"
+                        onLoadedMetadata={(e) => {
+                          const vid = e.currentTarget;
+                          vid.currentTime = 0.1;
+                        }}
                         onMouseEnter={(e) => e.currentTarget.play()}
                         onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }}
                       />
