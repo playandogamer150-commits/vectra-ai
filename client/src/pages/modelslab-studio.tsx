@@ -471,6 +471,9 @@ export default function ModelsLabStudioPage() {
       return await response.json();
     },
     onSuccess: (data) => {
+      // Invalidate usage cache to sync limits
+      queryClient.invalidateQueries({ queryKey: ["/api/profile/usage"] });
+      
       if (data.id) {
         setCurrentVideoJobId(data.id);
         setVideoGenerationStartTime(Date.now());
@@ -726,6 +729,9 @@ export default function ModelsLabStudioPage() {
       return res.json() as Promise<GeneratedPromptResult>;
     },
     onSuccess: (data) => {
+      // Invalidate usage cache to sync limits
+      queryClient.invalidateQueries({ queryKey: ["/api/profile/usage"] });
+      
       setPrompt(data.compiledPrompt);
       setSeed(data.seed);
       toast({ 
@@ -759,6 +765,9 @@ export default function ModelsLabStudioPage() {
       return res.json() as Promise<ModelsLabResponse>;
     },
     onSuccess: async (data) => {
+      // Invalidate usage cache to sync limits
+      queryClient.invalidateQueries({ queryKey: ["/api/profile/usage"] });
+      
       // Update quotas if available
       if (data.quotas) {
         setCurrentQuotas(data.quotas);
