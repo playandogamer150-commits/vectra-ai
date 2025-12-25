@@ -348,10 +348,10 @@ export async function registerRoutes(
         return res.status(400).json({ error: "Invalid image format. Use JPEG, PNG, WebP or GIF." });
       }
 
-      // Check size (limit to ~2MB of base64 data)
-      const MAX_SIZE = 2 * 1024 * 1024 * 1.37; // ~2MB accounting for base64 overhead
+      // Check size (limit to ~10MB of base64 data)
+      const MAX_SIZE = 10 * 1024 * 1024 * 1.37; // ~10MB accounting for base64 overhead
       if (imageData.length > MAX_SIZE) {
-        return res.status(400).json({ error: "Image too large. Maximum size is 2MB." });
+        return res.status(400).json({ error: "Image too large. Maximum size is 10MB." });
       }
 
       // Update user avatar

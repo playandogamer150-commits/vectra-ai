@@ -141,13 +141,13 @@ export default function ProfilePage() {
       return;
     }
 
-    // Validate file size (2MB max)
-    if (file.size > 2 * 1024 * 1024) {
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
       toast({
         title: t.common.error,
         description: language === "pt-BR" 
-          ? "A imagem deve ter no máximo 2MB." 
-          : "Image must be 2MB or less.",
+          ? "A imagem deve ter no máximo 10MB." 
+          : "Image must be 10MB or less.",
         variant: "destructive",
       });
       return;
