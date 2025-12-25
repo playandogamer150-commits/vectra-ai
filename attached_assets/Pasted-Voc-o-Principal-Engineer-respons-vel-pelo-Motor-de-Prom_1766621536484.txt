@@ -1,0 +1,62 @@
+Você é o Principal Engineer responsável pelo “Motor de Prompts” da Vectra AI. Após a correção do preview, notamos que os **filtros** (Aesthetic Intensity, UGC Realism, Layout Entropy, Camera Bias, Temporal Style, Prompt Length, Ângulo de Câmera, etc.) **não estão impactando o prompt final** como esperado. Os valores selecionados ficam visíveis na interface, mas não influenciam o “compiledPrompt” enviado à geração.
+
+**Objetivo:** garantir que cada filtro selecionado se traduza em termos correspondentes no prompt gerado, seguindo a ordem preferida do perfil LLM e respeitando blueprint e regras de plano.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔍 Diagnóstico inicial
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Os filtros são renderizados e podem ser selecionados, mas o estado `appliedFilters` nem sempre é propagado para o serviço de geração (/api/generate).
+- O arquivo `src/core/prompt-engine/compiler.ts` concatena apenas os blocos do blueprint e ignora (ou mistura mal) os efeitos definidos em `filters.effect`.
+- Há mudanças recentes de internacionalização (PT/EN) que podem estar afetando as chaves dos filtros ou suas opções (`key` ≠ `label`).
+- O back-end salva `appliedFilters` no banco, mas o campo `compiledPrompt` não contém as frases correspondentes à escolha do usuário.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Tarefas de correção
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. **Sincronização Front-End → Back-End**  
+   - Verifique o componente **FilterPanel** (provavelmente em `client/src/components/studio/FilterPanel.tsx`) para garantir que cada clique altera o objeto `appliedFilters` (chave:valor) no estado global (Zustand) ou props.  
+   - Garanta que o hook `useGenerate` ou a chamada `generatePrompt` envia `appliedFilters` para `/api/generate` como parte do corpo da requisição.
+
+2. **Mapa de Efeitos (filters.effect)**  
+   - No back-end (`server/core/prompt-engine/compiler.ts` ou similar), crie uma função `applyFilters(filters: Record<string, string>, filterDefinitions: FilterDefinition[])` que:
+     1. Percorre cada par `key:value` em `appliedFilters`.
+     2. Busca o filtro correspondente em `filterDefinitions` (a lista fornecida pelo endpoint `/api/filters`).
+     3. Insere o texto de `effect[value]` como um bloco de prompt na categoria correta.
+   - Exemplo: se `camera_bias = cctv`, concatene “security camera look, fisheye distortion” à seção *camera* do prompt. Se `prompt_length = long`, concatene “extended detailed description”.  
+   - Respeite a ordem definida em `LLMProfile.preferredOrder`. Se `preferredOrder` = ["subject","style","camera","layout","postfx","constraint"], encaixe cada filtro na categoria apropriada:
+       - camera_bias, camera_angle → categoria “camera”
+       - aesthetic_intensity, ugc_realism, temporal_style → categoria “style”
+       - layout_entropy → “layout”
+       - prompt_length → “constraint” ou “postfx”, conforme definido
+   - Não repita blocos idênticos vindos do blueprint.
+
+3. **Internacionalização e Chaves**  
+   - Use sempre a propriedade `key` do filtro para lógica e `label` apenas para exibição.  
+   - Para cada valor traduzido (ex.: “alto”, “baixo”), mapeie para a chave original (ex.: “high”, “low”) antes de buscar `effect[value]`.  
+   - Ajuste o JSON de tradução se necessário para que as opções de filtro mantenham o valor (id) em inglês.
+
+4. **Validação de Inputs**  
+   - No schema de validação (`validator.ts`), assegure que apenas valores válidos (exatamente igual aos `options` do filtro) podem ser enviados. Retorne 400 caso contrário.
+
+5. **Teste Completo**  
+   - Crie testes unitários para `applyFilters()` com diferentes combinações.  
+   - Crie testes de integração no front-end usando Cypress ou Jest/React Testing Library para verificar que:
+       - Selecionar “extreme” em Aesthetic Intensity adiciona “maximum stylization, highly artistic” ao prompt final.
+       - Mudar para “balanced” em Layout Entropy muda o texto para “harmonious arrangement, natural flow”.
+       - Selecionar “long” em Prompt Length adiciona “extended detailed description”.
+
+6. **UI Feedback**  
+   - Mostre de forma clara quais filtros estão ativos.  
+   - Se um usuário da versão Free ultrapassar o limite de filtros (p.ex. >3), bloqueie seleção adicional e mostre tooltip “Atualize para Pro”.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛠 Critério de Aceite
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Todos os filtros selecionados impactam o `compiledPrompt`, seguindo o schema de efeitos e a ordem do LLM Profile.
+- O `compiledPrompt` exibido no console e enviado para ModelsLab reflete exatamente a seleção do usuário.
+- As traduções PT/EN não quebram a lógica de mapeamento de filtros.
+- Planos (Free vs Pro) limitam filtros conforme `profile/usage.limits`.
+- Nenhuma regressão nos demais módulos (Blueprints, LoRA, Video).
+
+Implemente essa correção, execute testes, e garanta que a combinação de filtros e prompts funcione de ponta a ponta.
