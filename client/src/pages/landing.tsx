@@ -7,6 +7,9 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useI18n, LanguageToggle } from "@/lib/i18n";
+import heroWorkspace from "@assets/generated_images/ai_prompt_engineering_workspace.png";
+import heroControlRoom from "@assets/generated_images/ai_creative_control_room.png";
+import heroNetwork from "@assets/generated_images/ai_neural_network_visualization.png";
 
 export default function LandingPage() {
   const [, setLocation] = useLocation();
@@ -227,6 +230,68 @@ export default function LandingPage() {
                     </Link>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="py-20 px-6 bg-card/30">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-12">
+              <h2 className="text-2xl md:text-3xl font-medium mb-3">
+                {language === "pt-BR" ? "Tecnologia de Ponta" : "Cutting-Edge Technology"}
+              </h2>
+              <p className="text-muted-foreground max-w-xl mx-auto">
+                {language === "pt-BR" 
+                  ? "Interface profissional projetada para máxima produtividade e resultados excepcionais."
+                  : "Professional interface designed for maximum productivity and exceptional results."}
+              </p>
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="relative rounded-xl overflow-hidden aspect-video group">
+                <img 
+                  src={heroWorkspace} 
+                  alt="AI Workspace" 
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
+                <div className="absolute bottom-4 left-4 right-4">
+                  <p className="text-sm font-medium">
+                    {language === "pt-BR" ? "Estúdio de Prompts Avançado" : "Advanced Prompt Studio"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {language === "pt-BR" ? "Crie, itere e refine prompts com precisão" : "Create, iterate and refine prompts with precision"}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="relative rounded-xl overflow-hidden aspect-video group">
+                <img 
+                  src={heroControlRoom} 
+                  alt="AI Control Room" 
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
+                <div className="absolute bottom-4 left-4 right-4">
+                  <p className="text-sm font-medium">
+                    {language === "pt-BR" ? "Geração de Imagens e Vídeo" : "Image & Video Generation"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {language === "pt-BR" ? "Modelos ultra-realistas de última geração" : "Ultra-realistic cutting-edge models"}
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-6 flex justify-center">
+              <div className="relative rounded-xl overflow-hidden w-32 h-32 group">
+                <img 
+                  src={heroNetwork} 
+                  alt="AI Neural Network" 
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent" />
               </div>
             </div>
           </div>
