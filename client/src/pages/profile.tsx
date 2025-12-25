@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Link } from "wouter";
-import { User, Settings, BarChart3, ArrowRight, Image, History, FolderOpen, Crown, Loader2, Check, CreditCard, ExternalLink } from "lucide-react";
+import { User, Settings, BarChart3, ArrowRight, Image, History, FolderOpen, Crown, Loader2, Check, CreditCard, ExternalLink, Camera, X } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 
 const TIMEZONES = [
@@ -75,6 +75,7 @@ export default function ProfilePage() {
   const { t, language, setLanguage } = useI18n();
   const { toast } = useToast();
   const { setTheme } = useTheme();
+  const [avatarUploading, setAvatarUploading] = useState(false);
   
   const [formData, setFormData] = useState<{
     displayName: string;
@@ -123,6 +124,103 @@ export default function ProfilePage() {
       });
     },
   });
+
+  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: t.common.error,
+        description: language === "pt-BR" 
+          ? "Selecione um arquivo de imagem válido." 
+          : "Please select a valid image file.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (2MB max)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: t.common.error,
+        description: language === "pt-BR" 
+          ? "A imagem deve ter no máximo 2MB." 
+          : "Image must be 2MB or less.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setAvatarUploading(true);
+
+    try {
+      // Convert to base64
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const imageData = reader.result as string;
+          const response = await apiRequest("POST", "/api/profile/avatar", { imageData });
+          const data = await response.json();
+          
+          if (data.success) {
+            queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+            toast({
+              title: language === "pt-BR" ? "Foto atualizada" : "Photo updated",
+              description: language === "pt-BR" 
+                ? "Sua foto de perfil foi atualizada com sucesso." 
+                : "Your profile photo has been updated successfully.",
+            });
+          }
+        } catch (error) {
+          toast({
+            title: t.common.error,
+            description: language === "pt-BR" 
+              ? "Erro ao enviar a foto. Tente novamente." 
+              : "Failed to upload photo. Please try again.",
+            variant: "destructive",
+          });
+        } finally {
+          setAvatarUploading(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      setAvatarUploading(false);
+      toast({
+        title: t.common.error,
+        description: language === "pt-BR" 
+          ? "Erro ao processar a imagem." 
+          : "Failed to process image.",
+        variant: "destructive",
+      });
+    }
+
+    // Reset input
+    event.target.value = "";
+  };
+
+  const handleRemoveAvatar = async () => {
+    try {
+      await apiRequest("DELETE", "/api/profile/avatar", {});
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+      toast({
+        title: language === "pt-BR" ? "Foto removida" : "Photo removed",
+        description: language === "pt-BR" 
+          ? "Sua foto de perfil foi removida." 
+          : "Your profile photo has been removed.",
+      });
+    } catch (error) {
+      toast({
+        title: t.common.error,
+        description: language === "pt-BR" 
+          ? "Erro ao remover a foto." 
+          : "Failed to remove photo.",
+        variant: "destructive",
+      });
+    }
+  };
 
   useEffect(() => {
     if (profile) {
@@ -177,18 +275,56 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-background pt-20 px-6 pb-12">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center gap-4 mb-8">
-          <Avatar className="h-16 w-16">
-            <AvatarImage src={profile?.avatarUrl || undefined} alt={profile?.displayName || profile?.username} />
-            <AvatarFallback className="text-lg">
-              {(profile?.displayName || profile?.username || "U").charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+          <div className="relative group">
+            <Avatar className="h-16 w-16">
+              <AvatarImage src={profile?.avatarUrl || undefined} alt={profile?.displayName || profile?.username} />
+              <AvatarFallback className="text-lg">
+                {(profile?.displayName || profile?.username || "U").charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="hidden"
+              id="avatar-upload"
+              onChange={handleAvatarUpload}
+              disabled={avatarUploading}
+              data-testid="input-avatar-upload"
+            />
+            
+            <label
+              htmlFor="avatar-upload"
+              className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            >
+              {avatarUploading ? (
+                <Loader2 className="w-5 h-5 text-white animate-spin" />
+              ) : (
+                <Camera className="w-5 h-5 text-white" />
+              )}
+            </label>
+            
+            {profile?.avatarUrl && (
+              <Button
+                size="icon"
+                variant="destructive"
+                className="absolute -top-1 -right-1 h-5 w-5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={handleRemoveAvatar}
+                data-testid="button-remove-avatar"
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            )}
+          </div>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight" data-testid="text-profile-title">
               {t.profile.title}
             </h1>
             <p className="text-muted-foreground" data-testid="text-profile-subtitle">
               {t.profile.subtitle}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {language === "pt-BR" ? "Passe o mouse na foto para alterar" : "Hover over photo to change"}
             </p>
           </div>
         </div>

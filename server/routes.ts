@@ -330,6 +330,63 @@ export async function registerRoutes(
     }
   });
 
+  // Avatar upload endpoint
+  app.post("/api/profile/avatar", async (req, res) => {
+    try {
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+
+      const { imageData } = req.body;
+      
+      if (!imageData || typeof imageData !== "string") {
+        return res.status(400).json({ error: "Image data is required" });
+      }
+
+      // Validate base64 data URL format
+      const dataUrlMatch = imageData.match(/^data:image\/(jpeg|jpg|png|webp|gif);base64,/);
+      if (!dataUrlMatch) {
+        return res.status(400).json({ error: "Invalid image format. Use JPEG, PNG, WebP or GIF." });
+      }
+
+      // Check size (limit to ~2MB of base64 data)
+      const MAX_SIZE = 2 * 1024 * 1024 * 1.37; // ~2MB accounting for base64 overhead
+      if (imageData.length > MAX_SIZE) {
+        return res.status(400).json({ error: "Image too large. Maximum size is 2MB." });
+      }
+
+      // Update user avatar
+      const updated = await storage.updateAppUser(userId, { avatarUrl: imageData });
+      
+      if (!updated) {
+        return res.status(500).json({ error: "Failed to update avatar" });
+      }
+
+      res.json({ success: true, avatarUrl: imageData });
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      res.status(500).json({ error: "Failed to upload avatar" });
+    }
+  });
+
+  // Remove avatar endpoint
+  app.delete("/api/profile/avatar", async (req, res) => {
+    try {
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+
+      const updated = await storage.updateAppUser(userId, { avatarUrl: null });
+      
+      if (!updated) {
+        return res.status(500).json({ error: "Failed to remove avatar" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing avatar:", error);
+      res.status(500).json({ error: "Failed to remove avatar" });
+    }
+  });
+
   app.get("/api/profile/usage", async (req, res) => {
     try {
       const userId = requireAuth(req, res);
