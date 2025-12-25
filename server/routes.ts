@@ -899,12 +899,21 @@ export async function registerRoutes(
       const dimensions = getDimensions(selectedRatio);
       
       // Use only the first image - ModelsLab image-to-image expects a single init_image
-      const initImage = processedImages[0];
+      let initImage = processedImages[0];
       
       // Truncate prompt to API max length (2000 chars)
       const truncatedPrompt = prompt.length > 2000 ? prompt.substring(0, 2000) : prompt;
       
+      // Check if it's a base64 data URL and extract just the base64 content
       const isBase64 = initImage.startsWith("data:");
+      if (isBase64) {
+        // Extract just the base64 content (remove "data:image/...;base64," prefix)
+        const base64Match = initImage.match(/^data:image\/[^;]+;base64,(.+)$/);
+        if (base64Match) {
+          initImage = base64Match[1];
+        }
+      }
+      
       const requestBody = {
         key: apiKey,
         model_id: "realistic-vision-51",
