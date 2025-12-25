@@ -55,6 +55,11 @@ interface UsageData {
   blueprintsSaved: number;
   loraModelsTrained: number;
   plan: string;
+  daily?: {
+    prompts?: { used: number; limit: number };
+    images?: { used: number; limit: number };
+    videos?: { used: number; limit: number };
+  };
   limits: {
     free: { generationsPerDay: number; maxFilters: number; maxBlueprints: number; loraTraining: boolean };
     pro: { generationsPerDay: number; maxFilters: number; maxBlueprints: number; loraTraining: boolean };
@@ -353,20 +358,20 @@ export default function ProfilePage() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{t.profile.promptsToday}</span>
                     <span className="font-medium" data-testid="text-prompts-today">
-                      {usage?.promptsToday || 0}
-                      {!isPro && "/3"}
+                      {usage?.daily?.prompts?.used || 0}
+                      {!isPro && `/${usage?.daily?.prompts?.limit || 3}`}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{t.profile.imagesGenerated}</span>
                     <span className="font-medium" data-testid="text-images-count">
-                      {usage?.totalImagesGenerated || 0}
+                      {usage?.daily?.images?.used || 0}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">{t.profile.videosGenerated}</span>
                     <span className="font-medium" data-testid="text-videos-count">
-                      {usage?.totalVideosGenerated || 0}
+                      {usage?.daily?.videos?.used || 0}
                     </span>
                   </div>
                   <div className="flex justify-between">
