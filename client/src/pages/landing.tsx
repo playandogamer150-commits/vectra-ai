@@ -7,9 +7,9 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useI18n, LanguageToggle } from "@/lib/i18n";
-import heroWorkspace from "@assets/generated_images/ai_prompt_engineering_workspace.png";
-import heroControlRoom from "@assets/generated_images/ai_creative_control_room.png";
-import heroNetwork from "@assets/generated_images/ai_neural_network_visualization.png";
+import sampleFashion from "@assets/generated_images/fashion_editorial_portrait_photo.png";
+import sampleCar from "@assets/generated_images/luxury_sports_car_concept.png";
+import samplePerfume from "@assets/generated_images/luxury_perfume_product_shot.png";
 
 export default function LandingPage() {
   const [, setLocation] = useLocation();
@@ -239,59 +239,65 @@ export default function LandingPage() {
           <div className="max-w-6xl mx-auto">
             <div className="text-center mb-12">
               <h2 className="text-2xl md:text-3xl font-medium mb-3">
-                {language === "pt-BR" ? "Tecnologia de Ponta" : "Cutting-Edge Technology"}
+                {language === "pt-BR" ? "Criado com Vectra AI" : "Created with Vectra AI"}
               </h2>
               <p className="text-muted-foreground max-w-xl mx-auto">
                 {language === "pt-BR" 
-                  ? "Interface profissional projetada para máxima produtividade e resultados excepcionais."
-                  : "Professional interface designed for maximum productivity and exceptional results."}
+                  ? "Veja o que nossos usuários estão criando com prompts otimizados e modelos de última geração."
+                  : "See what our users are creating with optimized prompts and cutting-edge models."}
               </p>
             </div>
             
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="relative rounded-xl overflow-hidden aspect-video group">
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="relative rounded-xl overflow-hidden aspect-[4/5] group">
                 <img 
-                  src={heroWorkspace} 
-                  alt="AI Workspace" 
+                  src={sampleFashion} 
+                  alt="Fashion Editorial" 
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
                   <p className="text-sm font-medium">
-                    {language === "pt-BR" ? "Estúdio de Prompts Avançado" : "Advanced Prompt Studio"}
+                    {language === "pt-BR" ? "Editorial de Moda" : "Fashion Editorial"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {language === "pt-BR" ? "Crie, itere e refine prompts com precisão" : "Create, iterate and refine prompts with precision"}
+                    {language === "pt-BR" ? "Fotografia profissional de beleza" : "Professional beauty photography"}
                   </p>
                 </div>
               </div>
               
-              <div className="relative rounded-xl overflow-hidden aspect-video group">
+              <div className="relative rounded-xl overflow-hidden aspect-[4/5] group">
                 <img 
-                  src={heroControlRoom} 
-                  alt="AI Control Room" 
+                  src={sampleCar} 
+                  alt="Automotive Concept" 
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/20 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
                   <p className="text-sm font-medium">
-                    {language === "pt-BR" ? "Geração de Imagens e Vídeo" : "Image & Video Generation"}
+                    {language === "pt-BR" ? "Conceito Automotivo" : "Automotive Concept"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {language === "pt-BR" ? "Modelos ultra-realistas de última geração" : "Ultra-realistic cutting-edge models"}
+                    {language === "pt-BR" ? "Design de produto premium" : "Premium product design"}
                   </p>
                 </div>
               </div>
-            </div>
-            
-            <div className="mt-6 flex justify-center">
-              <div className="relative rounded-xl overflow-hidden w-32 h-32 group">
+              
+              <div className="relative rounded-xl overflow-hidden aspect-[4/5] group">
                 <img 
-                  src={heroNetwork} 
-                  alt="AI Neural Network" 
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  src={samplePerfume} 
+                  alt="Luxury Product" 
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+                <div className="absolute bottom-4 left-4 right-4">
+                  <p className="text-sm font-medium">
+                    {language === "pt-BR" ? "Produto de Luxo" : "Luxury Product"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {language === "pt-BR" ? "Publicidade de cosméticos" : "Cosmetics advertising"}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
