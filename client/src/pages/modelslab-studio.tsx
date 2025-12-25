@@ -74,6 +74,101 @@ interface GeneratedPromptResult {
 
 type FilterValue = Record<string, string>;
 
+function VideoThumbnail({ 
+  src, 
+  poster, 
+  className, 
+  testId,
+  onPlay,
+  onPause 
+}: { 
+  src: string; 
+  poster?: string; 
+  className?: string; 
+  testId?: string;
+  onPlay?: () => void;
+  onPause?: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [thumbnail, setThumbnail] = useState<string | null>(poster || null);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || poster) return;
+
+    const handleLoadedData = () => {
+      setIsLoaded(true);
+      video.currentTime = 0.5;
+    };
+
+    const handleSeeked = () => {
+      const canvas = canvasRef.current;
+      if (!canvas || !video) return;
+      
+      canvas.width = video.videoWidth || 320;
+      canvas.height = video.videoHeight || 180;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        try {
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          setThumbnail(dataUrl);
+        } catch (e) {
+          console.warn('Could not capture video frame');
+        }
+      }
+    };
+
+    const handleError = () => {
+      setHasError(true);
+    };
+
+    video.addEventListener('loadeddata', handleLoadedData);
+    video.addEventListener('seeked', handleSeeked);
+    video.addEventListener('error', handleError);
+
+    return () => {
+      video.removeEventListener('loadeddata', handleLoadedData);
+      video.removeEventListener('seeked', handleSeeked);
+      video.removeEventListener('error', handleError);
+    };
+  }, [src, poster]);
+
+  return (
+    <>
+      <canvas ref={canvasRef} className="hidden" />
+      <video
+        ref={videoRef}
+        src={src}
+        poster={thumbnail || undefined}
+        className={className}
+        data-testid={testId}
+        muted
+        loop
+        playsInline
+        preload="auto"
+        onMouseEnter={(e) => {
+          e.currentTarget.play().catch(() => {});
+          onPlay?.();
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.pause();
+          e.currentTarget.currentTime = 0;
+          onPause?.();
+        }}
+      />
+      {hasError && !thumbnail && (
+        <div className="absolute inset-0 flex items-center justify-center bg-muted rounded-lg">
+          <Play className="w-8 h-8 text-muted-foreground" />
+        </div>
+      )}
+    </>
+  );
+}
+
 export default function ModelsLabStudioPage() {
   const { toast } = useToast();
   const { t } = useI18n();
@@ -1688,21 +1783,11 @@ export default function ModelsLabStudioPage() {
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {savedVideos.map((video) => (
                     <div key={video.id} className="relative group aspect-video">
-                      <video
+                      <VideoThumbnail
                         src={video.videoUrl}
                         poster={video.thumbnailUrl || undefined}
                         className="w-full h-full object-cover rounded-lg border bg-black"
-                        data-testid={`video-gallery-${video.id}`}
-                        muted
-                        loop
-                        playsInline
-                        preload="metadata"
-                        onLoadedMetadata={(e) => {
-                          const vid = e.currentTarget;
-                          vid.currentTime = 0.1;
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.play()}
-                        onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0; }}
+                        testId={`video-gallery-${video.id}`}
                       />
                       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex flex-col justify-between p-2">
                         <div className="flex justify-end gap-1">
