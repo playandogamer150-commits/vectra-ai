@@ -76,6 +76,25 @@ const translations = {
       upgradePro: "Upgrade to Pro",
       footer: "Built for prompt engineers who demand precision.",
     },
+    landingPage: {
+      tagline: "Structured Creativity",
+      marketingLine: "Create Smarter. Generate Better.",
+      description: "Used to design prompts for image, video, and agent-based systems — with model-aware structures and reusable blueprints.",
+      feature1Title: "Blueprint-driven prompts",
+      feature1Desc: "Build prompts with structure — not guesswork.",
+      feature2Title: "Model-aware output",
+      feature2Desc: "Generate prompts tailored to each model's required base format.",
+      feature3Title: "Reusable workflows",
+      feature3Desc: "Save, reuse, version, and scale your generations.",
+      builtFor: "Built for creators, studios, and agencies.",
+      getStarted: "Get Started",
+      signInSubtitle: "Sign in with your account to access all features",
+      signInButton: "Sign in to continue",
+      signInProviders: "Supports Google, GitHub, Apple, and email sign-in",
+      viewPricing: "View Pricing",
+      redirecting: "Redirecting...",
+      pricing: "Pricing",
+    },
     studio: {
       title: "Prompt Studio",
       subtitle: "Generate production-grade prompts with precision control",
@@ -510,6 +529,25 @@ const translations = {
       upgradePro: "Fazer Upgrade para Pro",
       footer: "Feito para engenheiros de prompt que exigem precisão.",
     },
+    landingPage: {
+      tagline: "Criatividade Estruturada",
+      marketingLine: "Crie Mais Inteligente. Gere Melhor.",
+      description: "Usado para projetar prompts para sistemas de imagem, vídeo e agentes baseados em IA — com estruturas conscientes do modelo e blueprints reutilizáveis.",
+      feature1Title: "Prompts baseados em blueprints",
+      feature1Desc: "Construa prompts com estrutura — sem adivinhação.",
+      feature2Title: "Saída consciente do modelo",
+      feature2Desc: "Gere prompts adaptados ao formato base de cada modelo.",
+      feature3Title: "Fluxos reutilizáveis",
+      feature3Desc: "Salve, reutilize, versione e escale suas gerações.",
+      builtFor: "Feito para criadores, estúdios e agências.",
+      getStarted: "Começar",
+      signInSubtitle: "Entre com sua conta para acessar todos os recursos",
+      signInButton: "Entrar para continuar",
+      signInProviders: "Suporta login com Google, GitHub, Apple e email",
+      viewPricing: "Ver Preços",
+      redirecting: "Redirecionando...",
+      pricing: "Preços",
+    },
     studio: {
       title: "Estúdio de Prompts",
       subtitle: "Gere prompts de nível profissional com controle preciso",
@@ -889,10 +927,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("language") as Language;
       if (saved && (saved === "en" || saved === "pt-BR")) return saved;
-      const browserLang = navigator.language;
-      if (browserLang.startsWith("pt")) return "pt-BR";
     }
-    return "en";
+    return "pt-BR"; // Default to Portuguese
   });
 
   useEffect(() => {

@@ -6,11 +6,13 @@ import { MonoIcon } from "@/components/mono-icon";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useI18n, LanguageToggle } from "@/lib/i18n";
 
 export default function LandingPage() {
   const [, setLocation] = useLocation();
   const { user, isLoading, isAuthenticated } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { t, language } = useI18n();
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
@@ -20,16 +22,16 @@ export default function LandingPage() {
 
   const features = [
     {
-      title: "Blueprint-driven prompts",
-      description: "Build prompts with structure — not guesswork.",
+      title: t.landingPage.feature1Title,
+      description: t.landingPage.feature1Desc,
     },
     {
-      title: "Model-aware output",
-      description: "Generate prompts tailored to each model's required base format.",
+      title: t.landingPage.feature2Title,
+      description: t.landingPage.feature2Desc,
     },
     {
-      title: "Reusable workflows",
-      description: "Save, reuse, version, and scale your generations.",
+      title: t.landingPage.feature3Title,
+      description: t.landingPage.feature3Desc,
     },
   ];
 
@@ -49,16 +51,19 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-background/80 backdrop-blur-sm border-b border-border">
-        <div className="max-w-6xl mx-auto h-full px-6 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto h-full px-6 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <MonoIcon name="logo" className="w-7 h-7" />
             <span className="text-base font-medium tracking-tight">{BRAND.name}</span>
           </div>
-          <Link href="/pricing">
-            <Button variant="ghost" size="sm" className="text-muted-foreground">
-              Pricing
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/pricing">
+              <Button variant="ghost" size="sm" className="text-muted-foreground">
+                {t.landingPage.pricing}
+              </Button>
+            </Link>
+            <LanguageToggle />
+          </div>
         </div>
       </header>
 
@@ -146,16 +151,16 @@ export default function LandingPage() {
                     {BRAND.name}
                   </h1>
                   <p className="text-xl text-muted-foreground font-light">
-                    {BRAND.tagline}
+                    {t.landingPage.tagline}
                   </p>
                 </div>
 
                 <p className="text-2xl md:text-3xl font-light text-foreground/90 leading-snug" data-testid="text-marketing-line">
-                  {BRAND.marketingLine}
+                  {t.landingPage.marketingLine}
                 </p>
 
                 <p className="text-base text-muted-foreground leading-relaxed max-w-lg" data-testid="text-hero-description">
-                  {BRAND.description}
+                  {t.landingPage.description}
                 </p>
 
                 <div className="pt-4 space-y-8">
@@ -174,7 +179,7 @@ export default function LandingPage() {
                   </div>
 
                   <p className="text-xs text-muted-foreground">
-                    Built for creators, studios, and agencies.
+                    {t.landingPage.builtFor}
                   </p>
                 </div>
               </div>
@@ -183,9 +188,9 @@ export default function LandingPage() {
                 <div className="bg-card border border-border rounded-xl p-6 shadow-sm" data-testid="auth-card">
                   <div className="space-y-6">
                     <div className="text-center space-y-2">
-                      <h2 className="text-xl font-medium">Get Started</h2>
+                      <h2 className="text-xl font-medium">{t.landingPage.getStarted}</h2>
                       <p className="text-sm text-muted-foreground">
-                        Sign in with your account to access all features
+                        {t.landingPage.signInSubtitle}
                       </p>
                     </div>
 
@@ -194,7 +199,7 @@ export default function LandingPage() {
                         <Skeleton className="h-10 w-full rounded-md" />
                         <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                           <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Redirecting...</span>
+                          <span>{t.landingPage.redirecting}</span>
                         </div>
                       </div>
                     ) : (
@@ -204,19 +209,19 @@ export default function LandingPage() {
                         size="lg"
                         data-testid="button-login"
                       >
-                        Sign in to continue
+                        {t.landingPage.signInButton}
                       </Button>
                     )}
 
                     <p className="text-xs text-center text-muted-foreground">
-                      Supports Google, GitHub, Apple, and email sign-in
+                      {t.landingPage.signInProviders}
                     </p>
                   </div>
 
                   <div className="mt-6 pt-6 border-t border-border">
                     <Link href="/pricing" className="block">
                       <Button variant="outline" className="w-full gap-2" data-testid="button-view-pricing">
-                        View Pricing
+                        {t.landingPage.viewPricing}
                         <MonoIcon name="arrow-right" className="w-4 h-4" />
                       </Button>
                     </Link>
@@ -235,7 +240,7 @@ export default function LandingPage() {
             <span className="text-sm font-medium">{BRAND.name}</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            {BRAND.tagline}
+            {t.landingPage.tagline}
           </p>
         </div>
       </footer>
