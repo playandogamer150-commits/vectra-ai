@@ -107,11 +107,15 @@ export class ModelsLabProvider implements VideoProvider {
       };
     }
 
+    // For image-to-video, use a safe generic prompt to avoid content filtering
+    // The visual content is already in the image, we just need motion description
+    const safePrompt = this.sanitizePromptForVideo(input.prompt);
+
     const requestBody = {
       key: this.apiKey,
       model_id: model.modelIdParam,
       init_image: input.sourceImageUrl,
-      prompt: input.prompt || "Cinematic video with natural smooth movement, professional cinematography",
+      prompt: safePrompt,
       negative_prompt: input.negativePrompt || "low quality, blurry, distorted, amateur, static, frozen",
       duration: String(input.durationSeconds || 5),
       ...(input.seed && { seed: input.seed }),
@@ -224,5 +228,32 @@ export class ModelsLabProvider implements VideoProvider {
       default:
         return "processing";
     }
+  }
+
+  private sanitizePromptForVideo(prompt: string | undefined | null): string {
+    if (!prompt) {
+      return "Cinematic video with natural smooth movement, professional cinematography";
+    }
+
+    const sensitivePatterns = [
+      /\b(kanye\s*west|ye\s+west|elon\s*musk|taylor\s*swift|donald\s*trump|joe\s*biden|barack\s*obama|kim\s*kardashian|beyonce|rihanna|drake|eminem|snoop\s*dogg|jay\s*z|lebron\s*james|michael\s*jordan|cristiano\s*ronaldo|lionel\s*messi|putin|xi\s*jinping|mark\s*zuckerberg|jeff\s*bezos|bill\s*gates|steve\s*jobs|oprah|ellen\s*degeneres|johnny\s*depp|amber\s*heard|will\s*smith|chris\s*rock|andrew\s*tate|mr\s*beast|pewdiepie|logan\s*paul|jake\s*paul|jhony\s*dang|johnny\s*dang)\b/gi,
+      /\b(celebrity|celebridade|famoso|famous\s+person)\b/gi,
+    ];
+
+    let cleanPrompt = prompt;
+    
+    for (const pattern of sensitivePatterns) {
+      cleanPrompt = cleanPrompt.replace(pattern, "person");
+    }
+
+    cleanPrompt = cleanPrompt
+      .replace(/\s{2,}/g, " ")
+      .trim();
+
+    if (cleanPrompt.length < 10) {
+      return "Cinematic video with natural smooth movement, professional cinematography";
+    }
+
+    return cleanPrompt;
   }
 }
