@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/lib/i18n";
 import { Header } from "@/components/header";
+import { CookieConsent } from "@/components/cookie-consent";
 import LandingPage from "@/pages/landing";
 import PricingPage from "@/pages/pricing";
 import LibraryPage from "@/pages/library";
@@ -46,6 +47,7 @@ function AppContent() {
       {showHeader && <Header />}
       <Router />
       <Toaster />
+      <CookieConsent />
     </>
   );
 }
