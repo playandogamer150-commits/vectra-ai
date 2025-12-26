@@ -147,7 +147,7 @@ function AccordionSection({ title, icon, isOpen, onToggle, children, testId, bad
                     <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-md">
+                <DialogContent className="max-w-md" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                       {icon}
