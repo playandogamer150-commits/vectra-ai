@@ -227,6 +227,10 @@ export default function ModelsLabStudioPage() {
   // Vectra Cinematic Panel state (advanced controls)
   const [showCinematicPanel, setShowCinematicPanel] = useState(false);
   const [cinematicSettings, setCinematicSettings] = useState<CinematicSettings | null>(null);
+  
+  // Admin API key state
+  const [showAdminKeyModal, setShowAdminKeyModal] = useState(false);
+  const [adminApiKey, setAdminApiKey] = useState("");
 
   // Queries for Prompt Engine
   const { data: profiles, isLoading: loadingProfiles } = useQuery<LlmProfile[]>({
@@ -261,6 +265,8 @@ export default function ModelsLabStudioPage() {
   interface UsageData {
     plan: string;
     isPro: boolean;
+    isAdmin?: boolean;
+    hasCustomKey?: boolean;
     daily: {
       prompts: { used: number; limit: number };
       images: { used: number; limit: number };
@@ -290,6 +296,42 @@ export default function ModelsLabStudioPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+    },
+  });
+
+  // Admin API key mutation
+  const saveAdminApiKeyMutation = useMutation({
+    mutationFn: async (apiKey: string) => {
+      return apiRequest("POST", "/api/admin/api-key", { apiKey });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile/usage"] });
+      setShowAdminKeyModal(false);
+      setAdminApiKey("");
+      toast({ 
+        title: t.modelslab?.apiKeySaved || "API key saved",
+        description: t.modelslab?.apiKeyDesc || "Your custom API key is now active"
+      });
+    },
+    onError: (error: Error) => {
+      toast({ 
+        title: t.modelslab?.error || "Error", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const removeAdminApiKeyMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("DELETE", "/api/admin/api-key");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile/usage"] });
+      toast({ 
+        title: t.modelslab?.apiKeyRemoved || "API key removed",
+        description: t.modelslab?.apiKeyRemovedDesc || "Using system API key now"
+      });
     },
   });
 
@@ -1030,10 +1072,28 @@ export default function ModelsLabStudioPage() {
             )}
             {usageData?.isPro && (
               <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="text-xs" data-testid="badge-pro-plan">
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  Pro
-                </Badge>
+                {usageData?.isAdmin ? (
+                  <Badge variant="default" className="text-xs bg-amber-500/20 text-amber-400 border-amber-500/30" data-testid="badge-admin">
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    Admin
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-xs" data-testid="badge-pro-plan">
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    Pro
+                  </Badge>
+                )}
+                {usageData?.isAdmin && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAdminKeyModal(true)}
+                    className="text-xs text-amber-400"
+                    data-testid="button-admin-api-key"
+                  >
+                    {usageData?.hasCustomKey ? "API Key Ativa" : "Inserir API Key"}
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -2316,6 +2376,79 @@ export default function ModelsLabStudioPage() {
         open={showTutorial} 
         onComplete={handleTutorialComplete}
       />
+
+      {/* Admin API Key Modal */}
+      <Dialog open={showAdminKeyModal} onOpenChange={setShowAdminKeyModal}>
+        <DialogContent className="bg-[#0e1014]/95 backdrop-blur-xl border-white/10">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+              Configurar API Key do ModelsLab
+            </DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              {usageData?.hasCustomKey 
+                ? "Sua API key personalizada está ativa. Você pode atualizá-la ou removê-la."
+                : "Insira sua API key do ModelsLab para usar geração ilimitada com sua própria conta."}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>API Key do ModelsLab</Label>
+              <Textarea
+                placeholder="Insira sua API key aqui..."
+                value={adminApiKey}
+                onChange={(e) => setAdminApiKey(e.target.value)}
+                className="font-mono text-sm bg-background/50"
+                data-testid="input-admin-api-key"
+              />
+              <p className="text-xs text-muted-foreground">
+                Obtenha sua API key em <a href="https://modelslab.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">modelslab.com</a>
+              </p>
+            </div>
+            
+            {usageData?.hasCustomKey && (
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                <p className="text-sm text-green-400 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4" />
+                  API Key personalizada ativa - geração ilimitada
+                </p>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter className="gap-2">
+            {usageData?.hasCustomKey && (
+              <Button
+                variant="outline"
+                onClick={() => removeAdminApiKeyMutation.mutate()}
+                disabled={removeAdminApiKeyMutation.isPending}
+                className="text-red-400 border-red-500/30 hover:bg-red-500/10"
+                data-testid="button-remove-api-key"
+              >
+                {removeAdminApiKeyMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Trash2 className="w-4 h-4 mr-2" />
+                )}
+                Remover Key
+              </Button>
+            )}
+            <Button
+              onClick={() => saveAdminApiKeyMutation.mutate(adminApiKey)}
+              disabled={!adminApiKey.trim() || saveAdminApiKeyMutation.isPending}
+              data-testid="button-save-api-key"
+            >
+              {saveAdminApiKeyMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              Salvar API Key
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

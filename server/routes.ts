@@ -563,7 +563,7 @@ export async function registerRoutes(
     }
   });
 
-  // Admin: Save custom ModelsLab API key
+  // Admin: Save custom ModelsLab API key (encrypted)
   app.post("/api/admin/api-key", async (req, res) => {
     try {
       const userId = requireAuth(req, res);
@@ -579,7 +579,11 @@ export async function registerRoutes(
         return res.status(400).json({ error: "API key is required" });
       }
       
-      await storage.updateAppUser(userId, { customModelsLabKey: apiKey });
+      // Encrypt the API key before storing
+      const { encryptApiKey } = await import("./lib/encryption");
+      const encryptedKey = encryptApiKey(apiKey);
+      
+      await storage.updateAppUser(userId, { customModelsLabKey: encryptedKey });
       res.json({ success: true });
     } catch (error) {
       console.error("Error saving API key:", error);
@@ -1283,15 +1287,15 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Authentication required" });
       }
 
-      // Check if user is admin (bypass quotas if they have custom API key)
+      // Check if user is admin (all admins bypass quotas)
       const user = await storage.getAppUser(userId);
       const isAdmin = user?.isAdmin === 1;
-      const customApiKey = user?.customModelsLabKey;
-      const hasCustomKey = isAdmin && customApiKey;
+      const encryptedApiKey = user?.customModelsLabKey;
+      const hasCustomKey = isAdmin && !!encryptedApiKey;
       
-      // Admin with custom key bypasses all quotas
+      // All admins bypass quotas, regardless of having a custom key
       let imageQuota: any = null;
-      if (!hasCustomKey) {
+      if (!isAdmin) {
         imageQuota = await checkImageQuotaAndModel(userId);
         if (!imageQuota.allowed) {
           return res.status(403).json({ 
@@ -1312,8 +1316,19 @@ export async function registerRoutes(
         return res.status(400).json({ error: "At least one image is required" });
       }
       
-      // Use custom API key for admins, otherwise use system key
-      const apiKey = hasCustomKey ? customApiKey : process.env.MODELSLAB_API_KEY;
+      // Use custom API key for admins (decrypt if present), otherwise use system key
+      let apiKey = process.env.MODELSLAB_API_KEY;
+      if (hasCustomKey && encryptedApiKey) {
+        try {
+          const { decryptApiKey } = await import("./lib/encryption");
+          const decryptedKey = decryptApiKey(encryptedApiKey);
+          if (decryptedKey) {
+            apiKey = decryptedKey;
+          }
+        } catch {
+          // If decryption fails, use system key
+        }
+      }
       if (!apiKey) {
         return res.status(500).json({ error: "ModelsLab API key not configured" });
       }
@@ -1380,9 +1395,9 @@ export async function registerRoutes(
       }
       
       // Select model based on quota check (HQ = nano-banana-pro, Standard = realistic-vision-51)
-      // Admins with custom key always get HQ model
-      const selectedModel = hasCustomKey ? "nano-banana-pro" : imageQuota?.modelId || "nano-banana-pro";
-      const isHqModel = hasCustomKey ? true : imageQuota?.imageQuality === "hq";
+      // All admins always get HQ model
+      const selectedModel = isAdmin ? "nano-banana-pro" : imageQuota?.modelId || "nano-banana-pro";
+      const isHqModel = isAdmin ? true : imageQuota?.imageQuality === "hq";
       const isNanoBananaPro = selectedModel === "nano-banana-pro";
       
       // Nano Banana Pro uses v7 API with different parameters
