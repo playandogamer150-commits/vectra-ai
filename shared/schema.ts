@@ -425,6 +425,40 @@ export const insertPromptVersionSchema = createInsertSchema(promptVersions).omit
   createdAt: true,
 });
 
+export const cinematicSettingsSchema = z.object({
+  optics: z.object({
+    style: z.string(),
+    aspectRatio: z.string(),
+    sampleCount: z.number(),
+  }).optional(),
+  vfx: z.object({
+    effects: z.array(z.string()),
+    intensity: z.number(),
+  }).optional(),
+  subjects: z.object({
+    subjectA: z.object({
+      faceImages: z.array(z.object({ id: z.string(), url: z.string() })),
+      bodyImages: z.array(z.object({ id: z.string(), url: z.string() })),
+      signatureImages: z.array(z.object({ id: z.string(), url: z.string() })),
+    }),
+    subjectB: z.object({
+      faceImages: z.array(z.object({ id: z.string(), url: z.string() })),
+      bodyImages: z.array(z.object({ id: z.string(), url: z.string() })),
+      signatureImages: z.array(z.object({ id: z.string(), url: z.string() })),
+    }),
+  }).optional(),
+  styleDna: z.object({
+    brand: z.string(),
+    layering: z.string(),
+    fit: z.string(),
+    outerwear: z.string(),
+    footwear: z.string(),
+    bottom: z.string(),
+    moodboard: z.array(z.object({ id: z.string(), url: z.string() })),
+  }).optional(),
+  customApiKey: z.string().optional(),
+}).optional();
+
 export const generateRequestSchema = z.object({
   profileId: z.string().min(1),
   blueprintId: z.string().optional(),
@@ -439,6 +473,7 @@ export const generateRequestSchema = z.object({
   loraVersionId: z.string().optional(),
   loraWeight: z.number().min(0).max(2).optional().default(1),
   targetPlatform: z.string().optional(),
+  cinematicSettings: cinematicSettingsSchema,
 }).refine(data => data.blueprintId || data.userBlueprintId, {
   message: "Either blueprintId or userBlueprintId is required",
 });

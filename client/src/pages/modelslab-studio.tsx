@@ -770,6 +770,7 @@ export default function ModelsLabStudioPage() {
         filters: activeFilters,
         seed: seed || undefined,
         subject,
+        cinematicSettings: showCinematicPanel ? cinematicSettings : undefined,
       });
       return res.json() as Promise<GeneratedPromptResult>;
     },

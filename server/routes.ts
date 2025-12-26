@@ -681,10 +681,91 @@ export async function registerRoutes(
         });
       }
 
+      // Merge cinematicSettings into filters for unified processing
+      const cinematicFilters: Record<string, string> = {};
+      const cinematicModifiers: string[] = [];
+      
+      if (validated.cinematicSettings) {
+        const cs = validated.cinematicSettings;
+        
+        // Optics settings
+        if (cs.optics?.style && cs.optics.style !== "cinematic") {
+          const opticsMap: Record<string, string> = {
+            "smartphone": "smartphone real-life photo, authentic mobile photography",
+            "iphone-hdr": "iPhone HDR max photo, vibrant colors, dynamic range",
+            "realistic-raw": "realistic RAW photo, unprocessed, natural",
+            "forensic-dslr": "forensic DSLR, sharp focus, clinical precision",
+          };
+          if (opticsMap[cs.optics.style]) {
+            cinematicModifiers.push(opticsMap[cs.optics.style]);
+            cinematicFilters["camera_style"] = cs.optics.style;
+          }
+        }
+        
+        // VFX effects
+        if (cs.vfx?.effects && cs.vfx.effects.length > 0) {
+          const vfxMap: Record<string, string> = {
+            "vhs": "VHS tape effect, retro analog distortion, chromatic aberration",
+            "35mm": "35mm film grain, analog texture, cinematic warmth",
+            "nvg": "night vision green tint, military thermal imaging",
+            "cine": "cinematic color grading, anamorphic lens flares",
+            "gltch": "digital glitch effect, data corruption aesthetic",
+            "blum": "bloom lighting effect, ethereal glow, soft highlights",
+            "grain": "film grain texture, subtle noise, analog feel",
+            "leak": "light leak effect, vintage photography, warm light streaks",
+            "scan": "scan lines overlay, CRT monitor effect, retro display",
+            "noir": "noir black and white, dramatic shadows, film noir",
+            "teal": "teal and orange color grading, Hollywood blockbuster look",
+          };
+          const intensity = cs.vfx.intensity || 3;
+          const intensityPrefix = intensity >= 4 ? "strong " : intensity <= 1 ? "subtle " : "";
+          
+          cs.vfx.effects.forEach(effect => {
+            if (effect !== "off" && vfxMap[effect]) {
+              cinematicModifiers.push(`${intensityPrefix}${vfxMap[effect]}`);
+              cinematicFilters[`vfx_${effect}`] = String(intensity);
+            }
+          });
+        }
+        
+        // Style DNA
+        if (cs.styleDna) {
+          if (cs.styleDna.brand && cs.styleDna.brand !== "auto") {
+            const brandMap: Record<string, string> = {
+              "streetwear": "streetwear urban aesthetic, casual street style",
+              "luxury": "luxury high fashion, premium sophisticated look",
+              "minimalist": "minimalist clean design, understated elegance",
+              "vintage": "vintage retro aesthetic, timeless classic style",
+              "techwear": "techwear futuristic functional, technical fashion",
+            };
+            if (brandMap[cs.styleDna.brand]) {
+              cinematicModifiers.push(brandMap[cs.styleDna.brand]);
+              cinematicFilters["style_brand"] = cs.styleDna.brand;
+            }
+          }
+          
+          if (cs.styleDna.fit && cs.styleDna.fit !== "regular") {
+            const fitMap: Record<string, string> = {
+              "oversized": "oversized relaxed fit clothing",
+              "relaxed": "relaxed comfortable fit",
+              "slim": "slim fitted silhouette",
+              "tailored": "tailored bespoke fit, precision tailoring",
+            };
+            if (fitMap[cs.styleDna.fit]) {
+              cinematicModifiers.push(fitMap[cs.styleDna.fit]);
+              cinematicFilters["style_fit"] = cs.styleDna.fit;
+            }
+          }
+        }
+      }
+      
+      // Merge cinematic filters with user filters
+      const mergedFilters = { ...validated.filters, ...cinematicFilters };
+
       const compileInput = {
         profileId: validated.profileId,
         blueprintId: effectiveBlueprintId,
-        filters: validated.filters,
+        filters: mergedFilters,
         seed: validated.seed || "",
         subject: validated.subject,
         context: validated.context,
@@ -706,7 +787,19 @@ export async function registerRoutes(
         compiler.setActiveLora(null);
       }
 
-      const result = compiler.compile(compileInput);
+      let result = compiler.compile(compileInput);
+      
+      // Append cinematic modifiers to compiled prompt if any
+      if (cinematicModifiers.length > 0) {
+        result = {
+          ...result,
+          compiledPrompt: `${result.compiledPrompt}\n\nCinematic Enhancement: ${cinematicModifiers.join(", ")}`,
+          metadata: {
+            ...result.metadata,
+            filterCount: result.metadata.filterCount + cinematicModifiers.length,
+          },
+        };
+      }
 
       const savedPrompt = await storage.createGeneratedPrompt({
         userId: null,
