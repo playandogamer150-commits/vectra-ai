@@ -245,15 +245,15 @@ export function VectraCinematicPanel({
   const currentSetSubject = subjectTab === "a" ? setSubjectA : setSubjectB;
 
   return (
-    <div className={cn("vectra-cinematic-panel space-y-4", className)}>
+    <div className={cn("vectra-cinematic-panel space-y-2", className)}>
       <VectraPanel
         title="Óptica & Estética"
-        icon={<Camera className="w-4 h-4" />}
+        icon={<Camera className="w-3.5 h-3.5" />}
         testId="panel-optics"
       >
-        <div className="space-y-5">
-          <div className="space-y-2">
-            <span className="text-xs text-muted-foreground">Estilo de Captura</span>
+        <div className="space-y-3">
+          <div className="space-y-1">
+            <span className="text-[10px] text-muted-foreground">Estilo de Captura</span>
             <VectraGridToggle
               options={OPTICS_OPTIONS}
               selected={[opticsStyle]}
@@ -264,8 +264,8 @@ export function VectraCinematicPanel({
             />
           </div>
           
-          <div className="space-y-2">
-            <span className="text-xs text-muted-foreground">Aspect Ratio</span>
+          <div className="space-y-1">
+            <span className="text-[10px] text-muted-foreground">Aspect Ratio</span>
             <VectraGridToggle
               options={ASPECT_RATIOS}
               selected={[aspectRatio]}
@@ -289,10 +289,10 @@ export function VectraCinematicPanel({
 
       <VectraPanel
         title="Pós-Processamento & VFX"
-        icon={<Film className="w-4 h-4" />}
+        icon={<Film className="w-3.5 h-3.5" />}
         testId="panel-vfx"
       >
-        <div className="space-y-4">
+        <div className="space-y-2">
           <VectraGridToggle
             options={VFX_OPTIONS}
             selected={vfxEffects}
@@ -316,7 +316,7 @@ export function VectraCinematicPanel({
 
       <VectraPanel
         title="Sujeitos"
-        icon={<User className="w-4 h-4" />}
+        icon={<User className="w-3.5 h-3.5" />}
         testId="panel-subjects"
       >
         <VectraTabs
@@ -330,7 +330,7 @@ export function VectraCinematicPanel({
         />
         
         <VectraTabContent>
-          <div className="space-y-4">
+          <div className="space-y-2">
             <VectraUploadSlot
               images={currentSubject.faceImages}
               maxImages={20}
@@ -363,12 +363,12 @@ export function VectraCinematicPanel({
 
       <VectraPanel
         title="DNA de Estilo & Wardrobe"
-        icon={<Shirt className="w-4 h-4" />}
+        icon={<Shirt className="w-3.5 h-3.5" />}
         testId="panel-style-dna"
       >
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <span className="text-xs text-muted-foreground">Designer Brand</span>
+        <div className="space-y-2">
+          <div className="space-y-1">
+            <span className="text-[10px] text-muted-foreground">Designer Brand</span>
             <VectraGridToggle
               options={BRAND_OPTIONS}
               selected={[styleBrand]}
@@ -379,8 +379,8 @@ export function VectraCinematicPanel({
             />
           </div>
           
-          <div className="space-y-2">
-            <span className="text-xs text-muted-foreground">Fit / Caimento</span>
+          <div className="space-y-1">
+            <span className="text-[10px] text-muted-foreground">Fit / Caimento</span>
             <VectraGridToggle
               options={FIT_OPTIONS}
               selected={[styleFit]}
@@ -404,28 +404,28 @@ export function VectraCinematicPanel({
 
       <VectraPanel
         title="Diagnóstico de Sistemas"
-        icon={<Activity className="w-4 h-4" />}
+        icon={<Activity className="w-3.5 h-3.5" />}
         collapsible
         isOpen={diagnosticsOpen}
         onOpenChange={setDiagnosticsOpen}
         testId="panel-diagnostics"
       >
-        <div className="space-y-3">
+        <div className="space-y-1.5">
           {ENGINES.map((engine) => (
             <div
               key={engine.name}
-              className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/50"
+              className="flex items-center justify-between py-1 px-2 rounded bg-muted/50"
             >
-              <span className="text-xs text-muted-foreground">{engine.name}</span>
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 dark:bg-green-400 animate-pulse" />
-                <span className="text-[10px] text-green-600 dark:text-green-400 uppercase tracking-wider">LIVE</span>
+              <span className="text-[10px] text-muted-foreground">{engine.name}</span>
+              <div className="flex items-center gap-1.5">
+                <div className="w-1 h-1 rounded-full bg-green-500 dark:bg-green-400 animate-pulse" />
+                <span className="text-[8px] text-green-600 dark:text-green-400 uppercase tracking-wider">LIVE</span>
               </div>
             </div>
           ))}
           
           {isPremium && (
-            <div className="pt-3 border-t border-border">
+            <div className="pt-2 border-t border-border">
               <VectraSecureInput
                 value={customApiKey}
                 onChange={setCustomApiKey}
@@ -443,10 +443,10 @@ export function VectraCinematicPanel({
         type="button"
         variant="outline"
         size="sm"
-        className="mx-auto gap-2"
+        className="mx-auto gap-1.5 text-[10px] h-7"
         data-testid="button-voice"
       >
-        <Mic className="w-3.5 h-3.5" />
+        <Mic className="w-3 h-3" />
         <span>Voz</span>
       </Button>
     </div>

@@ -26,14 +26,14 @@ export function VectraSlider({
   testId,
 }: VectraSliderProps) {
   return (
-    <div className={cn("space-y-3", className)} data-testid={testId}>
+    <div className={cn("space-y-1.5", className)} data-testid={testId}>
       {(label || showValue) && (
         <div className="flex items-center justify-between">
           {label && (
-            <span className="text-xs font-medium text-muted-foreground">{label}</span>
+            <span className="text-[10px] font-medium text-muted-foreground">{label}</span>
           )}
           {showValue && (
-            <Badge variant="secondary" className="text-xs font-mono">
+            <Badge variant="secondary" className="text-[10px] font-mono px-1.5 py-0">
               {value}
             </Badge>
           )}

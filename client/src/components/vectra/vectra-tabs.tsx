@@ -25,12 +25,12 @@ export function VectraTabs({
 }: VectraTabsProps) {
   return (
     <Tabs value={activeTab} onValueChange={onTabChange} className={cn("w-full", className)}>
-      <TabsList className="w-full" data-testid={testId}>
+      <TabsList className="w-full h-7" data-testid={testId}>
         {tabs.map((tab) => (
           <TabsTrigger
             key={tab.id}
             value={tab.id}
-            className="flex-1 gap-1.5 text-xs"
+            className="flex-1 gap-1 text-[10px] py-1"
             data-testid={`${testId}-${tab.id}`}
           >
             {tab.icon}
@@ -49,7 +49,7 @@ interface VectraTabContentProps {
 
 export function VectraTabContent({ children, className }: VectraTabContentProps) {
   return (
-    <div className={cn("mt-4", className)}>
+    <div className={cn("mt-2", className)}>
       {children}
     </div>
   );
