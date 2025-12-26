@@ -4,10 +4,11 @@ import { useTheme } from "@/components/theme-provider";
 import { useI18n, LanguageToggle } from "@/lib/i18n";
 import { BRAND } from "@/lib/constants";
 import { MonoIcon } from "@/components/mono-icon";
-import { Moon, Sun, Menu, X, Image, Library, History, User, LogOut, Settings, Crown, Sparkles } from "lucide-react";
+import { Moon, Sun, Menu, X, Image, Library, History, User, LogOut, Settings, Crown, Sparkles, LogIn } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { getQueryFn } from "@/lib/queryClient";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -32,8 +33,9 @@ export function Header() {
   const [location, setLocation] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const { data: profile } = useQuery<UserProfile>({
+  const { data: profile } = useQuery<UserProfile | null>({
     queryKey: ["/api/profile"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
   });
 
   const navItems = [
@@ -87,7 +89,7 @@ export function Header() {
             {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </Button>
 
-          {profile && (
+          {profile ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -147,6 +149,17 @@ export function Header() {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.href = "/api/login"}
+              className="gap-1.5"
+              data-testid="button-login"
+            >
+              <LogIn className="w-4 h-4" />
+              {t.landingPage.signInButton.split(" ")[0]}
+            </Button>
           )}
 
           <Button
