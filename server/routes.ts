@@ -311,7 +311,12 @@ export async function registerRoutes(
       // Check if user's email is in admin list and update isAdmin flag
       const userEmail = user?.claims?.email;
       if (userEmail) {
-        const isAdminEmail = await storage.isAdminEmail(userEmail);
+        // Check both database table and environment variable for admin emails
+        const isAdminInDb = await storage.isAdminEmail(userEmail);
+        const adminEmailsEnv = process.env.ADMIN_EMAILS?.split(",").map(e => e.trim().toLowerCase()) || [];
+        const isAdminInEnv = adminEmailsEnv.includes(userEmail.toLowerCase());
+        const isAdminEmail = isAdminInDb || isAdminInEnv;
+        
         if (isAdminEmail && appUser.isAdmin !== 1) {
           appUser = (await storage.updateAppUser(userId, { isAdmin: 1 })) || appUser;
         }

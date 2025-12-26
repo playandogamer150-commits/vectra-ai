@@ -45,3 +45,6 @@ integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:2.0.
 
 [userenv.development]
 ADMIN_OVERRIDE = "true"
+
+[userenv.shared]
+ADMIN_EMAILS = "knrocky.og@gmail.com"
