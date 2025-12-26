@@ -1,22 +1,23 @@
 import { useState, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { VectraGridToggle } from "./vectra-grid-toggle";
 import { VectraTabs, VectraTabContent } from "./vectra-tabs";
 import { VectraSecureInput } from "./vectra-secure-input";
 import { VectraUploadSlot } from "./vectra-upload-slot";
 import { VectraSlider } from "./vectra-slider";
 import { 
   Camera, Film, User, Shirt, 
-  Mic, Eye, Scan, Square, RectangleVertical, 
+  Eye, Scan, Square, RectangleVertical, 
   RectangleHorizontal, Sparkles,
   Video, Smartphone, Focus, Crosshair, Clapperboard,
   Power, Moon, SunDim, Contrast, Droplets, Tv,
   Wand2, Crown, Leaf, Watch, Wrench, Maximize, Minimize,
-  Move, ArrowDownRight, Zap, ChevronDown
+  Move, ArrowDownRight, Zap, ChevronDown, HelpCircle, X
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useI18n } from "@/lib/i18n";
 
 interface VectraCinematicPanelProps {
@@ -58,49 +59,49 @@ interface SubjectData {
 }
 
 const OPTICS_OPTIONS = [
-  { id: "cinematic", label: "Cine", icon: Clapperboard },
-  { id: "smartphone", label: "Phone", icon: Smartphone },
-  { id: "iphone-hdr", label: "HDR", icon: Sparkles },
-  { id: "realistic-raw", label: "RAW", icon: Focus },
-  { id: "forensic-dslr", label: "DSLR", icon: Crosshair },
+  { id: "cinematic", label: "Cine", icon: Clapperboard, description: "Estilo cinematográfico profissional com visual de filme" },
+  { id: "smartphone", label: "Phone", icon: Smartphone, description: "Visual realista de foto tirada com smartphone" },
+  { id: "iphone-hdr", label: "HDR", icon: Sparkles, description: "Foto estilo iPhone com HDR máximo e cores vibrantes" },
+  { id: "realistic-raw", label: "RAW", icon: Focus, description: "Foto realista sem processamento, como arquivo RAW" },
+  { id: "forensic-dslr", label: "DSLR", icon: Crosshair, description: "Estilo de câmera DSLR profissional com foco preciso" },
 ];
 
 const ASPECT_RATIOS = [
-  { id: "1:1", label: "1:1", icon: Square },
-  { id: "9:16", label: "9:16", icon: RectangleVertical },
-  { id: "16:9", label: "16:9", icon: RectangleHorizontal },
+  { id: "1:1", label: "1:1", icon: Square, description: "Formato quadrado - ideal para Instagram posts" },
+  { id: "9:16", label: "9:16", icon: RectangleVertical, description: "Formato vertical - ideal para Stories e Reels" },
+  { id: "16:9", label: "16:9", icon: RectangleHorizontal, description: "Formato horizontal - ideal para YouTube e desktop" },
 ];
 
 const VFX_OPTIONS = [
-  { id: "off", label: "OFF", icon: Power },
-  { id: "vhs", label: "VHS", icon: Tv },
-  { id: "35mm", label: "35MM", icon: Film },
-  { id: "nvg", label: "NVG", icon: Eye },
-  { id: "cine", label: "CINE", icon: Video },
-  { id: "gltch", label: "GLTCH", icon: Zap },
-  { id: "blum", label: "BLUM", icon: SunDim },
-  { id: "grain", label: "GRAIN", icon: Droplets },
-  { id: "leak", label: "LEAK", icon: Sparkles },
-  { id: "scan", label: "SCAN", icon: Scan },
-  { id: "noir", label: "NOIR", icon: Moon },
-  { id: "teal", label: "TEAL", icon: Contrast },
+  { id: "off", label: "OFF", icon: Power, description: "Desativar todos os efeitos visuais" },
+  { id: "vhs", label: "VHS", icon: Tv, description: "Efeito de fita VHS retrô dos anos 80/90" },
+  { id: "35mm", label: "35MM", icon: Film, description: "Granulação e textura de filme analógico 35mm" },
+  { id: "nvg", label: "NVG", icon: Eye, description: "Visão noturna com tonalidade verde militar" },
+  { id: "cine", label: "CINE", icon: Video, description: "Color grading cinematográfico profissional" },
+  { id: "gltch", label: "GLTCH", icon: Zap, description: "Efeito de glitch digital e distorção" },
+  { id: "blum", label: "BLUM", icon: SunDim, description: "Efeito bloom com brilho suave nas luzes" },
+  { id: "grain", label: "GRAIN", icon: Droplets, description: "Textura granulada sutil de filme" },
+  { id: "leak", label: "LEAK", icon: Sparkles, description: "Vazamento de luz artístico vintage" },
+  { id: "scan", label: "SCAN", icon: Scan, description: "Linhas de escaneamento estilo monitor CRT" },
+  { id: "noir", label: "NOIR", icon: Moon, description: "Preto e branco dramático estilo film noir" },
+  { id: "teal", label: "TEAL", icon: Contrast, description: "Color grading teal & orange de Hollywood" },
 ];
 
 const BRAND_OPTIONS = [
-  { id: "auto", label: "Auto", icon: Wand2 },
-  { id: "streetwear", label: "Street", icon: Shirt },
-  { id: "luxury", label: "Luxury", icon: Crown },
-  { id: "minimalist", label: "Minimal", icon: Leaf },
-  { id: "vintage", label: "Vintage", icon: Watch },
-  { id: "techwear", label: "Tech", icon: Wrench },
+  { id: "auto", label: "Auto", icon: Wand2, description: "Detectar automaticamente o estilo da imagem" },
+  { id: "streetwear", label: "Street", icon: Shirt, description: "Estilo streetwear urbano e casual" },
+  { id: "luxury", label: "Luxury", icon: Crown, description: "Estética luxuosa e sofisticada" },
+  { id: "minimalist", label: "Minimal", icon: Leaf, description: "Design minimalista e clean" },
+  { id: "vintage", label: "Vintage", icon: Watch, description: "Visual retrô e clássico atemporal" },
+  { id: "techwear", label: "Tech", icon: Wrench, description: "Estilo futurista e funcional techwear" },
 ];
 
 const FIT_OPTIONS = [
-  { id: "oversized", label: "Over", icon: Maximize },
-  { id: "relaxed", label: "Relax", icon: Move },
-  { id: "regular", label: "Reg", icon: Square },
-  { id: "slim", label: "Slim", icon: Minimize },
-  { id: "tailored", label: "Tail", icon: ArrowDownRight },
+  { id: "oversized", label: "Over", icon: Maximize, description: "Caimento oversized e folgado" },
+  { id: "relaxed", label: "Relax", icon: Move, description: "Caimento relaxado e confortável" },
+  { id: "regular", label: "Reg", icon: Square, description: "Caimento regular padrão" },
+  { id: "slim", label: "Slim", icon: Minimize, description: "Caimento slim e ajustado" },
+  { id: "tailored", label: "Tail", icon: ArrowDownRight, description: "Caimento alfaiataria sob medida" },
 ];
 
 interface AccordionSectionProps {
@@ -111,9 +112,10 @@ interface AccordionSectionProps {
   children: React.ReactNode;
   testId: string;
   badge?: string;
+  helpContent?: React.ReactNode;
 }
 
-function AccordionSection({ title, icon, isOpen, onToggle, children, testId, badge }: AccordionSectionProps) {
+function AccordionSection({ title, icon, isOpen, onToggle, children, testId, badge, helpContent }: AccordionSectionProps) {
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
       <CollapsibleTrigger asChild>
@@ -131,16 +133,73 @@ function AccordionSection({ title, icon, isOpen, onToggle, children, testId, bad
               </Badge>
             )}
           </div>
-          <ChevronDown className={cn(
-            "w-4 h-4 transition-transform duration-200",
-            isOpen && "rotate-180"
-          )} />
+          <div className="flex items-center gap-1">
+            {helpContent && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    onClick={(e) => e.stopPropagation()}
+                    data-testid={`${testId}-help`}
+                  >
+                    <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      {icon}
+                      {title} - Guia de Uso
+                    </DialogTitle>
+                  </DialogHeader>
+                  {helpContent}
+                </DialogContent>
+              </Dialog>
+            )}
+            <ChevronDown className={cn(
+              "w-4 h-4 transition-transform duration-200",
+              isOpen && "rotate-180"
+            )} />
+          </div>
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent className="px-3 pb-3">
         {children}
       </CollapsibleContent>
     </Collapsible>
+  );
+}
+
+interface TooltipButtonProps {
+  option: { id: string; label: string; icon: React.ComponentType<{ className?: string }>; description: string };
+  isSelected: boolean;
+  onClick: () => void;
+  testId: string;
+  showLabel?: boolean;
+}
+
+function TooltipButton({ option, isSelected, onClick, testId, showLabel = false }: TooltipButtonProps) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant={isSelected ? "default" : "outline"}
+          size="sm"
+          onClick={onClick}
+          className={cn("gap-1.5", showLabel ? "" : "px-2")}
+          data-testid={testId}
+        >
+          <option.icon className="w-3.5 h-3.5" />
+          {showLabel && <span className="text-xs">{option.label}</span>}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="max-w-[200px]">
+        <p className="font-medium">{option.label}</p>
+        <p className="text-xs text-muted-foreground">{option.description}</p>
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -180,14 +239,12 @@ export function VectraCinematicPanel({
   
   const [customApiKey, setCustomApiKey] = useState("");
   
-  // Accordion state - only one open at a time for cleaner UX
   const [openSection, setOpenSection] = useState<string | null>("optics");
 
   const toggleSection = (section: string) => {
     setOpenSection(prev => prev === section ? null : section);
   };
 
-  // Notify parent of settings changes
   useEffect(() => {
     if (onSettingsChange) {
       const settings: CinematicSettings = {
@@ -286,9 +343,142 @@ export function VectraCinematicPanel({
 
   const currentSubject = subjectTab === "a" ? subjectA : subjectB;
 
-  // Count active settings for badges
   const vfxCount = vfxEffects.filter(e => e !== "off").length;
   const subjectCount = subjectA.faceImages.length + subjectB.faceImages.length;
+
+  const opticsHelp = (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Controle o estilo visual da câmera e formato da imagem gerada.
+      </p>
+      <div className="space-y-3">
+        <h4 className="text-sm font-medium">Estilos de Câmera</h4>
+        {OPTICS_OPTIONS.map(opt => (
+          <div key={opt.id} className="flex items-start gap-2">
+            <div className="p-1.5 rounded bg-muted">
+              <opt.icon className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">{opt.label}</p>
+              <p className="text-xs text-muted-foreground">{opt.description}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="space-y-3">
+        <h4 className="text-sm font-medium">Proporções</h4>
+        {ASPECT_RATIOS.map(ar => (
+          <div key={ar.id} className="flex items-start gap-2">
+            <div className="p-1.5 rounded bg-muted">
+              <ar.icon className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">{ar.label}</p>
+              <p className="text-xs text-muted-foreground">{ar.description}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="p-3 rounded-lg bg-muted/50">
+        <p className="text-xs text-muted-foreground">
+          <strong>Samples:</strong> Controla quantas variações da imagem serão geradas. Mais samples = mais opções para escolher.
+        </p>
+      </div>
+    </div>
+  );
+
+  const vfxHelp = (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Adicione efeitos visuais cinematográficos à sua imagem. Você pode combinar múltiplos efeitos.
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        {VFX_OPTIONS.map(opt => (
+          <div key={opt.id} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30">
+            <div className="p-1 rounded bg-muted">
+              <opt.icon className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <p className="text-xs font-medium">{opt.label}</p>
+              <p className="text-[10px] text-muted-foreground leading-tight">{opt.description}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="p-3 rounded-lg bg-muted/50">
+        <p className="text-xs text-muted-foreground">
+          <strong>Intensidade:</strong> Controla o quão forte os efeitos serão aplicados. 0 = sutil, 5 = extremo.
+        </p>
+      </div>
+    </div>
+  );
+
+  const styleHelp = (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Defina a estética e o caimento das roupas na imagem gerada.
+      </p>
+      <div className="space-y-3">
+        <h4 className="text-sm font-medium">Estética</h4>
+        <div className="grid grid-cols-2 gap-2">
+          {BRAND_OPTIONS.map(opt => (
+            <div key={opt.id} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30">
+              <div className="p-1 rounded bg-muted">
+                <opt.icon className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <p className="text-xs font-medium">{opt.label}</p>
+                <p className="text-[10px] text-muted-foreground leading-tight">{opt.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-3">
+        <h4 className="text-sm font-medium">Caimento (Fit)</h4>
+        <div className="grid grid-cols-2 gap-2">
+          {FIT_OPTIONS.map(opt => (
+            <div key={opt.id} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30">
+              <div className="p-1 rounded bg-muted">
+                <opt.icon className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <p className="text-xs font-medium">{opt.label}</p>
+                <p className="text-[10px] text-muted-foreground leading-tight">{opt.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const subjectsHelp = (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Faça upload de fotos de referência para manter a consistência do personagem nas imagens geradas.
+      </p>
+      <div className="space-y-3">
+        <div className="p-3 rounded-lg bg-muted/30">
+          <p className="text-sm font-medium">Sujeito A & B</p>
+          <p className="text-xs text-muted-foreground">
+            Você pode definir até 2 personagens diferentes. Útil para cenas com múltiplas pessoas.
+          </p>
+        </div>
+        <div className="p-3 rounded-lg bg-muted/30">
+          <p className="text-sm font-medium">Face</p>
+          <p className="text-xs text-muted-foreground">
+            Fotos do rosto do personagem. Use fotos frontais com boa iluminação para melhores resultados.
+          </p>
+        </div>
+      </div>
+      <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+        <p className="text-xs">
+          <strong>Dica Pro:</strong> Quanto mais fotos de referência você adicionar, maior será a consistência do personagem gerado (recomendado: 3-5 fotos).
+        </p>
+      </div>
+    </div>
+  );
 
   return (
     <div className={cn("vectra-cinematic-panel divide-y divide-border/50 rounded-lg border bg-card", className)}>
@@ -299,54 +489,54 @@ export function VectraCinematicPanel({
         isOpen={openSection === "optics"}
         onToggle={() => toggleSection("optics")}
         testId="panel-optics"
-        badge={opticsStyle !== "cinematic" ? opticsStyle.toUpperCase() : undefined}
+        badge={opticsStyle !== "cinematic" ? OPTICS_OPTIONS.find(o => o.id === opticsStyle)?.label : undefined}
+        helpContent={opticsHelp}
       >
         <div className="space-y-3 pt-2">
-          <div className="flex flex-wrap gap-1">
-            {OPTICS_OPTIONS.map((opt) => (
-              <Button
-                key={opt.id}
-                variant={opticsStyle === opt.id ? "default" : "outline"}
-                size="sm"
-                onClick={() => setOpticsStyle(opt.id)}
-                className="gap-1.5"
-                data-testid={`optics-${opt.id}`}
-              >
-                <opt.icon className="w-3.5 h-3.5" />
-                <span className="text-xs">{opt.label}</span>
-              </Button>
-            ))}
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground w-16">Proporção</span>
-            <div className="flex gap-1">
-              {ASPECT_RATIOS.map((ar) => (
-                <Button
-                  key={ar.id}
-                  variant={aspectRatio === ar.id ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setAspectRatio(ar.id)}
-                  data-testid={`aspect-${ar.id}`}
-                >
-                  <ar.icon className="w-3.5 h-3.5" />
-                </Button>
+          <div>
+            <span className="text-xs text-muted-foreground mb-1.5 block">Estilo de Câmera</span>
+            <div className="flex flex-wrap gap-1">
+              {OPTICS_OPTIONS.map((opt) => (
+                <TooltipButton
+                  key={opt.id}
+                  option={opt}
+                  isSelected={opticsStyle === opt.id}
+                  onClick={() => setOpticsStyle(opt.id)}
+                  testId={`optics-${opt.id}`}
+                  showLabel
+                />
               ))}
             </div>
           </div>
           
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground w-16">Samples</span>
-            <div className="flex-1">
-              <VectraSlider
-                value={sampleCount}
-                onChange={setSampleCount}
-                min={1}
-                max={4}
-                testId="slider-samples"
-              />
+          <div>
+            <span className="text-xs text-muted-foreground mb-1.5 block">Proporção</span>
+            <div className="flex gap-1">
+              {ASPECT_RATIOS.map((ar) => (
+                <TooltipButton
+                  key={ar.id}
+                  option={ar}
+                  isSelected={aspectRatio === ar.id}
+                  onClick={() => setAspectRatio(ar.id)}
+                  testId={`aspect-${ar.id}`}
+                  showLabel
+                />
+              ))}
             </div>
-            <span className="text-xs font-mono w-4 text-right">{sampleCount}</span>
+          </div>
+          
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs text-muted-foreground">Samples</span>
+              <span className="text-xs font-mono text-muted-foreground">{sampleCount}</span>
+            </div>
+            <VectraSlider
+              value={sampleCount}
+              onChange={setSampleCount}
+              min={1}
+              max={4}
+              testId="slider-samples"
+            />
           </div>
         </div>
       </AccordionSection>
@@ -358,70 +548,50 @@ export function VectraCinematicPanel({
         isOpen={openSection === "vfx"}
         onToggle={() => toggleSection("vfx")}
         testId="panel-vfx"
-        badge={vfxCount > 0 ? `${vfxCount}` : undefined}
+        badge={vfxCount > 0 ? `${vfxCount} ativo${vfxCount > 1 ? 's' : ''}` : undefined}
+        helpContent={vfxHelp}
       >
         <div className="space-y-3 pt-2">
-          <div className="flex flex-wrap gap-1">
-            {VFX_OPTIONS.slice(0, 6).map((opt) => (
-              <Button
-                key={opt.id}
-                variant={vfxEffects.includes(opt.id) ? "default" : "outline"}
-                size="sm"
-                onClick={() => {
-                  if (opt.id === "off") {
-                    setVfxEffects(["off"]);
-                  } else {
-                    setVfxEffects(prev => {
-                      const newEffects = prev.filter(e => e !== "off");
-                      if (prev.includes(opt.id)) {
-                        const result = newEffects.filter(e => e !== opt.id);
-                        return result.length === 0 ? ["off"] : result;
-                      }
-                      return [...newEffects, opt.id];
-                    });
-                  }
-                }}
-                data-testid={`vfx-${opt.id}`}
-              >
-                <opt.icon className="w-3.5 h-3.5" />
-              </Button>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {VFX_OPTIONS.slice(6).map((opt) => (
-              <Button
-                key={opt.id}
-                variant={vfxEffects.includes(opt.id) ? "default" : "outline"}
-                size="sm"
-                onClick={() => {
-                  setVfxEffects(prev => {
-                    const newEffects = prev.filter(e => e !== "off");
-                    if (prev.includes(opt.id)) {
-                      const result = newEffects.filter(e => e !== opt.id);
-                      return result.length === 0 ? ["off"] : result;
+          <div>
+            <span className="text-xs text-muted-foreground mb-1.5 block">Efeitos Visuais</span>
+            <div className="flex flex-wrap gap-1">
+              {VFX_OPTIONS.map((opt) => (
+                <TooltipButton
+                  key={opt.id}
+                  option={opt}
+                  isSelected={vfxEffects.includes(opt.id)}
+                  onClick={() => {
+                    if (opt.id === "off") {
+                      setVfxEffects(["off"]);
+                    } else {
+                      setVfxEffects(prev => {
+                        const newEffects = prev.filter(e => e !== "off");
+                        if (prev.includes(opt.id)) {
+                          const result = newEffects.filter(e => e !== opt.id);
+                          return result.length === 0 ? ["off"] : result;
+                        }
+                        return [...newEffects, opt.id];
+                      });
                     }
-                    return [...newEffects, opt.id];
-                  });
-                }}
-                data-testid={`vfx-${opt.id}`}
-              >
-                <opt.icon className="w-3.5 h-3.5" />
-              </Button>
-            ))}
+                  }}
+                  testId={`vfx-${opt.id}`}
+                />
+              ))}
+            </div>
           </div>
           
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground w-16">Intensidade</span>
-            <div className="flex-1">
-              <VectraSlider
-                value={vfxIntensity}
-                onChange={setVfxIntensity}
-                min={0}
-                max={5}
-                testId="slider-vfx-intensity"
-              />
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs text-muted-foreground">Intensidade</span>
+              <span className="text-xs font-mono text-muted-foreground">{vfxIntensity}</span>
             </div>
-            <span className="text-xs font-mono w-4 text-right">{vfxIntensity}</span>
+            <VectraSlider
+              value={vfxIntensity}
+              onChange={setVfxIntensity}
+              min={0}
+              max={5}
+              testId="slider-vfx-intensity"
+            />
           </div>
         </div>
       </AccordionSection>
@@ -433,7 +603,8 @@ export function VectraCinematicPanel({
         isOpen={openSection === "subjects"}
         onToggle={() => toggleSection("subjects")}
         testId="panel-subjects"
-        badge={subjectCount > 0 ? `${subjectCount}` : undefined}
+        badge={subjectCount > 0 ? `${subjectCount} foto${subjectCount > 1 ? 's' : ''}` : undefined}
+        helpContent={subjectsHelp}
       >
         <div className="space-y-3 pt-2">
           <VectraTabs
@@ -466,38 +637,35 @@ export function VectraCinematicPanel({
         isOpen={openSection === "style"}
         onToggle={() => toggleSection("style")}
         testId="panel-style"
+        helpContent={styleHelp}
       >
         <div className="space-y-3 pt-2">
           <div>
             <span className="text-xs text-muted-foreground mb-1.5 block">Estética</span>
             <div className="flex flex-wrap gap-1">
               {BRAND_OPTIONS.map((opt) => (
-                <Button
+                <TooltipButton
                   key={opt.id}
-                  variant={styleBrand === opt.id ? "default" : "outline"}
-                  size="sm"
+                  option={opt}
+                  isSelected={styleBrand === opt.id}
                   onClick={() => setStyleBrand(opt.id)}
-                  data-testid={`brand-${opt.id}`}
-                >
-                  <opt.icon className="w-3.5 h-3.5" />
-                </Button>
+                  testId={`brand-${opt.id}`}
+                />
               ))}
             </div>
           </div>
           
           <div>
-            <span className="text-xs text-muted-foreground mb-1.5 block">Fit</span>
+            <span className="text-xs text-muted-foreground mb-1.5 block">Caimento (Fit)</span>
             <div className="flex flex-wrap gap-1">
               {FIT_OPTIONS.map((opt) => (
-                <Button
+                <TooltipButton
                   key={opt.id}
-                  variant={styleFit === opt.id ? "default" : "outline"}
-                  size="sm"
+                  option={opt}
+                  isSelected={styleFit === opt.id}
                   onClick={() => setStyleFit(opt.id)}
-                  data-testid={`fit-${opt.id}`}
-                >
-                  <opt.icon className="w-3.5 h-3.5" />
-                </Button>
+                  testId={`fit-${opt.id}`}
+                />
               ))}
             </div>
           </div>
