@@ -929,8 +929,8 @@ export default function ModelsLabStudioPage() {
   const isGeneratingImage = generateImageMutation.isPending || isPolling;
 
   return (
-    <div className="vectra-studio-bg">
-      <div className="vectra-studio-content pt-20 pb-12">
+    <div className="vectra-studio-bg pt-16">
+      <div className="vectra-studio-content pb-12">
         <div className="mb-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
