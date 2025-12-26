@@ -1,6 +1,6 @@
 import { 
   appUsers, llmProfiles, promptBlueprints, promptBlocks, filters, 
-  generatedPrompts, promptVersions, rateLimits,
+  generatedPrompts, promptVersions, rateLimits, adminEmails,
   loraModels, loraDatasets, loraDatasetItems, loraVersions, loraJobs, userLoraActive, baseModels,
   userBlueprints, userBlueprintVersions, savedImages, savedVideos, filterPresets, videoJobs, usageLogs,
   type AppUser, type InsertAppUser, type LlmProfile, type InsertLlmProfile,
@@ -124,6 +124,12 @@ export interface IStorage {
   // Usage Tracking
   getUsageToday(userId: string, type: "prompt" | "image" | "video" | "lora_training"): Promise<number>;
   logUsage(userId: string, type: "prompt" | "image" | "video" | "lora_training"): Promise<void>;
+  
+  // Admin System
+  isAdminEmail(email: string): Promise<boolean>;
+  addAdminEmail(email: string, grantedBy?: string): Promise<void>;
+  removeAdminEmail(email: string): Promise<boolean>;
+  getAdminEmails(): Promise<string[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -737,6 +743,32 @@ export class DatabaseStorage implements IStorage {
       planSnapshot: plan,
       metadata: metadata || null,
     });
+  }
+  
+  // Admin System
+  async isAdminEmail(email: string): Promise<boolean> {
+    const normalizedEmail = email.toLowerCase().trim();
+    const [admin] = await db.select().from(adminEmails).where(eq(adminEmails.email, normalizedEmail));
+    return !!admin;
+  }
+  
+  async addAdminEmail(email: string, grantedBy?: string): Promise<void> {
+    const normalizedEmail = email.toLowerCase().trim();
+    await db.insert(adminEmails).values({
+      email: normalizedEmail,
+      grantedBy: grantedBy || "system",
+    }).onConflictDoNothing();
+  }
+  
+  async removeAdminEmail(email: string): Promise<boolean> {
+    const normalizedEmail = email.toLowerCase().trim();
+    const result = await db.delete(adminEmails).where(eq(adminEmails.email, normalizedEmail));
+    return (result.rowCount || 0) > 0;
+  }
+  
+  async getAdminEmails(): Promise<string[]> {
+    const admins = await db.select({ email: adminEmails.email }).from(adminEmails);
+    return admins.map(a => a.email);
   }
 }
 

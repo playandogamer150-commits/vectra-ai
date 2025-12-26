@@ -307,6 +307,15 @@ export async function registerRoutes(
           user?.claims?.name || "User"
         );
       }
+      
+      // Check if user's email is in admin list and update isAdmin flag
+      const userEmail = user?.claims?.email;
+      if (userEmail) {
+        const isAdminEmail = await storage.isAdminEmail(userEmail);
+        if (isAdminEmail && appUser.isAdmin !== 1) {
+          appUser = (await storage.updateAppUser(userId, { isAdmin: 1 })) || appUser;
+        }
+      }
 
       res.json({
         ...appUser,
@@ -484,8 +493,10 @@ export async function registerRoutes(
       ).length;
 
       const appUser = await storage.getAppUser(userId);
+      const isAdmin = appUser?.isAdmin === 1;
+      const hasCustomKey = isAdmin && !!appUser?.customModelsLabKey;
       const plan = IS_PRO_OVERRIDE ? "pro" : (appUser?.plan || "free");
-      const isPro = IS_PRO_OVERRIDE || plan === "pro";
+      const isPro = IS_PRO_OVERRIDE || plan === "pro" || isAdmin;
 
       const imageUsageByQuality = await storage.getImageUsageTodayByQuality(userId);
       const videosUsedToday = await storage.getUsageToday(userId, "video");
@@ -501,27 +512,29 @@ export async function registerRoutes(
         totalVideosGenerated: savedVideos.length,
         blueprintsSaved: userBlueprints.length,
         loraModelsTrained: trainedLorasCount,
-        plan,
+        plan: isAdmin ? "admin" : plan,
         isPro,
+        isAdmin,
+        hasCustomKey,
         daily: {
-          prompts: { used: promptsUsedToday, limit: isPro ? -1 : FREE_LIMITS.promptsPerDay },
+          prompts: { used: promptsUsedToday, limit: (isPro || isAdmin) ? -1 : FREE_LIMITS.promptsPerDay },
           images: { 
-            used: totalImagesUsed, 
-            limit: isPro ? -1 : totalImagesLimit,
+            used: hasCustomKey ? 0 : totalImagesUsed, 
+            limit: (isPro || hasCustomKey) ? -1 : totalImagesLimit,
             hq: { 
-              used: imageUsageByQuality.hq, 
-              limit: isPro ? -1 : FREE_LIMITS.imagesHqPerDay,
+              used: hasCustomKey ? 0 : imageUsageByQuality.hq, 
+              limit: (isPro || hasCustomKey) ? -1 : FREE_LIMITS.imagesHqPerDay,
               model: MODELSLAB_MODELS.HQ,
               label: "Nano Banana Pro (HQ)",
             },
             standard: { 
-              used: imageUsageByQuality.standard, 
-              limit: isPro ? -1 : FREE_LIMITS.imagesStandardPerDay,
+              used: hasCustomKey ? 0 : imageUsageByQuality.standard, 
+              limit: (isPro || hasCustomKey) ? -1 : FREE_LIMITS.imagesStandardPerDay,
               model: MODELSLAB_MODELS.STANDARD,
               label: "Realistic Vision 5.1 (Standard)",
             },
           },
-          videos: { used: videosUsedToday, limit: isPro ? -1 : FREE_LIMITS.videosPerDay },
+          videos: { used: videosUsedToday, limit: (isPro || isAdmin) ? -1 : FREE_LIMITS.videosPerDay },
         },
         limits: {
           free: {
@@ -547,6 +560,49 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Error fetching usage:", error);
       res.status(500).json({ error: "Failed to fetch usage" });
+    }
+  });
+
+  // Admin: Save custom ModelsLab API key
+  app.post("/api/admin/api-key", async (req, res) => {
+    try {
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      
+      const user = await storage.getAppUser(userId);
+      if (!user || user.isAdmin !== 1) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      
+      const { apiKey } = req.body;
+      if (!apiKey || typeof apiKey !== "string") {
+        return res.status(400).json({ error: "API key is required" });
+      }
+      
+      await storage.updateAppUser(userId, { customModelsLabKey: apiKey });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error saving API key:", error);
+      res.status(500).json({ error: "Failed to save API key" });
+    }
+  });
+  
+  // Admin: Remove custom API key
+  app.delete("/api/admin/api-key", async (req, res) => {
+    try {
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      
+      const user = await storage.getAppUser(userId);
+      if (!user || user.isAdmin !== 1) {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      
+      await storage.updateAppUser(userId, { customModelsLabKey: null });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing API key:", error);
+      res.status(500).json({ error: "Failed to remove API key" });
     }
   });
 
@@ -1227,13 +1283,23 @@ export async function registerRoutes(
         return res.status(401).json({ error: "Authentication required" });
       }
 
-      const imageQuota = await checkImageQuotaAndModel(userId);
-      if (!imageQuota.allowed) {
-        return res.status(403).json({ 
-          error: imageQuota.reason,
-          isPremiumRequired: true,
-          quotas: imageQuota.quotas,
-        });
+      // Check if user is admin (bypass quotas if they have custom API key)
+      const user = await storage.getAppUser(userId);
+      const isAdmin = user?.isAdmin === 1;
+      const customApiKey = user?.customModelsLabKey;
+      const hasCustomKey = isAdmin && customApiKey;
+      
+      // Admin with custom key bypasses all quotas
+      let imageQuota: any = null;
+      if (!hasCustomKey) {
+        imageQuota = await checkImageQuotaAndModel(userId);
+        if (!imageQuota.allowed) {
+          return res.status(403).json({ 
+            error: imageQuota.reason,
+            isPremiumRequired: true,
+            quotas: imageQuota.quotas,
+          });
+        }
       }
 
       const { prompt, images, aspectRatio } = req.body;
@@ -1246,7 +1312,8 @@ export async function registerRoutes(
         return res.status(400).json({ error: "At least one image is required" });
       }
       
-      const apiKey = process.env.MODELSLAB_API_KEY;
+      // Use custom API key for admins, otherwise use system key
+      const apiKey = hasCustomKey ? customApiKey : process.env.MODELSLAB_API_KEY;
       if (!apiKey) {
         return res.status(500).json({ error: "ModelsLab API key not configured" });
       }
@@ -1313,8 +1380,9 @@ export async function registerRoutes(
       }
       
       // Select model based on quota check (HQ = nano-banana-pro, Standard = realistic-vision-51)
-      const selectedModel = imageQuota.modelId;
-      const isHqModel = imageQuota.imageQuality === "hq";
+      // Admins with custom key always get HQ model
+      const selectedModel = hasCustomKey ? "nano-banana-pro" : imageQuota?.modelId || "nano-banana-pro";
+      const isHqModel = hasCustomKey ? true : imageQuota?.imageQuality === "hq";
       const isNanoBananaPro = selectedModel === "nano-banana-pro";
       
       // Nano Banana Pro uses v7 API with different parameters
