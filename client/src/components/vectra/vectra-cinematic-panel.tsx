@@ -1,22 +1,22 @@
 import { useState, useCallback, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { VectraPanel } from "./vectra-panel";
 import { VectraGridToggle } from "./vectra-grid-toggle";
 import { VectraTabs, VectraTabContent } from "./vectra-tabs";
 import { VectraSecureInput } from "./vectra-secure-input";
 import { VectraUploadSlot } from "./vectra-upload-slot";
 import { VectraSlider } from "./vectra-slider";
 import { 
-  Camera, Aperture, Film, Zap, User, Shirt, Activity, 
-  Mic, Settings, Eye, Scan, Square, RectangleVertical, 
-  RectangleHorizontal, Sparkles, Layers, CircleDot,
+  Camera, Film, User, Shirt, 
+  Mic, Eye, Scan, Square, RectangleVertical, 
+  RectangleHorizontal, Sparkles,
   Video, Smartphone, Focus, Crosshair, Clapperboard,
-  Power, Radio, Moon, SunDim, Contrast, Droplets, Tv,
+  Power, Moon, SunDim, Contrast, Droplets, Tv,
   Wand2, Crown, Leaf, Watch, Wrench, Maximize, Minimize,
-  Move, ArrowDownRight, ArrowUpRight
+  Move, ArrowDownRight, Zap, ChevronDown
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useI18n } from "@/lib/i18n";
 
 interface VectraCinematicPanelProps {
@@ -58,11 +58,11 @@ interface SubjectData {
 }
 
 const OPTICS_OPTIONS = [
-  { id: "cinematic", label: "Cinematográfica", icon: Clapperboard },
-  { id: "smartphone", label: "Smartphone RL", icon: Smartphone },
-  { id: "iphone-hdr", label: "iPhone Max HDR", icon: Sparkles },
-  { id: "realistic-raw", label: "Realistic RAW", icon: Focus },
-  { id: "forensic-dslr", label: "Forensic DSLR", icon: Crosshair },
+  { id: "cinematic", label: "Cine", icon: Clapperboard },
+  { id: "smartphone", label: "Phone", icon: Smartphone },
+  { id: "iphone-hdr", label: "HDR", icon: Sparkles },
+  { id: "realistic-raw", label: "RAW", icon: Focus },
+  { id: "forensic-dslr", label: "DSLR", icon: Crosshair },
 ];
 
 const ASPECT_RATIOS = [
@@ -87,28 +87,62 @@ const VFX_OPTIONS = [
 ];
 
 const BRAND_OPTIONS = [
-  { id: "auto", label: "Auto-Detect", icon: Wand2 },
-  { id: "streetwear", label: "Streetwear", icon: Shirt },
+  { id: "auto", label: "Auto", icon: Wand2 },
+  { id: "streetwear", label: "Street", icon: Shirt },
   { id: "luxury", label: "Luxury", icon: Crown },
-  { id: "minimalist", label: "Minimalist", icon: Leaf },
+  { id: "minimalist", label: "Minimal", icon: Leaf },
   { id: "vintage", label: "Vintage", icon: Watch },
-  { id: "techwear", label: "Techwear", icon: Wrench },
+  { id: "techwear", label: "Tech", icon: Wrench },
 ];
 
 const FIT_OPTIONS = [
-  { id: "oversized", label: "Oversized", icon: Maximize },
-  { id: "relaxed", label: "Relaxed", icon: Move },
-  { id: "regular", label: "Regular", icon: Square },
+  { id: "oversized", label: "Over", icon: Maximize },
+  { id: "relaxed", label: "Relax", icon: Move },
+  { id: "regular", label: "Reg", icon: Square },
   { id: "slim", label: "Slim", icon: Minimize },
-  { id: "tailored", label: "Tailored", icon: ArrowDownRight },
+  { id: "tailored", label: "Tail", icon: ArrowDownRight },
 ];
 
-const ENGINES = [
-  { name: "Vectra Core", status: "live" },
-  { name: "Style DNA", status: "live" },
-  { name: "VFX Pipeline", status: "live" },
-  { name: "Subject Mapping", status: "live" },
-];
+interface AccordionSectionProps {
+  title: string;
+  icon: React.ReactNode;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+  testId: string;
+  badge?: string;
+}
+
+function AccordionSection({ title, icon, isOpen, onToggle, children, testId, badge }: AccordionSectionProps) {
+  return (
+    <Collapsible open={isOpen} onOpenChange={onToggle}>
+      <CollapsibleTrigger asChild>
+        <Button
+          variant="ghost"
+          className="w-full justify-between px-3 py-2 h-auto"
+          data-testid={`${testId}-trigger`}
+        >
+          <div className="flex items-center gap-2">
+            {icon}
+            <span className="text-sm font-medium">{title}</span>
+            {badge && (
+              <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                {badge}
+              </Badge>
+            )}
+          </div>
+          <ChevronDown className={cn(
+            "w-4 h-4 transition-transform duration-200",
+            isOpen && "rotate-180"
+          )} />
+        </Button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="px-3 pb-3">
+        {children}
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
 
 export function VectraCinematicPanel({ 
   isPremium, 
@@ -145,8 +179,13 @@ export function VectraCinematicPanel({
   const [moodboard, setMoodboard] = useState<{ id: string; url: string }[]>([]);
   
   const [customApiKey, setCustomApiKey] = useState("");
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [diagnosticsOpen, setDiagnosticsOpen] = useState(true);
+  
+  // Accordion state - only one open at a time for cleaner UX
+  const [openSection, setOpenSection] = useState<string | null>("optics");
+
+  const toggleSection = (section: string) => {
+    setOpenSection(prev => prev === section ? null : section);
+  };
 
   // Notify parent of settings changes
   useEffect(() => {
@@ -246,188 +285,237 @@ export function VectraCinematicPanel({
   };
 
   const currentSubject = subjectTab === "a" ? subjectA : subjectB;
-  const currentSetSubject = subjectTab === "a" ? setSubjectA : setSubjectB;
+
+  // Count active settings for badges
+  const vfxCount = vfxEffects.filter(e => e !== "off").length;
+  const subjectCount = subjectA.faceImages.length + subjectB.faceImages.length;
 
   return (
-    <div className={cn("vectra-cinematic-panel space-y-2", className)}>
-      <VectraPanel
+    <div className={cn("vectra-cinematic-panel divide-y divide-border/50 rounded-lg border bg-card", className)}>
+      {/* Optics Section */}
+      <AccordionSection
         title="Óptica"
         icon={<Camera className="w-4 h-4" />}
+        isOpen={openSection === "optics"}
+        onToggle={() => toggleSection("optics")}
         testId="panel-optics"
+        badge={opticsStyle !== "cinematic" ? opticsStyle.toUpperCase() : undefined}
       >
-        <div className="space-y-3">
-          <VectraGridToggle
-            options={OPTICS_OPTIONS}
-            selected={[opticsStyle]}
-            onChange={(s) => setOpticsStyle(s[0])}
-            multiSelect={false}
-            testId="toggle-optics-style"
-          />
+        <div className="space-y-3 pt-2">
+          <div className="flex flex-wrap gap-1">
+            {OPTICS_OPTIONS.map((opt) => (
+              <Button
+                key={opt.id}
+                variant={opticsStyle === opt.id ? "default" : "outline"}
+                size="sm"
+                onClick={() => setOpticsStyle(opt.id)}
+                className="gap-1.5"
+                data-testid={`optics-${opt.id}`}
+              >
+                <opt.icon className="w-3.5 h-3.5" />
+                <span className="text-xs">{opt.label}</span>
+              </Button>
+            ))}
+          </div>
           
-          <VectraGridToggle
-            options={ASPECT_RATIOS}
-            selected={[aspectRatio]}
-            onChange={(s) => setAspectRatio(s[0])}
-            multiSelect={false}
-            testId="toggle-aspect-ratio"
-          />
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground w-16">Proporção</span>
+            <div className="flex gap-1">
+              {ASPECT_RATIOS.map((ar) => (
+                <Button
+                  key={ar.id}
+                  variant={aspectRatio === ar.id ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setAspectRatio(ar.id)}
+                  data-testid={`aspect-${ar.id}`}
+                >
+                  <ar.icon className="w-3.5 h-3.5" />
+                </Button>
+              ))}
+            </div>
+          </div>
           
-          <VectraSlider
-            label="Samples"
-            value={sampleCount}
-            onChange={setSampleCount}
-            min={1}
-            max={4}
-            testId="slider-sample-count"
-          />
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground w-16">Samples</span>
+            <div className="flex-1">
+              <VectraSlider
+                value={sampleCount}
+                onChange={setSampleCount}
+                min={1}
+                max={4}
+                testId="slider-samples"
+              />
+            </div>
+            <span className="text-xs font-mono w-4 text-right">{sampleCount}</span>
+          </div>
         </div>
-      </VectraPanel>
+      </AccordionSection>
 
-      <VectraPanel
+      {/* VFX Section */}
+      <AccordionSection
         title="VFX"
         icon={<Film className="w-4 h-4" />}
+        isOpen={openSection === "vfx"}
+        onToggle={() => toggleSection("vfx")}
         testId="panel-vfx"
+        badge={vfxCount > 0 ? `${vfxCount}` : undefined}
       >
-        <div className="space-y-3">
-          <VectraGridToggle
-            options={VFX_OPTIONS}
-            selected={vfxEffects}
-            onChange={setVfxEffects}
-            multiSelect={true}
-            offOption="off"
-            testId="toggle-vfx"
-          />
+        <div className="space-y-3 pt-2">
+          <div className="flex flex-wrap gap-1">
+            {VFX_OPTIONS.slice(0, 6).map((opt) => (
+              <Button
+                key={opt.id}
+                variant={vfxEffects.includes(opt.id) ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  if (opt.id === "off") {
+                    setVfxEffects(["off"]);
+                  } else {
+                    setVfxEffects(prev => {
+                      const newEffects = prev.filter(e => e !== "off");
+                      if (prev.includes(opt.id)) {
+                        const result = newEffects.filter(e => e !== opt.id);
+                        return result.length === 0 ? ["off"] : result;
+                      }
+                      return [...newEffects, opt.id];
+                    });
+                  }
+                }}
+                data-testid={`vfx-${opt.id}`}
+              >
+                <opt.icon className="w-3.5 h-3.5" />
+              </Button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {VFX_OPTIONS.slice(6).map((opt) => (
+              <Button
+                key={opt.id}
+                variant={vfxEffects.includes(opt.id) ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setVfxEffects(prev => {
+                    const newEffects = prev.filter(e => e !== "off");
+                    if (prev.includes(opt.id)) {
+                      const result = newEffects.filter(e => e !== opt.id);
+                      return result.length === 0 ? ["off"] : result;
+                    }
+                    return [...newEffects, opt.id];
+                  });
+                }}
+                data-testid={`vfx-${opt.id}`}
+              >
+                <opt.icon className="w-3.5 h-3.5" />
+              </Button>
+            ))}
+          </div>
           
-          <VectraSlider
-            label="Intensidade"
-            value={vfxIntensity}
-            onChange={setVfxIntensity}
-            min={0}
-            max={5}
-            testId="slider-vfx-intensity"
-          />
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground w-16">Intensidade</span>
+            <div className="flex-1">
+              <VectraSlider
+                value={vfxIntensity}
+                onChange={setVfxIntensity}
+                min={0}
+                max={5}
+                testId="slider-vfx-intensity"
+              />
+            </div>
+            <span className="text-xs font-mono w-4 text-right">{vfxIntensity}</span>
+          </div>
         </div>
-      </VectraPanel>
+      </AccordionSection>
 
-      <VectraPanel
+      {/* Subjects Section */}
+      <AccordionSection
         title="Sujeitos"
         icon={<User className="w-4 h-4" />}
+        isOpen={openSection === "subjects"}
+        onToggle={() => toggleSection("subjects")}
         testId="panel-subjects"
+        badge={subjectCount > 0 ? `${subjectCount}` : undefined}
       >
-        <VectraTabs
-          tabs={[
-            { id: "a", label: "A" },
-            { id: "b", label: "B" },
-          ]}
-          activeTab={subjectTab}
-          onTabChange={setSubjectTab}
-          testId="tabs-subjects"
-        />
-        
-        <VectraTabContent>
-          <div className="space-y-2">
+        <div className="space-y-3 pt-2">
+          <VectraTabs
+            tabs={[
+              { id: "a", label: "Sujeito A" },
+              { id: "b", label: "Sujeito B" },
+            ]}
+            activeTab={subjectTab}
+            onTabChange={setSubjectTab}
+            testId="tabs-subjects"
+          />
+          
+          <VectraTabContent>
             <VectraUploadSlot
               images={currentSubject.faceImages}
-              maxImages={20}
+              maxImages={5}
               onUpload={(files) => handleImageUpload(subjectTab as "a" | "b", "face", files)}
               onRemove={(id) => handleRemoveImage(subjectTab as "a" | "b", "face", id)}
               label="Face"
               testId="upload-face"
             />
-            
-            <VectraUploadSlot
-              images={currentSubject.bodyImages}
-              maxImages={20}
-              onUpload={(files) => handleImageUpload(subjectTab as "a" | "b", "body", files)}
-              onRemove={(id) => handleRemoveImage(subjectTab as "a" | "b", "body", id)}
-              label="Corpo"
-              testId="upload-body"
-            />
-            
-            <VectraUploadSlot
-              images={currentSubject.signatureImages}
-              maxImages={20}
-              onUpload={(files) => handleImageUpload(subjectTab as "a" | "b", "signature", files)}
-              onRemove={(id) => handleRemoveImage(subjectTab as "a" | "b", "signature", id)}
-              label="Sinais"
-              testId="upload-signatures"
-            />
-          </div>
-        </VectraTabContent>
-      </VectraPanel>
+          </VectraTabContent>
+        </div>
+      </AccordionSection>
 
-      <VectraPanel
-        title="Estilo"
+      {/* Style DNA Section */}
+      <AccordionSection
+        title="Estilo DNA"
         icon={<Shirt className="w-4 h-4" />}
-        testId="panel-style-dna"
+        isOpen={openSection === "style"}
+        onToggle={() => toggleSection("style")}
+        testId="panel-style"
       >
-        <div className="space-y-3">
-          <VectraGridToggle
-            options={BRAND_OPTIONS}
-            selected={[styleBrand]}
-            onChange={(s) => setStyleBrand(s[0])}
-            multiSelect={false}
-            testId="toggle-brand"
-          />
-          
-          <VectraGridToggle
-            options={FIT_OPTIONS}
-            selected={[styleFit]}
-            onChange={(s) => setStyleFit(s[0])}
-            multiSelect={false}
-            testId="toggle-fit"
-          />
-          
-          <VectraUploadSlot
-            images={moodboard}
-            maxImages={20}
-            onUpload={handleMoodboardUpload}
-            onRemove={(id) => setMoodboard((prev) => prev.filter((img) => img.id !== id))}
-            label="Moodboard"
-            testId="upload-moodboard"
-          />
-        </div>
-      </VectraPanel>
-
-      <VectraPanel
-        title="Sistema"
-        icon={<Activity className="w-4 h-4" />}
-        collapsible
-        isOpen={diagnosticsOpen}
-        onOpenChange={setDiagnosticsOpen}
-        testId="panel-diagnostics"
-      >
-        <div className="space-y-2">
-          <div className="flex flex-wrap gap-1">
-            {ENGINES.map((engine) => (
-              <Badge key={engine.name} variant="secondary" className="gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 dark:bg-green-400 animate-pulse" />
-                {engine.name}
-              </Badge>
-            ))}
+        <div className="space-y-3 pt-2">
+          <div>
+            <span className="text-xs text-muted-foreground mb-1.5 block">Estética</span>
+            <div className="flex flex-wrap gap-1">
+              {BRAND_OPTIONS.map((opt) => (
+                <Button
+                  key={opt.id}
+                  variant={styleBrand === opt.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setStyleBrand(opt.id)}
+                  data-testid={`brand-${opt.id}`}
+                >
+                  <opt.icon className="w-3.5 h-3.5" />
+                </Button>
+              ))}
+            </div>
           </div>
           
-          {isPremium && (
-            <VectraSecureInput
-              value={customApiKey}
-              onChange={setCustomApiKey}
-              onTest={testApiKey}
-              label="Custom API Key"
-              testId="input-custom-api-key"
-            />
-          )}
+          <div>
+            <span className="text-xs text-muted-foreground mb-1.5 block">Fit</span>
+            <div className="flex flex-wrap gap-1">
+              {FIT_OPTIONS.map((opt) => (
+                <Button
+                  key={opt.id}
+                  variant={styleFit === opt.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setStyleFit(opt.id)}
+                  data-testid={`fit-${opt.id}`}
+                >
+                  <opt.icon className="w-3.5 h-3.5" />
+                </Button>
+              ))}
+            </div>
+          </div>
         </div>
-      </VectraPanel>
+      </AccordionSection>
 
-      <Button
-        type="button"
-        variant="outline"
-        size="icon"
-        className="mx-auto"
-        data-testid="button-voice"
-      >
-        <Mic className="w-4 h-4" />
-      </Button>
+      {/* Custom API Key - Only for Premium */}
+      {isPremium && (
+        <div className="p-3">
+          <VectraSecureInput
+            value={customApiKey}
+            onChange={setCustomApiKey}
+            onTest={testApiKey}
+            label="API Key Personalizada"
+            testId="input-custom-api-key"
+          />
+        </div>
+      )}
     </div>
   );
 }
