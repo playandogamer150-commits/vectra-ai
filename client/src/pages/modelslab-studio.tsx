@@ -808,10 +808,67 @@ export default function ModelsLabStudioPage() {
       
       const imageUrls = images.map(img => img.dataUrl);
       
+      // Build enhanced prompt with cinematic settings if available
+      let enhancedPrompt = prompt;
+      if (cinematicSettings) {
+        const cinematicParts: string[] = [];
+        
+        // Add optics style
+        if (cinematicSettings.optics?.style && cinematicSettings.optics.style !== "cinematic") {
+          const styleMap: Record<string, string> = {
+            "smartphone": "smartphone real-life photo style",
+            "iphone-hdr": "iPhone HDR max photo style",
+            "realistic-raw": "realistic RAW photo",
+            "forensic-dslr": "forensic DSLR sharp photo"
+          };
+          if (styleMap[cinematicSettings.optics.style]) {
+            cinematicParts.push(styleMap[cinematicSettings.optics.style]);
+          }
+        }
+        
+        // Add VFX effects
+        if (cinematicSettings.vfx?.effects && cinematicSettings.vfx.effects.length > 0) {
+          const vfxMap: Record<string, string> = {
+            "vhs": "VHS tape effect",
+            "35mm": "35mm film grain",
+            "nvg": "night vision green tint",
+            "cine": "cinematic color grading",
+            "gltch": "digital glitch effect",
+            "blum": "bloom lighting effect",
+            "grain": "film grain texture",
+            "leak": "light leak effect",
+            "scan": "scan lines overlay",
+            "noir": "noir black and white",
+            "teal": "teal and orange color grading"
+          };
+          cinematicSettings.vfx.effects.forEach(effect => {
+            if (effect !== "off" && vfxMap[effect]) {
+              cinematicParts.push(vfxMap[effect]);
+            }
+          });
+        }
+        
+        // Add style DNA
+        if (cinematicSettings.styleDna) {
+          if (cinematicSettings.styleDna.brand && cinematicSettings.styleDna.brand !== "auto") {
+            cinematicParts.push(`${cinematicSettings.styleDna.brand} aesthetic`);
+          }
+          if (cinematicSettings.styleDna.fit) {
+            cinematicParts.push(`${cinematicSettings.styleDna.fit} fit clothing`);
+          }
+        }
+        
+        // Append cinematic modifiers to prompt
+        if (cinematicParts.length > 0) {
+          enhancedPrompt = `${prompt}, ${cinematicParts.join(", ")}`;
+        }
+      }
+      
       const res = await apiRequest("POST", "/api/modelslab/generate", {
-        prompt,
+        prompt: enhancedPrompt,
         images: imageUrls,
-        aspectRatio,
+        aspectRatio: cinematicSettings?.optics?.aspectRatio || aspectRatio,
+        cinematicSettings: cinematicSettings || undefined,
       });
       return res.json() as Promise<ModelsLabResponse>;
     },
