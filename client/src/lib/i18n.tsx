@@ -406,6 +406,10 @@ const translations = {
       hqLimitReached: "HQ Image Limit Reached",
       hqLimitMessage: "You have used your 5 high-quality images (Nano Banana Pro). The next 5 free generations will use the Realistic Vision 5.1 model.",
       upgradeToPro: "Upgrade to Pro (unlimited)",
+      apiKeySaved: "API Key Saved",
+      apiKeyDesc: "Your custom ModelsLab API key has been saved and encrypted.",
+      apiKeyRemoved: "API Key Removed",
+      apiKeyRemovedDesc: "Your custom API key has been removed. Using default configuration.",
     },
     profile: {
       title: "My Profile",
@@ -859,6 +863,10 @@ const translations = {
       hqLimitReached: "Limite de Imagens HQ Atingido",
       hqLimitMessage: "Você utilizou suas 5 imagens de alta qualidade (Nano Banana Pro). As próximas 5 gerações gratuitas usarão o modelo Realistic Vision 5.1.",
       upgradeToPro: "Upgrade para Pro (ilimitado)",
+      apiKeySaved: "Chave de API Salva",
+      apiKeyDesc: "Sua chave de API ModelsLab personalizada foi salva e criptografada.",
+      apiKeyRemoved: "Chave de API Removida",
+      apiKeyRemovedDesc: "Sua chave de API personalizada foi removida. Usando configuração padrão.",
     },
     profile: {
       title: "Meu Perfil",

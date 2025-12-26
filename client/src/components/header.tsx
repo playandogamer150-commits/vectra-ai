@@ -4,7 +4,8 @@ import { useTheme } from "@/components/theme-provider";
 import { useI18n, LanguageToggle } from "@/lib/i18n";
 import { BRAND } from "@/lib/constants";
 import { MonoIcon } from "@/components/mono-icon";
-import { Moon, Sun, Menu, X, Image, Library, History, User, LogOut, Settings } from "lucide-react";
+import { Moon, Sun, Menu, X, Image, Library, History, User, LogOut, Settings, Crown, Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -22,6 +23,7 @@ interface UserProfile {
   displayName: string | null;
   avatarUrl: string | null;
   plan: string;
+  isAdmin?: number;
 }
 
 export function Header() {
@@ -104,7 +106,20 @@ export function Header() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <div className="px-2 py-1.5">
-                  <p className="text-sm font-medium truncate">{profile.displayName || profile.username}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium truncate">{profile.displayName || profile.username}</p>
+                    {profile.isAdmin === 1 ? (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-amber-500/20 text-amber-500 border-amber-500/30">
+                        <Sparkles className="w-2.5 h-2.5 mr-0.5" />
+                        Admin
+                      </Badge>
+                    ) : profile.plan === "pro" && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+                        <Crown className="w-2.5 h-2.5 mr-0.5" />
+                        Pro
+                      </Badge>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground truncate">@{profile.username}</p>
                 </div>
                 <DropdownMenuSeparator />
