@@ -34,17 +34,17 @@ export function VectraUploadSlot({
   };
 
   return (
-    <div className={cn("space-y-1.5", className)} data-testid={testId}>
+    <div className={cn("space-y-2", className)} data-testid={testId}>
       {label && (
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-medium text-muted-foreground">{label}</span>
-          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+          <span className="text-xs font-medium text-muted-foreground">{label}</span>
+          <Badge variant="secondary" className="text-xs">
             {images.length}/{maxImages}
           </Badge>
         </div>
       )}
 
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className="grid grid-cols-6 gap-1">
         {images.map((img) => (
           <div
             key={img.id}
@@ -77,15 +77,14 @@ export function VectraUploadSlot({
             onClick={() => inputRef.current?.click()}
             className={cn(
               "aspect-square rounded-md",
-              "border border-dashed border-muted-foreground/25",
-              "flex flex-col items-center justify-center gap-0.5",
+              "border border-dashed border-muted-foreground/30",
+              "flex items-center justify-center",
               "text-muted-foreground hover:text-foreground hover:border-muted-foreground/50",
               "transition-all duration-200"
             )}
             data-testid={`${testId}-add`}
           >
-            <Upload className="w-3 h-3" />
-            <span className="text-[8px]">+</span>
+            <Upload className="w-4 h-4" />
           </button>
         )}
       </div>

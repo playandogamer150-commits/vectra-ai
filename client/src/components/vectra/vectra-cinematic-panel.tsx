@@ -247,37 +247,29 @@ export function VectraCinematicPanel({
   return (
     <div className={cn("vectra-cinematic-panel space-y-2", className)}>
       <VectraPanel
-        title="Óptica & Estética"
-        icon={<Camera className="w-3.5 h-3.5" />}
+        title="Óptica"
+        icon={<Camera className="w-4 h-4" />}
         testId="panel-optics"
       >
         <div className="space-y-3">
-          <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground">Estilo de Captura</span>
-            <VectraGridToggle
-              options={OPTICS_OPTIONS}
-              selected={[opticsStyle]}
-              onChange={(s) => setOpticsStyle(s[0])}
-              multiSelect={false}
-              columns={3}
-              testId="toggle-optics-style"
-            />
-          </div>
+          <VectraGridToggle
+            options={OPTICS_OPTIONS}
+            selected={[opticsStyle]}
+            onChange={(s) => setOpticsStyle(s[0])}
+            multiSelect={false}
+            testId="toggle-optics-style"
+          />
           
-          <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground">Aspect Ratio</span>
-            <VectraGridToggle
-              options={ASPECT_RATIOS}
-              selected={[aspectRatio]}
-              onChange={(s) => setAspectRatio(s[0])}
-              multiSelect={false}
-              columns={3}
-              testId="toggle-aspect-ratio"
-            />
-          </div>
+          <VectraGridToggle
+            options={ASPECT_RATIOS}
+            selected={[aspectRatio]}
+            onChange={(s) => setAspectRatio(s[0])}
+            multiSelect={false}
+            testId="toggle-aspect-ratio"
+          />
           
           <VectraSlider
-            label="Sample Count"
+            label="Samples"
             value={sampleCount}
             onChange={setSampleCount}
             min={1}
@@ -288,23 +280,22 @@ export function VectraCinematicPanel({
       </VectraPanel>
 
       <VectraPanel
-        title="Pós-Processamento & VFX"
-        icon={<Film className="w-3.5 h-3.5" />}
+        title="VFX"
+        icon={<Film className="w-4 h-4" />}
         testId="panel-vfx"
       >
-        <div className="space-y-2">
+        <div className="space-y-3">
           <VectraGridToggle
             options={VFX_OPTIONS}
             selected={vfxEffects}
             onChange={setVfxEffects}
             multiSelect={true}
             offOption="off"
-            columns={4}
             testId="toggle-vfx"
           />
           
           <VectraSlider
-            label="Intensidade VFX"
+            label="Intensidade"
             value={vfxIntensity}
             onChange={setVfxIntensity}
             min={0}
@@ -316,13 +307,13 @@ export function VectraCinematicPanel({
 
       <VectraPanel
         title="Sujeitos"
-        icon={<User className="w-3.5 h-3.5" />}
+        icon={<User className="w-4 h-4" />}
         testId="panel-subjects"
       >
         <VectraTabs
           tabs={[
-            { id: "a", label: "Sujeito A" },
-            { id: "b", label: "Sujeito B" },
+            { id: "a", label: "A" },
+            { id: "b", label: "B" },
           ]}
           activeTab={subjectTab}
           onTabChange={setSubjectTab}
@@ -336,7 +327,7 @@ export function VectraCinematicPanel({
               maxImages={20}
               onUpload={(files) => handleImageUpload(subjectTab as "a" | "b", "face", files)}
               onRemove={(id) => handleRemoveImage(subjectTab as "a" | "b", "face", id)}
-              label="Face Scan"
+              label="Face"
               testId="upload-face"
             />
             
@@ -354,7 +345,7 @@ export function VectraCinematicPanel({
               maxImages={20}
               onUpload={(files) => handleImageUpload(subjectTab as "a" | "b", "signature", files)}
               onRemove={(id) => handleRemoveImage(subjectTab as "a" | "b", "signature", id)}
-              label="Assinaturas Corporais"
+              label="Sinais"
               testId="upload-signatures"
             />
           </div>
@@ -362,34 +353,26 @@ export function VectraCinematicPanel({
       </VectraPanel>
 
       <VectraPanel
-        title="DNA de Estilo & Wardrobe"
-        icon={<Shirt className="w-3.5 h-3.5" />}
+        title="Estilo"
+        icon={<Shirt className="w-4 h-4" />}
         testId="panel-style-dna"
       >
-        <div className="space-y-2">
-          <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground">Designer Brand</span>
-            <VectraGridToggle
-              options={BRAND_OPTIONS}
-              selected={[styleBrand]}
-              onChange={(s) => setStyleBrand(s[0])}
-              multiSelect={false}
-              columns={3}
-              testId="toggle-brand"
-            />
-          </div>
+        <div className="space-y-3">
+          <VectraGridToggle
+            options={BRAND_OPTIONS}
+            selected={[styleBrand]}
+            onChange={(s) => setStyleBrand(s[0])}
+            multiSelect={false}
+            testId="toggle-brand"
+          />
           
-          <div className="space-y-1">
-            <span className="text-[10px] text-muted-foreground">Fit / Caimento</span>
-            <VectraGridToggle
-              options={FIT_OPTIONS}
-              selected={[styleFit]}
-              onChange={(s) => setStyleFit(s[0])}
-              multiSelect={false}
-              columns={5}
-              testId="toggle-fit"
-            />
-          </div>
+          <VectraGridToggle
+            options={FIT_OPTIONS}
+            selected={[styleFit]}
+            onChange={(s) => setStyleFit(s[0])}
+            multiSelect={false}
+            testId="toggle-fit"
+          />
           
           <VectraUploadSlot
             images={moodboard}
@@ -403,38 +386,31 @@ export function VectraCinematicPanel({
       </VectraPanel>
 
       <VectraPanel
-        title="Diagnóstico de Sistemas"
-        icon={<Activity className="w-3.5 h-3.5" />}
+        title="Sistema"
+        icon={<Activity className="w-4 h-4" />}
         collapsible
         isOpen={diagnosticsOpen}
         onOpenChange={setDiagnosticsOpen}
         testId="panel-diagnostics"
       >
-        <div className="space-y-1.5">
-          {ENGINES.map((engine) => (
-            <div
-              key={engine.name}
-              className="flex items-center justify-between py-1 px-2 rounded bg-muted/50"
-            >
-              <span className="text-[10px] text-muted-foreground">{engine.name}</span>
-              <div className="flex items-center gap-1.5">
-                <div className="w-1 h-1 rounded-full bg-green-500 dark:bg-green-400 animate-pulse" />
-                <span className="text-[8px] text-green-600 dark:text-green-400 uppercase tracking-wider">LIVE</span>
-              </div>
-            </div>
-          ))}
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1">
+            {ENGINES.map((engine) => (
+              <Badge key={engine.name} variant="secondary" className="gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 dark:bg-green-400 animate-pulse" />
+                {engine.name}
+              </Badge>
+            ))}
+          </div>
           
           {isPremium && (
-            <div className="pt-2 border-t border-border">
-              <VectraSecureInput
-                value={customApiKey}
-                onChange={setCustomApiKey}
-                onTest={testApiKey}
-                label="Custom API Key"
-                hint="Usa sua própria chave da ModelsLab"
-                testId="input-custom-api-key"
-              />
-            </div>
+            <VectraSecureInput
+              value={customApiKey}
+              onChange={setCustomApiKey}
+              onTest={testApiKey}
+              label="Custom API Key"
+              testId="input-custom-api-key"
+            />
           )}
         </div>
       </VectraPanel>
@@ -442,12 +418,11 @@ export function VectraCinematicPanel({
       <Button
         type="button"
         variant="outline"
-        size="sm"
-        className="mx-auto gap-1.5 text-[10px] h-7"
+        size="icon"
+        className="mx-auto"
         data-testid="button-voice"
       >
-        <Mic className="w-3 h-3" />
-        <span>Voz</span>
+        <Mic className="w-4 h-4" />
       </Button>
     </div>
   );

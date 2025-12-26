@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ToggleOption {
   id: string;
@@ -58,7 +59,7 @@ export function VectraGridToggle({
 
   return (
     <div
-      className={cn("grid gap-2", gridCols[columns], className)}
+      className={cn("flex flex-wrap gap-1", className)}
       data-testid={testId}
     >
       {options.map((option) => {
@@ -66,22 +67,26 @@ export function VectraGridToggle({
         const Icon = option.icon;
         
         return (
-          <Button
-            key={option.id}
-            type="button"
-            variant={isActive ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => handleToggle(option.id)}
-            className={cn(
-              "flex flex-col items-center justify-center gap-0.5 h-auto py-1.5 px-2 min-h-0",
-              "text-[10px] font-medium",
-              isActive && "ring-1 ring-primary/20"
-            )}
-            data-testid={`${testId}-${option.id}`}
-          >
-            {Icon && <Icon className="w-3 h-3" />}
-            <span className="truncate">{option.label}</span>
-          </Button>
+          <Tooltip key={option.id}>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant={isActive ? "secondary" : "ghost"}
+                size="icon"
+                onClick={() => handleToggle(option.id)}
+                className={cn(
+                  "h-8 w-8",
+                  isActive && "ring-1 ring-primary/30"
+                )}
+                data-testid={`${testId}-${option.id}`}
+              >
+                {Icon && <Icon className="w-4 h-4" />}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {option.label}
+            </TooltipContent>
+          </Tooltip>
         );
       })}
     </div>

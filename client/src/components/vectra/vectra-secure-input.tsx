@@ -46,15 +46,15 @@ export function VectraSecureInput({
   };
 
   return (
-    <div className={cn("space-y-1.5", className)} data-testid={testId}>
+    <div className={cn("space-y-2", className)} data-testid={testId}>
       {label && (
-        <Label className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-          <Settings className="w-2.5 h-2.5" />
+        <Label className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Settings className="w-3 h-3" />
           {label}
         </Label>
       )}
       
-      <div className="relative flex items-center gap-1.5">
+      <div className="relative flex items-center gap-2">
         <div className="relative flex-1">
           <Input
             type={showValue ? "text" : "password"}
@@ -62,7 +62,7 @@ export function VectraSecureInput({
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
             disabled={disabled}
-            className="pr-8 h-7 text-xs"
+            className="pr-9 h-8 text-xs"
             data-testid={`${testId}-input`}
           />
           <Button
@@ -70,10 +70,10 @@ export function VectraSecureInput({
             variant="ghost"
             size="icon"
             onClick={() => setShowValue(!showValue)}
-            className="absolute right-0 top-0 h-7 w-7"
+            className="absolute right-0 top-0 h-8 w-8"
             data-testid={`${testId}-toggle-visibility`}
           >
-            {showValue ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+            {showValue ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </Button>
         </div>
 
@@ -81,42 +81,22 @@ export function VectraSecureInput({
           <Button
             type="button"
             variant={testStatus === "valid" ? "default" : testStatus === "invalid" ? "destructive" : "outline"}
-            size="sm"
+            size="icon"
             onClick={handleTest}
             disabled={!value || testStatus === "testing"}
-            className="gap-1 h-7 text-[10px] px-2"
+            className="h-8 w-8"
             data-testid={`${testId}-test`}
           >
-            {testStatus === "testing" && <Loader2 className="w-2.5 h-2.5 animate-spin" />}
-            {testStatus === "valid" && <Check className="w-2.5 h-2.5" />}
-            {testStatus === "invalid" && <X className="w-2.5 h-2.5" />}
-            {testStatus === "idle" ? "Test" : testStatus === "testing" ? "..." : testStatus === "valid" ? "OK" : "X"}
+            {testStatus === "testing" && <Loader2 className="w-4 h-4 animate-spin" />}
+            {testStatus === "valid" && <Check className="w-4 h-4" />}
+            {testStatus === "invalid" && <X className="w-4 h-4" />}
+            {testStatus === "idle" && <Check className="w-4 h-4" />}
           </Button>
         )}
       </div>
 
-      {testStatus !== "idle" && (
-        <div className={cn(
-          "flex items-center gap-1 text-[10px]",
-          testStatus === "valid" ? "text-green-600 dark:text-green-400" : testStatus === "invalid" ? "text-destructive" : "text-muted-foreground"
-        )}>
-          {testStatus === "valid" && (
-            <>
-              <div className="w-1 h-1 rounded-full bg-green-500" />
-              Validada
-            </>
-          )}
-          {testStatus === "invalid" && (
-            <>
-              <div className="w-1 h-1 rounded-full bg-destructive" />
-              Inválida
-            </>
-          )}
-        </div>
-      )}
-
       {hint && (
-        <p className="text-[9px] text-muted-foreground">{hint}</p>
+        <p className="text-xs text-muted-foreground">{hint}</p>
       )}
     </div>
   );
