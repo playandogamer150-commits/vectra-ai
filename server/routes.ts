@@ -484,8 +484,8 @@ export async function registerRoutes(
       ).length;
 
       const appUser = await storage.getAppUser(userId);
-      const plan = appUser?.plan || "free";
-      const isPro = plan === "pro";
+      const plan = IS_PRO_OVERRIDE ? "pro" : (appUser?.plan || "free");
+      const isPro = IS_PRO_OVERRIDE || plan === "pro";
 
       const imageUsageByQuality = await storage.getImageUsageTodayByQuality(userId);
       const videosUsedToday = await storage.getUsageToday(userId, "video");
