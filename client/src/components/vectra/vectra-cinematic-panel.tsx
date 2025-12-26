@@ -116,55 +116,56 @@ interface AccordionSectionProps {
 }
 
 function AccordionSection({ title, icon, isOpen, onToggle, children, testId, badge, helpContent }: AccordionSectionProps) {
+  const [helpOpen, setHelpOpen] = useState(false);
+  
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
-      <CollapsibleTrigger asChild>
-        <Button
-          variant="ghost"
-          className="w-full justify-between px-3 py-2 h-auto"
-          data-testid={`${testId}-trigger`}
-        >
-          <div className="flex items-center gap-2">
-            {icon}
-            <span className="text-sm font-medium">{title}</span>
-            {badge && (
-              <Badge variant="secondary" className="text-xs px-1.5 py-0">
-                {badge}
-              </Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-1">
-            {helpContent && (
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={(e) => e.stopPropagation()}
-                    data-testid={`${testId}-help`}
-                  >
-                    <HelpCircle className="w-3.5 h-3.5 text-muted-foreground" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      {icon}
-                      {title} - Guia de Uso
-                    </DialogTitle>
-                  </DialogHeader>
-                  {helpContent}
-                </DialogContent>
-              </Dialog>
-            )}
+      <div className="flex items-center">
+        <CollapsibleTrigger asChild>
+          <Button
+            variant="ghost"
+            className="flex-1 justify-between px-3 py-2 h-auto"
+            data-testid={`${testId}-trigger`}
+          >
+            <div className="flex items-center gap-2">
+              {icon}
+              <span className="text-sm font-medium">{title}</span>
+              {badge && (
+                <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                  {badge}
+                </Badge>
+              )}
+            </div>
             <ChevronDown className={cn(
               "w-4 h-4 transition-transform duration-200",
               isOpen && "rotate-180"
             )} />
-          </div>
-        </Button>
-      </CollapsibleTrigger>
+          </Button>
+        </CollapsibleTrigger>
+        {helpContent && (
+          <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 mr-1"
+                data-testid={`${testId}-help`}
+              >
+                <HelpCircle className="w-4 h-4 text-muted-foreground" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  {icon}
+                  {title} - Guia de Uso
+                </DialogTitle>
+              </DialogHeader>
+              {helpContent}
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
       <CollapsibleContent className="px-3 pb-3">
         {children}
       </CollapsibleContent>
