@@ -37,8 +37,17 @@ export const appUsers = pgTable("app_users", {
   defaultLlmProfileId: varchar("default_llm_profile_id"),
   theme: text("theme").default("system"),
   tutorialCompleted: integer("tutorial_completed").default(0).notNull(),
+  isAdmin: integer("is_admin").default(0).notNull(),
+  customModelsLabKey: text("custom_modelslab_key"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const adminEmails = pgTable("admin_emails", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull().unique(),
+  grantedBy: text("granted_by"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const llmProfiles = pgTable("llm_profiles", {
