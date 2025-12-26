@@ -12,6 +12,7 @@ import {
   RectangleHorizontal, Sparkles, Layers, CircleDot
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useI18n } from "@/lib/i18n";
 
 interface VectraCinematicPanelProps {
@@ -252,7 +253,7 @@ export function VectraCinematicPanel({
       >
         <div className="space-y-5">
           <div className="space-y-2">
-            <span className="text-xs text-white/40 uppercase tracking-wide">Estilo de Captura</span>
+            <span className="text-xs text-muted-foreground">Estilo de Captura</span>
             <VectraGridToggle
               options={OPTICS_OPTIONS}
               selected={[opticsStyle]}
@@ -264,7 +265,7 @@ export function VectraCinematicPanel({
           </div>
           
           <div className="space-y-2">
-            <span className="text-xs text-white/40 uppercase tracking-wide">Aspect Ratio</span>
+            <span className="text-xs text-muted-foreground">Aspect Ratio</span>
             <VectraGridToggle
               options={ASPECT_RATIOS}
               selected={[aspectRatio]}
@@ -367,7 +368,7 @@ export function VectraCinematicPanel({
       >
         <div className="space-y-4">
           <div className="space-y-2">
-            <span className="text-xs text-white/40 uppercase tracking-wide">Designer Brand</span>
+            <span className="text-xs text-muted-foreground">Designer Brand</span>
             <VectraGridToggle
               options={BRAND_OPTIONS}
               selected={[styleBrand]}
@@ -379,7 +380,7 @@ export function VectraCinematicPanel({
           </div>
           
           <div className="space-y-2">
-            <span className="text-xs text-white/40 uppercase tracking-wide">Fit / Caimento</span>
+            <span className="text-xs text-muted-foreground">Fit / Caimento</span>
             <VectraGridToggle
               options={FIT_OPTIONS}
               selected={[styleFit]}
@@ -413,24 +414,24 @@ export function VectraCinematicPanel({
           {ENGINES.map((engine) => (
             <div
               key={engine.name}
-              className="flex items-center justify-between py-2 px-3 rounded-lg bg-white/[0.02]"
+              className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/50"
             >
-              <span className="text-xs text-white/60">{engine.name}</span>
+              <span className="text-xs text-muted-foreground">{engine.name}</span>
               <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[10px] text-emerald-400/70 uppercase tracking-wider">LIVE</span>
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 dark:bg-green-400 animate-pulse" />
+                <span className="text-[10px] text-green-600 dark:text-green-400 uppercase tracking-wider">LIVE</span>
               </div>
             </div>
           ))}
           
           {isPremium && (
-            <div className="pt-3 border-t border-white/[0.04]">
+            <div className="pt-3 border-t border-border">
               <VectraSecureInput
                 value={customApiKey}
                 onChange={setCustomApiKey}
                 onTest={testApiKey}
                 label="Custom API Key"
-                hint="Override local • Premium feature"
+                hint="Usa sua própria chave da ModelsLab"
                 testId="input-custom-api-key"
               />
             </div>
@@ -438,20 +439,16 @@ export function VectraCinematicPanel({
         </div>
       </VectraPanel>
 
-      <button
+      <Button
         type="button"
-        className={cn(
-          "vectra-voice-btn",
-          "flex items-center gap-2 px-4 py-2 mx-auto",
-          "rounded-full bg-white/[0.04] border border-white/[0.06]",
-          "text-xs text-white/30 hover:text-white/50",
-          "transition-all duration-200"
-        )}
+        variant="outline"
+        size="sm"
+        className="mx-auto gap-2"
         data-testid="button-voice"
       >
         <Mic className="w-3.5 h-3.5" />
         <span>Voz</span>
-      </button>
+      </Button>
     </div>
   );
 }

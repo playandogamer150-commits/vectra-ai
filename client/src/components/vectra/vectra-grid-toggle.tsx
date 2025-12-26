@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ToggleOption {
   id: string;
@@ -65,26 +66,22 @@ export function VectraGridToggle({
         const Icon = option.icon;
         
         return (
-          <button
+          <Button
             key={option.id}
             type="button"
+            variant={isActive ? "secondary" : "outline"}
+            size="sm"
             onClick={() => handleToggle(option.id)}
             className={cn(
-              "vectra-toggle-item",
-              "relative flex flex-col items-center justify-center gap-1.5",
-              "px-3 py-3 rounded-xl",
-              "text-xs font-medium uppercase tracking-wide",
-              "transition-all duration-200",
-              "border",
-              isActive
-                ? "bg-white/10 text-white border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]"
-                : "bg-white/[0.03] text-white/40 border-white/[0.04] hover:bg-white/[0.06] hover:text-white/60"
+              "flex flex-col items-center justify-center gap-1 h-auto py-2",
+              "text-xs font-medium",
+              isActive && "ring-1 ring-primary/20"
             )}
             data-testid={`${testId}-${option.id}`}
           >
             {Icon && <Icon className="w-4 h-4" />}
             <span className="truncate">{option.label}</span>
-          </button>
+          </Button>
         );
       })}
     </div>

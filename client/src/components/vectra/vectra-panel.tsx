@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 interface VectraPanelProps {
   title: string;
@@ -28,55 +29,52 @@ export function VectraPanel({
   badge,
   testId,
 }: VectraPanelProps) {
-  const panelClasses = cn(
-    "vectra-panel",
-    "relative rounded-[18px] overflow-hidden",
-    "bg-black/40 backdrop-blur-xl",
-    "border border-white/[0.06]",
-    "before:absolute before:inset-x-0 before:top-0 before:h-px",
-    "before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent",
-    className
-  );
-
-  const headerClasses = cn(
-    "flex items-center justify-between gap-3 px-5 py-4",
-    "text-white/60 text-xs font-medium uppercase tracking-widest"
-  );
-
   const titleContent = (
-    <div className="flex items-center gap-2.5">
-      {icon && <span className="text-white/40">{icon}</span>}
-      <span>{title}</span>
+    <div className="flex items-center gap-2">
+      {icon && <span className="text-muted-foreground">{icon}</span>}
+      <span className="text-sm font-medium">{title}</span>
       {badge}
     </div>
   );
 
   if (collapsible) {
     return (
-      <Collapsible
-        open={isOpen}
-        defaultOpen={defaultOpen}
-        onOpenChange={onOpenChange}
-        className={panelClasses}
-        data-testid={testId}
-      >
-        <CollapsibleTrigger className={cn(headerClasses, "w-full hover:text-white/80 transition-colors")}>
-          {titleContent}
-          {isOpen !== undefined ? (
-            isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />
-          ) : null}
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="px-5 pb-5">{children}</div>
-        </CollapsibleContent>
-      </Collapsible>
+      <Card className={cn("", className)} data-testid={testId}>
+        <Collapsible
+          open={isOpen}
+          defaultOpen={defaultOpen}
+          onOpenChange={onOpenChange}
+        >
+          <CollapsibleTrigger asChild>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 py-3 cursor-pointer hover-elevate">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                {icon && <span className="text-muted-foreground">{icon}</span>}
+                {title}
+                {badge}
+              </CardTitle>
+              {isOpen !== undefined ? (
+                isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />
+              ) : null}
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0">{children}</CardContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
     );
   }
 
   return (
-    <div className={panelClasses} data-testid={testId}>
-      <div className={headerClasses}>{titleContent}</div>
-      <div className="px-5 pb-5">{children}</div>
-    </div>
+    <Card className={cn("", className)} data-testid={testId}>
+      <CardHeader className="py-3">
+        <CardTitle className="text-sm font-medium flex items-center gap-2">
+          {icon && <span className="text-muted-foreground">{icon}</span>}
+          {title}
+          {badge}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="pt-0">{children}</CardContent>
+    </Card>
   );
 }
