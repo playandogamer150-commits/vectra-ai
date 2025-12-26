@@ -1628,8 +1628,8 @@ export default function ModelsLabStudioPage() {
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* Video Processing Indicator (when modal is closed but still processing) */}

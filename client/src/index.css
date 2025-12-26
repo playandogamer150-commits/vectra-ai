@@ -508,8 +508,7 @@
   border-color: rgba(255, 255, 255, 0.12) !important;
 }
 
-.vectra-studio-bg .bg-muted,
-.vectra-studio-bg .bg-muted\\/50 {
+.vectra-studio-bg .bg-muted {
   background: rgba(255, 255, 255, 0.04) !important;
 }
 
