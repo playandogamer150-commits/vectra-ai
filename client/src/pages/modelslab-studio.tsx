@@ -27,6 +27,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { exportToJSON, exportToYAML, exportToPDF } from "@/lib/export-utils";
 import { UpgradeModal } from "@/components/upgrade-modal";
 import { OnboardingTutorial } from "@/components/onboarding-tutorial";
+import { VectraCinematicPanel, type CinematicSettings } from "@/components/vectra";
 
 interface ModelsLabResponse {
   status: string;
@@ -222,6 +223,10 @@ export default function ModelsLabStudioPage() {
     hq: { used: number; limit: number };
     standard: { used: number; limit: number };
   } | null>(null);
+  
+  // Vectra Cinematic Panel state (advanced controls)
+  const [showCinematicPanel, setShowCinematicPanel] = useState(false);
+  const [cinematicSettings, setCinematicSettings] = useState<CinematicSettings | null>(null);
 
   // Queries for Prompt Engine
   const { data: profiles, isLoading: loadingProfiles } = useQuery<LlmProfile[]>({
@@ -966,13 +971,35 @@ export default function ModelsLabStudioPage() {
               </Card>
             )}
             {usageData?.isPro && (
-              <Badge variant="secondary" className="text-xs" data-testid="badge-pro-plan">
-                <Sparkles className="w-3 h-3 mr-1" />
-                Pro
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-xs" data-testid="badge-pro-plan">
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  Pro
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowCinematicPanel(!showCinematicPanel)}
+                  className="text-xs text-muted-foreground"
+                  data-testid="button-toggle-cinematic"
+                >
+                  <SlidersHorizontal className="w-4 h-4 mr-1" />
+                  {showCinematicPanel ? "Ocultar Controles Avançados" : "Controles Avançados"}
+                </Button>
+              </div>
             )}
           </div>
         </div>
+
+        {/* Vectra Cinematic Control Panel - Premium Only */}
+        {usageData?.isPro && showCinematicPanel && (
+          <div className="mb-8 p-6 rounded-2xl bg-black/80 dark:bg-black/60" data-testid="section-cinematic-panel">
+            <VectraCinematicPanel
+              isPremium={true}
+              onSettingsChange={setCinematicSettings}
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Input Panel */}

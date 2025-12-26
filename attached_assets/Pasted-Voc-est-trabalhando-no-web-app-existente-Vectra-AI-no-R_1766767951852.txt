@@ -1,0 +1,164 @@
+Você está trabalhando no web app existente “Vectra AI” no Replit.
+
+REGRA ABSOLUTA (NÃO QUEBRAR):
+- NÃO remover nada que já existe.
+- NÃO renomear componentes, rotas, estados, funções ou estilos existentes.
+- NÃO refatorar lógica atual.
+- SOMENTE ADICIONAR novas funcionalidades e UI de forma incremental.
+- Use classes novas (ex: vectra-*) se precisar estilizar.
+- Todo comportamento novo deve ser opcional e não afetar usuários comuns.
+
+OBJETIVO GERAL:
+Evoluir o Vectra AI para um “AI Studio Cinematic Control Panel”, adicionando módulos avançados de estética, VFX, sujeitos, DNA visual E agora:
+👉 suporte a API Key própria do usuário (premium only).
+
+────────────────────────────────
+🎨 DESIGN SYSTEM (OBRIGATÓRIO)
+────────────────────────────────
+Estilo visual baseado EXATAMENTE nas referências fornecidas:
+
+- Dark Glassmorphism Cinematic Control Panel
+- Cards escuros translúcidos com blur
+- Border-radius grande (18–22px)
+- Bordas sutis, quase invisíveis
+- Inner glow discreto no topo
+- Ícones outline minimalistas (lucide-react)
+- Estados ativos claros (quase branco)
+- Estados inativos escuros
+- Nada chamativo ou “gamificado”
+- UX de estúdio profissional / painel de controle
+
+────────────────────────────────
+📦 MÓDULOS VISUAIS (JÁ EXISTENTES + NOVOS)
+────────────────────────────────
+
+(Manter TODOS os módulos já implementados e adicionar os seguintes, sem remover nada)
+
+A) ÓPTICA & ESTÉTICA DE CAPTURA  
+- Cinematográfica  
+- Smartphone RL  
+- iPhone Max HDR  
+- Realistic RAW  
+- Forensic DSLR  
+- Aspect Ratio (1:1 / 9:16 / 16:9)  
+- Sample Count (1 / 2 / 4)  
+
+B) PÓS-PROCESSAMENTO & VFX  
+- Grid de toggles (OFF, VHS, 35MM, NVG, CINE, GLTCH, BLUM, etc)
+- Multi-select permitido
+- OFF desativa todos
+- Slider de intensidade (0–5) com número visível
+
+C) SUJEITO A / SUJEITO B  
+- Tabs com underline luminoso discreto
+- Face Scan / Corpo / Assinaturas Corporais
+- Upload slots tracejados
+- Contador visual 0/20
+- UX apenas (sem biometria real)
+
+D) DNA DE ESTILO & WARDROBE  
+- Designer Brand (Auto-Detect Context)
+- Layering
+- Fit / Caimento
+- Outerwear
+- Footwear DNA
+- Bottom Piece
+- Moodboard com upload + contador
+
+E) DIAGNÓSTICO DE SISTEMAS  
+- Lista de engines ativas
+- Status dot verde
+- Texto “LIVE INTEGRATION”
+
+F) BOTÃO “VOZ”  
+- Botão discreto em formato pill
+- Ícone de microfone
+- Baixo destaque visual
+- Não chamar atenção do usuário comum
+
+────────────────────────────────
+🔑 NOVO MÓDULO: API KEY PRÓPRIA (PREMIUM ONLY)
+────────────────────────────────
+
+OBJETIVO:
+Permitir que usuários PREMIUM utilizem sua PRÓPRIA API KEY (Models Labs ou compatível),
+sem usar a API padrão do Vectra.
+
+REGRAS IMPORTANTES:
+- Essa funcionalidade deve ser:
+  ✔ invisível para usuários comuns
+  ✔ acessível apenas para usuários premium
+  ✔ discreta, escondida, não promocional
+- NÃO expor isso no onboarding público
+- NÃO exibir banners ou upsell explícito
+
+LOCALIZAÇÃO DO CONTROLE (UX):
+- Inserir dentro de um painel colapsável discreto
+OU
+- Dentro de “Diagnóstico de Sistemas”
+OU
+- Atrás de um ícone de engrenagem ⚙️ pequeno
+OU
+- Acesso via atalho avançado (ex: clicar 5x no título, ou hover + modifier)
+
+UI DO CONTROLE:
+- Campo de input tipo password: “Custom API Key”
+- Placeholder genérico (ex: ••••••••••••)
+- Botão pequeno “Test Key”
+- Indicador de status:
+  - Verde: Key válida
+  - Vermelho: inválida
+- Texto pequeno e discreto:
+  “Override local • Premium feature”
+
+COMPORTAMENTO:
+- Se o usuário for PREMIUM e inserir uma key:
+  → usar essa key para chamadas de API
+- Se não houver key:
+  → usar API padrão do Vectra
+- Usuários comuns:
+  → nunca veem esse campo
+  → nunca sabem que isso existe
+
+SEGURANÇA:
+- NÃO salvar key em plaintext no frontend
+- Usar storage seguro (env criptografado / backend)
+- Nunca logar a key
+- Nunca expor em responses
+- A key pertence exclusivamente ao usuário
+
+ARQUITETURA:
+- Implementar fallback automático:
+  user_key ? user_key : vectra_default_key
+- Modularizar isso como:
+  VectraKeyProvider ou semelhante
+- Sem quebrar chamadas existentes
+
+────────────────────────────────
+🧠 LÓGICA DE PERMISSÃO
+────────────────────────────────
+- Criar flag simples: isPremiumUser
+- Toda UI e lógica da API key deve checar essa flag
+- Nenhum usuário free deve acessar nem por DOM inspection
+
+────────────────────────────────
+⚙️ IMPLEMENTAÇÃO
+────────────────────────────────
+- React (se já estiver usando React)
+- Tailwind / CSS Modules conforme padrão atual
+- Criar componentes novos se necessário:
+  - VectraPanel
+  - VectraGridToggle
+  - VectraTabs
+  - VectraSecureInput
+- Reutilizar estilos existentes sempre que possível
+- Responsivo (mobile empilha, desktop mantém grid)
+
+────────────────────────────────
+📦 ENTREGA FINAL
+────────────────────────────────
+- Todas as novas features adicionadas
+- Nenhuma feature antiga removida
+- UX premium, discreta e profissional
+- Usuário comum NÃO percebe nada
+- Usuário premium sente poder e controle
