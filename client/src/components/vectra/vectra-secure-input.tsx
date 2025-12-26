@@ -1,46 +1,39 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Eye, EyeOff, Check, X, Loader2, Settings } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Eye, EyeOff, Check, X, Loader2, Key } from "lucide-react";
 
 interface VectraSecureInputProps {
   value: string;
   onChange: (value: string) => void;
   onTest?: () => Promise<boolean>;
-  placeholder?: string;
   label?: string;
+  placeholder?: string;
   hint?: string;
+  disabled?: boolean;
   className?: string;
   testId?: string;
-  disabled?: boolean;
 }
 
 export function VectraSecureInput({
   value,
   onChange,
   onTest,
-  placeholder = "sk-••••••••••••",
-  label = "Custom API Key",
+  label,
+  placeholder = "sk-...",
   hint,
+  disabled = false,
   className,
   testId,
-  disabled,
 }: VectraSecureInputProps) {
   const [showValue, setShowValue] = useState(false);
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "valid" | "invalid">("idle");
 
   const handleTest = async () => {
-    if (!onTest || !value) return;
-    
+    if (!onTest) return;
     setTestStatus("testing");
-    try {
-      const isValid = await onTest();
-      setTestStatus(isValid ? "valid" : "invalid");
-      setTimeout(() => setTestStatus("idle"), 5000);
-    } catch {
-      setTestStatus("invalid");
+    const isValid = await onTest();
+    setTestStatus(isValid ? "valid" : "invalid");
+    if (isValid || !isValid) {
       setTimeout(() => setTestStatus("idle"), 5000);
     }
   };
@@ -48,55 +41,55 @@ export function VectraSecureInput({
   return (
     <div className={cn("space-y-2", className)} data-testid={testId}>
       {label && (
-        <Label className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Settings className="w-3 h-3" />
+        <label className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-white/50">
+          <Key className="w-3 h-3" strokeWidth={1.5} />
           {label}
-        </Label>
+        </label>
       )}
       
-      <div className="relative flex items-center gap-2">
+      <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Input
+          <input
             type={showValue ? "text" : "password"}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
             disabled={disabled}
-            className="pr-9 h-8 text-xs"
+            className="vectra-input w-full pr-10"
             data-testid={`${testId}-input`}
           />
-          <Button
+          <button
             type="button"
-            variant="ghost"
-            size="icon"
             onClick={() => setShowValue(!showValue)}
-            className="absolute right-0 top-0 h-8 w-8"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60 transition-colors"
             data-testid={`${testId}-toggle-visibility`}
           >
             {showValue ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </Button>
+          </button>
         </div>
 
         {onTest && (
-          <Button
+          <button
             type="button"
-            variant={testStatus === "valid" ? "default" : testStatus === "invalid" ? "destructive" : "outline"}
-            size="icon"
             onClick={handleTest}
             disabled={!value || testStatus === "testing"}
-            className="h-8 w-8"
+            className={cn(
+              "vectra-gridbtn",
+              testStatus === "valid" && "vectra-gridbtn--active !bg-green-500/20 !text-green-400",
+              testStatus === "invalid" && "!bg-red-500/20 !text-red-400"
+            )}
             data-testid={`${testId}-test`}
           >
             {testStatus === "testing" && <Loader2 className="w-4 h-4 animate-spin" />}
             {testStatus === "valid" && <Check className="w-4 h-4" />}
             {testStatus === "invalid" && <X className="w-4 h-4" />}
             {testStatus === "idle" && <Check className="w-4 h-4" />}
-          </Button>
+          </button>
         )}
       </div>
 
       {hint && (
-        <p className="text-xs text-muted-foreground">{hint}</p>
+        <p className="text-[10px] text-white/30">{hint}</p>
       )}
     </div>
   );

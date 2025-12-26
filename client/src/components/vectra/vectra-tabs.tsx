@@ -1,6 +1,5 @@
 import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface TabItem {
   id: string;
@@ -11,7 +10,7 @@ interface TabItem {
 interface VectraTabsProps {
   tabs: TabItem[];
   activeTab: string;
-  onTabChange: (id: string) => void;
+  onTabChange: (tabId: string) => void;
   className?: string;
   testId?: string;
 }
@@ -24,21 +23,23 @@ export function VectraTabs({
   testId,
 }: VectraTabsProps) {
   return (
-    <Tabs value={activeTab} onValueChange={onTabChange} className={cn("w-full", className)}>
-      <TabsList className="w-full h-8" data-testid={testId}>
-        {tabs.map((tab) => (
-          <TabsTrigger
-            key={tab.id}
-            value={tab.id}
-            className="flex-1 gap-1.5 text-xs"
-            data-testid={`${testId}-${tab.id}`}
-          >
-            {tab.icon}
-            <span>{tab.label}</span>
-          </TabsTrigger>
-        ))}
-      </TabsList>
-    </Tabs>
+    <div className={cn("flex gap-1", className)} data-testid={testId}>
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          onClick={() => onTabChange(tab.id)}
+          className={cn(
+            "vectra-tab",
+            activeTab === tab.id && "vectra-tab--active"
+          )}
+          data-testid={`${testId}-${tab.id}`}
+        >
+          {tab.icon}
+          <span>{tab.label}</span>
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -49,7 +50,7 @@ interface VectraTabContentProps {
 
 export function VectraTabContent({ children, className }: VectraTabContentProps) {
   return (
-    <div className={cn("mt-2", className)}>
+    <div className={cn("mt-3", className)}>
       {children}
     </div>
   );

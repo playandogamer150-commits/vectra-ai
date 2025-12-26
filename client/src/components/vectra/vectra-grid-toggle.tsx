@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ToggleOption {
@@ -14,7 +13,6 @@ interface VectraGridToggleProps {
   selected: string[];
   onChange: (selected: string[]) => void;
   multiSelect?: boolean;
-  columns?: 2 | 3 | 4 | 5 | 6;
   offOption?: string;
   className?: string;
   testId?: string;
@@ -25,7 +23,6 @@ export function VectraGridToggle({
   selected,
   onChange,
   multiSelect = true,
-  columns = 4,
   offOption,
   className,
   testId,
@@ -49,17 +46,9 @@ export function VectraGridToggle({
     }
   };
 
-  const gridCols = {
-    2: "grid-cols-2",
-    3: "grid-cols-3",
-    4: "grid-cols-4",
-    5: "grid-cols-5",
-    6: "grid-cols-6",
-  };
-
   return (
     <div
-      className={cn("flex flex-wrap gap-1", className)}
+      className={cn("flex flex-wrap gap-2", className)}
       data-testid={testId}
     >
       {options.map((option) => {
@@ -69,21 +58,19 @@ export function VectraGridToggle({
         return (
           <Tooltip key={option.id}>
             <TooltipTrigger asChild>
-              <Button
+              <button
                 type="button"
-                variant={isActive ? "secondary" : "ghost"}
-                size="icon"
                 onClick={() => handleToggle(option.id)}
                 className={cn(
-                  "h-8 w-8",
-                  isActive && "ring-1 ring-primary/30"
+                  "vectra-gridbtn",
+                  isActive && "vectra-gridbtn--active"
                 )}
                 data-testid={`${testId}-${option.id}`}
               >
-                {Icon && <Icon className="w-4 h-4" />}
-              </Button>
+                {Icon && <Icon className="w-4 h-4" strokeWidth={1.5} />}
+              </button>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">
+            <TooltipContent side="bottom" className="text-xs bg-black/90 border-white/10">
               {option.label}
             </TooltipContent>
           </Tooltip>

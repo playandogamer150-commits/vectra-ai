@@ -1,11 +1,14 @@
 import { useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Upload, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+
+interface UploadedImage {
+  id: string;
+  url: string;
+}
 
 interface VectraUploadSlotProps {
-  images: { id: string; url: string }[];
+  images: UploadedImage[];
   maxImages: number;
   onUpload: (files: File[]) => void;
   onRemove: (id: string) => void;
@@ -37,37 +40,32 @@ export function VectraUploadSlot({
     <div className={cn("space-y-2", className)} data-testid={testId}>
       {label && (
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">{label}</span>
-          <Badge variant="secondary" className="text-xs">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-white/50">{label}</span>
+          <span className="vectra-badge">
             {images.length}/{maxImages}
-          </Badge>
+          </span>
         </div>
       )}
 
-      <div className="grid grid-cols-6 gap-1">
+      <div className="grid grid-cols-6 gap-1.5">
         {images.map((img) => (
           <div
             key={img.id}
-            className="relative aspect-square rounded-lg overflow-hidden bg-muted group"
+            className="relative aspect-square rounded-lg overflow-hidden bg-white/5 group"
           >
             <img
               src={img.url}
               alt=""
               className="w-full h-full object-cover"
             />
-            <Button
+            <button
               type="button"
-              variant="secondary"
-              size="icon"
               onClick={() => onRemove(img.id)}
-              className={cn(
-                "absolute top-1 right-1 h-6 w-6",
-                "opacity-0 group-hover:opacity-100 transition-opacity"
-              )}
+              className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity"
               data-testid={`${testId}-remove-${img.id}`}
             >
-              <X className="w-3 h-3" />
-            </Button>
+              <X className="w-4 h-4 text-white" />
+            </button>
           </div>
         ))}
 
@@ -75,16 +73,10 @@ export function VectraUploadSlot({
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className={cn(
-              "aspect-square rounded-md",
-              "border border-dashed border-muted-foreground/30",
-              "flex items-center justify-center",
-              "text-muted-foreground hover:text-foreground hover:border-muted-foreground/50",
-              "transition-all duration-200"
-            )}
+            className="vectra-upload"
             data-testid={`${testId}-add`}
           >
-            <Upload className="w-4 h-4" />
+            <Upload className="w-4 h-4" strokeWidth={1.5} />
           </button>
         )}
       </div>

@@ -1,0 +1,79 @@
+Você está no projeto existente “Vectra AI”.
+REGRA: NÃO remover nada existente. NÃO refatorar lógica. SOMENTE melhorar UI/estilos dos módulos já adicionados para ficar IGUAL à referência (Dark Glassmorphism Cinematic Control Panel).
+
+PROBLEMA ATUAL:
+O layout está com aparência “dashboard genérico”, sem glass real, sem hierarquia de estados (selected/unselected), sem profundidade, sem tokens consistentes.
+
+OBJETIVO:
+Aplicar um DESIGN SYSTEM consistente (tokens + componentes visuais) para os módulos:
+- Óptica & Estética de Captura
+- Pós-processamento & VFX
+- Sujeito A / Sujeito B
+- DNA de Estilo & Wardrobe
+- Sistema (incluindo Custom API Key premium)
+
+NÃO criar novos módulos agora. Somente polir e padronizar para ficar igual referência.
+
+✅ APLICAR ESTES PRINCÍPIOS VISUAIS (obrigatório):
+
+1) GLASS PANEL REAL (Card base)
+- background: rgba(14,16,20,0.55)
+- backdrop-filter: blur(14px) saturate(140%)
+- border: 1px solid rgba(255,255,255,0.06)
+- border-radius: 18–22px
+- box-shadow externo suave: 0 10px 30px rgba(0,0,0,0.45)
+- inner glow topo: inset 0 1px 0 rgba(255,255,255,0.06)
+- padding: 16–20px (consistente)
+
+2) HEADERS
+- título em uppercase, tracking leve
+- ícone outline pequeno à esquerda
+- cor: rgba(255,255,255,0.78)
+- subtítulo menor, cinza
+- espaçamento e alinhamento perfeito
+
+3) LIST ITEMS (presets)
+- item padrão: bg rgba(255,255,255,0.03), border sutil, radius 14–16
+- item selecionado: bg quase branco (#f2f3f5), texto escuro, ícone escuro, check/dot verde à direita
+- hover: glow sutil (não exagerar)
+- ícones outline com stroke 1.5
+
+4) SEGMENTED CONTROLS (aspect ratio / sample count)
+- pills pequenas, radius 12–14
+- selecionado: bg claro, texto escuro
+- não selecionado: bg escuro, texto cinza
+- spacing compacto e premium
+
+5) GRID DE VFX
+- botões quadrados arredondados (12–14 radius)
+- ativo: bg claro
+- inativo: bg rgba(255,255,255,0.04)
+- labels pequenas, em uppercase
+- slider compacto no topo direito, com número e knob minimal
+
+6) TABS SUJEITO A/B
+- tabs com underline ativo com gradiente sutil azul/roxo
+- glow leve no underline
+- não usar borda grossa
+- conteúdo alinhado em coluna, com counters “0/20” em pills discretas à direita
+
+7) UPLOAD SLOTS
+- tracejado mais fino e elegante
+- fundo: rgba(255,255,255,0.02)
+- hover: border mais claro + glow leve
+- ícone central minimal
+- tamanhos mais “control panel” (não gigantes)
+
+8) CUSTOM API KEY (premium only)
+- manter escondido e discreto
+- UI refinada: input password com eye icon, borda sutil, botão “Test” minimal
+- Nunca mostrar para usuários free
+- Garantir que o componente não apareça nem no DOM para free users
+
+IMPLEMENTAÇÃO:
+- Criar tokens CSS/Tailwind utilitários (ex: .vectra-panel, .vectra-item, .vectra-item--active, .vectra-pill, .vectra-tab, .vectra-tab--active, .vectra-upload, .vectra-gridbtn)
+- Aplicar aos módulos existentes sem quebrar nada.
+- Não mexer em backend agora. Só UI.
+
+RESULTADO ESPERADO:
+O app deve parecer um “AI Studio by Rocky” (referência): vidro, profundidade, hierarquia clara, estados premium, nada genérico.

@@ -9,7 +9,11 @@ import { VectraSlider } from "./vectra-slider";
 import { 
   Camera, Aperture, Film, Zap, User, Shirt, Activity, 
   Mic, Settings, Eye, Scan, Square, RectangleVertical, 
-  RectangleHorizontal, Sparkles, Layers, CircleDot
+  RectangleHorizontal, Sparkles, Layers, CircleDot,
+  Video, Smartphone, Focus, Crosshair, Clapperboard,
+  Power, Radio, Moon, SunDim, Contrast, Droplets, Tv,
+  Wand2, Crown, Leaf, Watch, Wrench, Maximize, Minimize,
+  Move, ArrowDownRight, ArrowUpRight
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,11 +58,11 @@ interface SubjectData {
 }
 
 const OPTICS_OPTIONS = [
-  { id: "cinematic", label: "Cinematográfica" },
-  { id: "smartphone", label: "Smartphone RL" },
-  { id: "iphone-hdr", label: "iPhone Max HDR" },
-  { id: "realistic-raw", label: "Realistic RAW" },
-  { id: "forensic-dslr", label: "Forensic DSLR" },
+  { id: "cinematic", label: "Cinematográfica", icon: Clapperboard },
+  { id: "smartphone", label: "Smartphone RL", icon: Smartphone },
+  { id: "iphone-hdr", label: "iPhone Max HDR", icon: Sparkles },
+  { id: "realistic-raw", label: "Realistic RAW", icon: Focus },
+  { id: "forensic-dslr", label: "Forensic DSLR", icon: Crosshair },
 ];
 
 const ASPECT_RATIOS = [
@@ -68,35 +72,35 @@ const ASPECT_RATIOS = [
 ];
 
 const VFX_OPTIONS = [
-  { id: "off", label: "OFF" },
-  { id: "vhs", label: "VHS" },
-  { id: "35mm", label: "35MM" },
-  { id: "nvg", label: "NVG" },
-  { id: "cine", label: "CINE" },
-  { id: "gltch", label: "GLTCH" },
-  { id: "blum", label: "BLUM" },
-  { id: "grain", label: "GRAIN" },
-  { id: "leak", label: "LEAK" },
-  { id: "scan", label: "SCAN" },
-  { id: "noir", label: "NOIR" },
-  { id: "teal", label: "TEAL" },
+  { id: "off", label: "OFF", icon: Power },
+  { id: "vhs", label: "VHS", icon: Tv },
+  { id: "35mm", label: "35MM", icon: Film },
+  { id: "nvg", label: "NVG", icon: Eye },
+  { id: "cine", label: "CINE", icon: Video },
+  { id: "gltch", label: "GLTCH", icon: Zap },
+  { id: "blum", label: "BLUM", icon: SunDim },
+  { id: "grain", label: "GRAIN", icon: Droplets },
+  { id: "leak", label: "LEAK", icon: Sparkles },
+  { id: "scan", label: "SCAN", icon: Scan },
+  { id: "noir", label: "NOIR", icon: Moon },
+  { id: "teal", label: "TEAL", icon: Contrast },
 ];
 
 const BRAND_OPTIONS = [
-  { id: "auto", label: "Auto-Detect" },
-  { id: "streetwear", label: "Streetwear" },
-  { id: "luxury", label: "Luxury" },
-  { id: "minimalist", label: "Minimalist" },
-  { id: "vintage", label: "Vintage" },
-  { id: "techwear", label: "Techwear" },
+  { id: "auto", label: "Auto-Detect", icon: Wand2 },
+  { id: "streetwear", label: "Streetwear", icon: Shirt },
+  { id: "luxury", label: "Luxury", icon: Crown },
+  { id: "minimalist", label: "Minimalist", icon: Leaf },
+  { id: "vintage", label: "Vintage", icon: Watch },
+  { id: "techwear", label: "Techwear", icon: Wrench },
 ];
 
 const FIT_OPTIONS = [
-  { id: "oversized", label: "Oversized" },
-  { id: "relaxed", label: "Relaxed" },
-  { id: "regular", label: "Regular" },
-  { id: "slim", label: "Slim" },
-  { id: "tailored", label: "Tailored" },
+  { id: "oversized", label: "Oversized", icon: Maximize },
+  { id: "relaxed", label: "Relaxed", icon: Move },
+  { id: "regular", label: "Regular", icon: Square },
+  { id: "slim", label: "Slim", icon: Minimize },
+  { id: "tailored", label: "Tailored", icon: ArrowDownRight },
 ];
 
 const ENGINES = [

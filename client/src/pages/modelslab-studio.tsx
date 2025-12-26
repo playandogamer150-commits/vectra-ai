@@ -993,7 +993,7 @@ export default function ModelsLabStudioPage() {
 
         {/* Vectra Cinematic Control Panel - Premium Only */}
         {usageData?.isPro && showCinematicPanel && (
-          <div className="mb-6" data-testid="section-cinematic-panel">
+          <div className="mb-8 p-6 rounded-2xl bg-[#0e1014]/80 backdrop-blur-xl" data-testid="section-cinematic-panel">
             <VectraCinematicPanel
               isPremium={true}
               onSettingsChange={setCinematicSettings}

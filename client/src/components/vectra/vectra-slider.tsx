@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
-import { Badge } from "@/components/ui/badge";
 
 interface VectraSliderProps {
   value: number;
@@ -18,7 +17,7 @@ export function VectraSlider({
   value,
   onChange,
   min = 0,
-  max = 5,
+  max = 100,
   step = 1,
   label,
   showValue = true,
@@ -30,12 +29,12 @@ export function VectraSlider({
       {(label || showValue) && (
         <div className="flex items-center justify-between">
           {label && (
-            <span className="text-xs font-medium text-muted-foreground">{label}</span>
+            <span className="text-[11px] font-medium uppercase tracking-wide text-white/50">{label}</span>
           )}
           {showValue && (
-            <Badge variant="secondary" className="text-xs font-mono">
+            <span className="vectra-badge font-mono">
               {value}
-            </Badge>
+            </span>
           )}
         </div>
       )}
@@ -46,7 +45,7 @@ export function VectraSlider({
         min={min}
         max={max}
         step={step}
-        data-testid={`${testId}-input`}
+        className="[&_[data-slot=track]]:vectra-slider-track [&_[data-slot=range]]:vectra-slider-range [&_[data-slot=thumb]]:vectra-slider-thumb"
       />
     </div>
   );

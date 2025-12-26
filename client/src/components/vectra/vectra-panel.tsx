@@ -2,79 +2,66 @@ import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 interface VectraPanelProps {
   title: string;
   icon?: ReactNode;
+  badge?: ReactNode;
   children: ReactNode;
-  className?: string;
   collapsible?: boolean;
   defaultOpen?: boolean;
-  onOpenChange?: (open: boolean) => void;
   isOpen?: boolean;
-  badge?: ReactNode;
+  onOpenChange?: (open: boolean) => void;
+  className?: string;
   testId?: string;
 }
 
 export function VectraPanel({
   title,
   icon,
+  badge,
   children,
-  className,
   collapsible = false,
   defaultOpen = true,
-  onOpenChange,
   isOpen,
-  badge,
+  onOpenChange,
+  className,
   testId,
 }: VectraPanelProps) {
-  const titleContent = (
-    <div className="flex items-center gap-2">
-      {icon && <span className="text-muted-foreground">{icon}</span>}
-      <span className="text-sm font-medium">{title}</span>
-      {badge}
-    </div>
-  );
-
   if (collapsible) {
     return (
-      <Card className={cn("", className)} data-testid={testId}>
+      <div className={cn("vectra-panel", className)} data-testid={testId}>
         <Collapsible
           open={isOpen}
           defaultOpen={defaultOpen}
           onOpenChange={onOpenChange}
         >
-          <CollapsibleTrigger asChild>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 py-2 px-3 cursor-pointer hover-elevate">
-              <CardTitle className="text-xs font-medium flex items-center gap-2">
-                {icon && <span className="text-muted-foreground">{icon}</span>}
-                {title}
-                {badge}
-              </CardTitle>
+          <CollapsibleTrigger className="w-full">
+            <div className="vectra-panel-header cursor-pointer">
+              {icon && <span className="vectra-panel-icon">{icon}</span>}
+              <span className="vectra-panel-title flex-1 text-left">{title}</span>
+              {badge}
               {isOpen !== undefined ? (
-                isOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                isOpen ? <ChevronUp className="w-4 h-4 text-white/40" /> : <ChevronDown className="w-4 h-4 text-white/40" />
               ) : null}
-            </CardHeader>
+            </div>
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <CardContent className="pt-0 px-3 pb-3">{children}</CardContent>
+            <div className="pt-2">{children}</div>
           </CollapsibleContent>
         </Collapsible>
-      </Card>
+      </div>
     );
   }
 
   return (
-    <Card className={cn("", className)} data-testid={testId}>
-      <CardHeader className="py-2 px-3">
-        <CardTitle className="text-xs font-medium flex items-center gap-2">
-          {icon && <span className="text-muted-foreground">{icon}</span>}
-          {title}
-          {badge}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="pt-0 px-3 pb-3">{children}</CardContent>
-    </Card>
+    <div className={cn("vectra-panel", className)} data-testid={testId}>
+      <div className="vectra-panel-header">
+        {icon && <span className="vectra-panel-icon">{icon}</span>}
+        <span className="vectra-panel-title">{title}</span>
+        {badge}
+      </div>
+      <div>{children}</div>
+    </div>
   );
 }
