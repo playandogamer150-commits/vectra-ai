@@ -1,0 +1,46 @@
+Você está no projeto existente “Vectra AI”.
+NÃO remova nada. NÃO refatore lógica. Apenas corrija o DESIGN para ficar consistente e premium (Dark Glassmorphism Cinematic Control Panel).
+
+PROBLEMA ATUAL:
+A página é clara (branca) e os painéis são dark, gerando conflito visual.
+Cada seção tem borda/radius/sombra diferente. Falta tokenização e hierarquia de estados.
+
+OBJETIVO:
+1) Transformar a página “Estúdio de Imagem” em um ambiente totalmente dark (studio):
+- Fundo com vignette (radial gradient escuro)
+- Noise overlay sutil (bem discreto)
+- Conteúdo centralizado com max-width consistente
+- Remover a sensação de “card colado em página branca”
+
+2) Criar um DESIGN SYSTEM por tokens (CSS variables ou Tailwind config) e aplicar em TODOS os módulos:
+- panel/card base
+- header de seção
+- botões icon-only
+- pills e counters (0/20)
+- tabs A/B com underline glow
+- sliders com trilho e knob padronizados
+- upload slots tracejados
+
+TOKENS OBRIGATÓRIOS (usar em tudo):
+- radius: 20px (painel) | 14px (itens/botões) | 12px (pills)
+- panel bg: rgba(12,14,18,0.55) com backdrop blur 14px
+- border: 1px solid rgba(255,255,255,0.06)
+- shadow: 0 18px 60px rgba(0,0,0,0.55)
+- inner highlight: inset 0 1px 0 rgba(255,255,255,0.06)
+- text primary: rgba(255,255,255,0.88)
+- text muted: rgba(255,255,255,0.55)
+
+HIERARQUIA (obrigatório):
+- Selected state: background #f2f3f5, text #0b0d10, icon dark
+- Unselected: background rgba(255,255,255,0.04), text muted, icon muted
+- Hover: glow suave, sem exagero
+
+APLICAR EM:
+- ÓPTICA: botões com ícones devem ser uniformes; o “chip” Forensic DSLR deve parecer preset premium (pílula)
+- VFX: grid de botões com espaçamento e tamanhos iguais; selected claro
+- SUJEITOS: tabs A/B com underline gradiente sutil + glow leve; counters 0/20 em pílula discreta
+- Upload slot: tracejado fino, hover elegante, tamanho control-panel (não gigante)
+- Sliders: trilho fino, fill sutil, knob pequeno premium; label uppercase pequena acima
+
+RESULTADO:
+Tudo deve parecer 1 produto só (mesma família visual), igual à referência AI Studio control panel.

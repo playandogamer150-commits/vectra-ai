@@ -929,15 +929,15 @@ export default function ModelsLabStudioPage() {
   const isGeneratingImage = generateImageMutation.isPending || isPolling;
 
   return (
-    <div className="min-h-screen bg-background pt-20 pb-12">
-      <div className="max-w-6xl mx-auto px-4 md:px-8">
+    <div className="vectra-studio-bg">
+      <div className="vectra-studio-content pt-20 pb-12">
         <div className="mb-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold mb-2" data-testid="text-modelslab-title">
+              <h1 className="text-3xl font-bold mb-2 text-white/90" data-testid="text-modelslab-title">
                 {t.modelslab.title}
               </h1>
-              <p className="text-muted-foreground" data-testid="text-modelslab-subtitle">
+              <p className="text-white/55" data-testid="text-modelslab-subtitle">
                 {t.modelslab.subtitle}
               </p>
             </div>
@@ -1005,15 +1005,12 @@ export default function ModelsLabStudioPage() {
           {/* Input Panel */}
           <div className="space-y-6">
             {/* Image Upload */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ImagePlus className="w-5 h-5" />
-                  {t.modelslab.referenceImages}
-                </CardTitle>
-                <CardDescription>{t.modelslab.inputDescription}</CardDescription>
-              </CardHeader>
-              <CardContent>
+            <div className="vectra-studio-card">
+              <div className="vectra-studio-card-header">
+                <ImagePlus className="w-4 h-4 vectra-studio-card-icon" />
+                <span className="vectra-studio-card-title">{t.modelslab.referenceImages}</span>
+              </div>
+              <div className="space-y-4">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -1081,32 +1078,25 @@ export default function ModelsLabStudioPage() {
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
 
             {/* Prompt Engine */}
-            <Card>
+            <div className="vectra-studio-card">
               <Collapsible open={usePromptEngine} onOpenChange={setUsePromptEngine}>
-                <CardHeader className="pb-3">
-                  <CollapsibleTrigger className="flex items-center justify-between w-full" data-testid="button-toggle-prompt-engine">
-                    <CardTitle className="flex items-center gap-2">
-                      <Wand2 className="w-5 h-5" />
-                      {t.modelslab.promptEngine || "Prompt Engine"}
-                    </CardTitle>
-                    <div className="flex items-center gap-2">
-                      <Badge variant={usePromptEngine ? "default" : "secondary"} data-testid="badge-prompt-engine-status">
-                        {usePromptEngine ? t.modelslab.enabled || "Enabled" : t.modelslab.disabled || "Disabled"}
-                      </Badge>
-                      {usePromptEngine ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </div>
-                  </CollapsibleTrigger>
-                  <CardDescription>
-                    {t.modelslab.promptEngineDescription || "Use blueprints, filters and profiles to generate professional prompts"}
-                  </CardDescription>
-                </CardHeader>
+                <div className="vectra-studio-card-header cursor-pointer" onClick={() => setUsePromptEngine(!usePromptEngine)}>
+                  <Wand2 className="w-4 h-4 vectra-studio-card-icon" />
+                  <span className="vectra-studio-card-title flex-1">{t.modelslab.promptEngine || "Prompt Engine"}</span>
+                  <div className="flex items-center gap-2">
+                    <span className={`vectra-pill text-[10px] ${usePromptEngine ? 'vectra-pill--active' : ''}`} data-testid="badge-prompt-engine-status">
+                      {usePromptEngine ? t.modelslab.enabled || "Enabled" : t.modelslab.disabled || "Disabled"}
+                    </span>
+                    {usePromptEngine ? <ChevronUp className="w-4 h-4 text-white/50" /> : <ChevronDown className="w-4 h-4 text-white/50" />}
+                  </div>
+                </div>
                 
                 <CollapsibleContent>
-                  <CardContent className="space-y-4 pt-0">
+                  <div className="space-y-4 pt-4">
                     {/* Profile Selector */}
                     <div className="space-y-2">
                       <Label className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
@@ -1279,20 +1269,18 @@ export default function ModelsLabStudioPage() {
                       )}
                       {t.modelslab.generatePrompt || "Generate Prompt"}
                     </Button>
-                  </CardContent>
+                  </div>
                 </CollapsibleContent>
               </Collapsible>
-            </Card>
+            </div>
 
             {/* Manual Prompt & Generation */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5" />
-                  {t.modelslab.prompt}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="vectra-studio-card">
+              <div className="vectra-studio-card-header">
+                <Sparkles className="w-4 h-4 vectra-studio-card-icon" />
+                <span className="vectra-studio-card-title">{t.modelslab.prompt}</span>
+              </div>
+              <div className="space-y-4">
                 <Textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
@@ -1333,20 +1321,17 @@ export default function ModelsLabStudioPage() {
                     </>
                   )}
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
 
           {/* Output Panel */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5" />
-                {t.modelslab.outputTitle}
-              </CardTitle>
-              <CardDescription>{t.modelslab.outputDescription}</CardDescription>
-            </CardHeader>
-            <CardContent>
+          <div className="vectra-studio-card">
+            <div className="vectra-studio-card-header">
+              <Sparkles className="w-4 h-4 vectra-studio-card-icon" />
+              <span className="vectra-studio-card-title">{t.modelslab.outputTitle}</span>
+            </div>
+            <div className="space-y-4">
               {result?.output && result.output.length > 0 ? (
                 <div className="space-y-4">
                   {result.output.map((imageUrl, index) => (
@@ -1526,33 +1511,26 @@ export default function ModelsLabStudioPage() {
                   </p>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Video Result Viewer - Shows generated video in main view */}
           {videoResult?.output && videoResult.output.length > 0 && (
-            <Card className="mt-6 border-2 border-primary/20">
-              <CardHeader>
-                <div className="flex items-center justify-between gap-2">
-                  <CardTitle className="flex items-center gap-2">
-                    <Video className="w-5 h-5" />
-                    {t.modelslab.videoResult || "Generated Video"}
-                  </CardTitle>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={clearVideoResult}
-                    title={t.modelslab.close || "Close"}
-                    data-testid="button-close-video-result"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-                <CardDescription>
-                  {t.modelslab.videoResultDescription || "Your video is ready! Download or save it to your gallery."}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="vectra-studio-card mt-6 border-2 border-primary/20">
+              <div className="vectra-studio-card-header">
+                <Video className="w-4 h-4 vectra-studio-card-icon" />
+                <span className="vectra-studio-card-title flex-1">{t.modelslab.videoResult || "Generated Video"}</span>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={clearVideoResult}
+                  title={t.modelslab.close || "Close"}
+                  data-testid="button-close-video-result"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="space-y-4">
                 <video 
                   src={getProxiedVideoUrl(videoResult.output[0])} 
                   controls 
