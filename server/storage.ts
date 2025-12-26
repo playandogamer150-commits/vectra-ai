@@ -40,6 +40,7 @@ export interface IStorage {
   getFilters(): Promise<Filter[]>;
   getFilter(key: string): Promise<Filter | undefined>;
   createFilter(filter: InsertFilter): Promise<Filter>;
+  deleteFiltersByKeys(keys: string[]): Promise<number>;
   
   getHistory(userId?: string): Promise<GeneratedPrompt[]>;
   getGeneratedPrompt(id: string): Promise<GeneratedPrompt | undefined>;
@@ -215,6 +216,18 @@ export class DatabaseStorage implements IStorage {
   async createFilter(filter: InsertFilter): Promise<Filter> {
     const [created] = await db.insert(filters).values(filter).returning();
     return created;
+  }
+
+  async deleteFiltersByKeys(keys: string[]): Promise<number> {
+    if (keys.length === 0) return 0;
+    let deletedCount = 0;
+    for (const key of keys) {
+      const result = await db.delete(filters).where(eq(filters.key, key));
+      if (result.rowCount) {
+        deletedCount += result.rowCount;
+      }
+    }
+    return deletedCount;
   }
 
   async getHistory(userId?: string): Promise<GeneratedPrompt[]> {

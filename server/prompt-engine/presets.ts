@@ -390,43 +390,7 @@ export const defaultFilters: FilterDefinition[] = [
       closeup: "extreme close-up shot",
     },
   },
-  {
-    key: "expression",
-    label: "Expression",
-    schema: { type: "select", options: ["neutral", "happy", "serious", "intense", "candid"] },
-    effect: {
-      neutral: "neutral facial expression",
-      happy: "joyful smiling expression",
-      serious: "serious contemplative look",
-      intense: "intense focused expression",
-      candid: "natural candid expression",
-    },
-  },
-  {
-    key: "lighting_mood",
-    label: "Lighting Mood",
-    schema: { type: "select", options: ["natural", "studio", "dramatic", "soft", "neon"] },
-    effect: {
-      natural: "natural ambient lighting",
-      studio: "professional studio lighting",
-      dramatic: "dramatic high contrast lighting",
-      soft: "soft diffused lighting",
-      neon: "neon colored lighting",
-    },
-  },
-  {
-    key: "scene_setting",
-    label: "Scene Setting",
-    schema: { type: "select", options: ["indoor", "outdoor", "urban", "nature", "abstract"] },
-    effect: {
-      indoor: "indoor environment setting",
-      outdoor: "outdoor location setting",
-      urban: "urban city environment",
-      nature: "natural outdoor scenery",
-      abstract: "abstract background environment",
-    },
-  },
-];
+  ];
 
 export const defaultBaseModels: BaseModelDefinition[] = [
   {

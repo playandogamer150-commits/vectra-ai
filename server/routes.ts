@@ -170,7 +170,31 @@ async function logUsage(userId: string, type: "prompt" | "image" | "video", meta
   await storage.logUsage(userId, type, metadata);
 }
 
+const LEGACY_FILTER_KEYS = [
+  "body_type",
+  "pose_style", 
+  "clothing_state",
+  "setting",
+  "lighting",
+  "skin_detail",
+  "expression",
+  "lighting_mood",
+  "scene_setting",
+  "Tipo de Corpo",
+  "Estilo de Pose",
+  "Estado da Roupa",
+  "Cenário",
+  "Iluminação",
+  "Detalhe da Pele",
+  "Expressão",
+];
+
 async function seedDatabase() {
+  const deletedCount = await storage.deleteFiltersByKeys(LEGACY_FILTER_KEYS);
+  if (deletedCount > 0) {
+    console.log(`Cleaned up ${deletedCount} legacy filters from database`);
+  }
+
   const existingProfiles = await storage.getProfiles();
   if (existingProfiles.length === 0) {
     console.log("Seeding database with initial data...");
