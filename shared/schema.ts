@@ -36,6 +36,7 @@ export const appUsers = pgTable("app_users", {
   defaultLanguage: varchar("default_language", { length: 5 }).default("pt-BR"),
   defaultLlmProfileId: varchar("default_llm_profile_id"),
   theme: text("theme").default("system"),
+  tutorialCompleted: integer("tutorial_completed").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -449,6 +450,7 @@ export const updateProfileSchema = z.object({
   defaultLanguage: z.enum(["pt-BR", "en"]).optional(),
   defaultLlmProfileId: z.string().optional().nullable(),
   theme: z.enum(["light", "dark", "system"]).optional(),
+  tutorialCompleted: z.number().min(0).max(1).optional(),
 });
 
 export type UpdateProfileRequest = z.infer<typeof updateProfileSchema>;

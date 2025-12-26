@@ -25,6 +25,8 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { exportToJSON, exportToYAML, exportToPDF } from "@/lib/export-utils";
+import { UpgradeModal } from "@/components/upgrade-modal";
+import { OnboardingTutorial } from "@/components/onboarding-tutorial";
 
 interface ModelsLabResponse {
   status: string;
@@ -209,6 +211,13 @@ export default function ModelsLabStudioPage() {
   
   // HQ quota exhausted popup state
   const [showHqExhaustedPopup, setShowHqExhaustedPopup] = useState(false);
+  
+  // Upgrade modal state for premium features
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeFeature, setUpgradeFeature] = useState<"video" | "image" | "prompt" | "lora" | "filters" | "general">("general");
+  
+  // Onboarding tutorial state
+  const [showTutorial, setShowTutorial] = useState(false);
   const [currentQuotas, setCurrentQuotas] = useState<{
     hq: { used: number; limit: number };
     standard: { used: number; limit: number };
@@ -258,12 +267,25 @@ export default function ModelsLabStudioPage() {
     queryKey: ["/api/profile/usage"],
   });
 
-  // User profile for default settings
-  const { data: userProfile } = useQuery<{ defaultLlmProfileId: string | null }>({
+  // User profile for default settings and tutorial status
+  interface UserProfileData {
+    defaultLlmProfileId?: string | null;
+    tutorialCompleted?: number;
+    plan?: string;
+  }
+  
+  const { data: userProfile } = useQuery<UserProfileData>({
     queryKey: ["/api/profile"],
-    select: (data: { defaultLlmProfileId?: string | null }) => ({
-      defaultLlmProfileId: data.defaultLlmProfileId || null,
-    }),
+  });
+  
+  // Mutation to mark tutorial as completed
+  const completeTutorialMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("PATCH", "/api/profile", { tutorialCompleted: 1 });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+    },
   });
 
   // Auto-populate from URL parameters (blueprint from library)
@@ -316,6 +338,18 @@ export default function ModelsLabStudioPage() {
       }
     }
   }, [userProfile, profiles, selectedProfile]);
+
+  // Show tutorial for new free tier users
+  useEffect(() => {
+    if (userProfile && userProfile.tutorialCompleted === 0 && userProfile.plan !== "pro") {
+      setShowTutorial(true);
+    }
+  }, [userProfile]);
+
+  const handleTutorialComplete = () => {
+    setShowTutorial(false);
+    completeTutorialMutation.mutate();
+  };
 
   // Gallery state
   const [showGallery, setShowGallery] = useState(false);
@@ -486,11 +520,17 @@ export default function ModelsLabStudioPage() {
       }
     },
     onError: (error) => {
-      toast({ 
-        title: t.modelslab.videoError || "Video generation failed", 
-        description: String(error),
-        variant: "destructive" 
-      });
+      const errorMsg = String(error).toLowerCase();
+      if (errorMsg.includes("limit") || errorMsg.includes("premium") || errorMsg.includes("403")) {
+        setUpgradeFeature("video");
+        setShowUpgradeModal(true);
+      } else {
+        toast({ 
+          title: t.modelslab.videoError || "Video generation failed", 
+          description: String(error),
+          variant: "destructive" 
+        });
+      }
     },
   });
 
@@ -740,11 +780,17 @@ export default function ModelsLabStudioPage() {
       });
     },
     onError: (error: Error) => {
-      toast({ 
-        title: t.modelslab.error, 
-        description: error.message, 
-        variant: "destructive" 
-      });
+      const errorMsg = error.message.toLowerCase();
+      if (errorMsg.includes("limit") || errorMsg.includes("premium") || errorMsg.includes("403")) {
+        setUpgradeFeature("prompt");
+        setShowUpgradeModal(true);
+      } else {
+        toast({ 
+          title: t.modelslab.error, 
+          description: error.message, 
+          variant: "destructive" 
+        });
+      }
     },
   });
 
@@ -797,11 +843,17 @@ export default function ModelsLabStudioPage() {
       }
     },
     onError: (error: Error) => {
-      toast({
-        title: t.modelslab.error,
-        description: error.message,
-        variant: "destructive",
-      });
+      const errorMsg = error.message.toLowerCase();
+      if (errorMsg.includes("limit") || errorMsg.includes("premium") || errorMsg.includes("403")) {
+        setUpgradeFeature("image");
+        setShowUpgradeModal(true);
+      } else {
+        toast({
+          title: t.modelslab.error,
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     },
   });
 
@@ -2188,6 +2240,19 @@ export default function ModelsLabStudioPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Upgrade Modal for Premium Features */}
+      <UpgradeModal 
+        open={showUpgradeModal} 
+        onOpenChange={setShowUpgradeModal}
+        feature={upgradeFeature}
+      />
+
+      {/* Onboarding Tutorial for First-Time Users */}
+      <OnboardingTutorial 
+        open={showTutorial} 
+        onComplete={handleTutorialComplete}
+      />
     </div>
   );
 }

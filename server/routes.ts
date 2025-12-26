@@ -278,11 +278,13 @@ export async function registerRoutes(
       const user = req.user as any;
       
       if (userId === DEV_USER_ID) {
+        // In dev mode, use localStorage-like behavior via a static variable
+        const devTutorialCompleted = (global as any).__devTutorialCompleted ?? 0;
         return res.json({
           id: DEV_USER_ID,
           username: user?.claims?.name || "Developer",
           email: user?.claims?.email || null,
-          plan: "pro",
+          plan: "free",
           displayName: user?.claims?.name || "Developer",
           avatarUrl: user?.claims?.profile_image || null,
           tagline: null,
@@ -290,6 +292,7 @@ export async function registerRoutes(
           defaultLanguage: "pt-BR",
           defaultLlmProfileId: null,
           theme: "system",
+          tutorialCompleted: devTutorialCompleted,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         });
@@ -324,12 +327,59 @@ export async function registerRoutes(
       const user = req.user as any;
       
       if (userId === DEV_USER_ID) {
-        return res.json({ success: true, message: "Profile updated (dev mode)" });
+        const data = updateProfileSchema.parse(req.body);
+        // Persist tutorialCompleted in dev mode
+        if (typeof data.tutorialCompleted === "number") {
+          (global as any).__devTutorialCompleted = data.tutorialCompleted;
+        }
+        return res.json({ success: true, message: "Profile updated (dev mode)", ...data });
       }
 
       const data = updateProfileSchema.parse(req.body);
       
       // Check if user exists, create if not (upsert pattern)
+      let appUser = await storage.getAppUser(userId);
+      if (!appUser) {
+        appUser = await storage.createAppUserFromReplit(
+          userId,
+          user?.claims?.name || "User"
+        );
+      }
+      
+      const updated = await storage.updateAppUser(userId, data);
+      
+      if (!updated) {
+        return res.status(500).json({ error: "Failed to update profile" });
+      }
+
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({ error: "Invalid request", details: error.errors });
+      }
+      console.error("Error updating profile:", error);
+      res.status(500).json({ error: "Failed to update profile" });
+    }
+  });
+
+  // PATCH alias for profile updates (used by tutorial completion)
+  app.patch("/api/profile", async (req, res) => {
+    try {
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      
+      const user = req.user as any;
+      
+      if (userId === DEV_USER_ID) {
+        const data = updateProfileSchema.parse(req.body);
+        if (typeof data.tutorialCompleted === "number") {
+          (global as any).__devTutorialCompleted = data.tutorialCompleted;
+        }
+        return res.json({ success: true, message: "Profile updated (dev mode)", ...data });
+      }
+
+      const data = updateProfileSchema.parse(req.body);
+      
       let appUser = await storage.getAppUser(userId);
       if (!appUser) {
         appUser = await storage.createAppUserFromReplit(
