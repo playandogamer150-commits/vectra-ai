@@ -1360,8 +1360,16 @@ export async function registerRoutes(
       const hasCustomKey = isAdmin && !!encryptedApiKey;
       
       // All admins bypass quotas, regardless of having a custom key
-      let imageQuota: any = null;
-      if (!isAdmin) {
+      let imageQuota: ImageQuotaResult;
+      if (isAdmin) {
+        // Admins get unlimited HQ access
+        imageQuota = { 
+          allowed: true, 
+          isPro: true, 
+          modelId: MODELSLAB_MODELS.HQ, 
+          imageQuality: "hq" 
+        };
+      } else {
         imageQuota = await checkImageQuotaAndModel(userId);
         if (!imageQuota.allowed) {
           return res.status(403).json({ 
