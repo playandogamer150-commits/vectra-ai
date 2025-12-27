@@ -317,7 +317,17 @@ export async function registerRoutes(
         const isAdminInEnv = adminEmailsEnv.includes(userEmail.toLowerCase());
         const isAdminEmail = isAdminInDb || isAdminInEnv;
         
+        console.log("[admin-check]", { 
+          userEmail, 
+          isAdminInDb, 
+          isAdminInEnv, 
+          isAdminEmail, 
+          currentIsAdmin: appUser.isAdmin,
+          adminEmailsEnv 
+        });
+        
         if (isAdminEmail && appUser.isAdmin !== 1) {
+          console.log("[admin-check] Updating user to admin");
           appUser = (await storage.updateAppUser(userId, { isAdmin: 1 })) || appUser;
         }
       }
