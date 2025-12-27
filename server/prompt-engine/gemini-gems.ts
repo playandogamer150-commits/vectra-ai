@@ -56,7 +56,13 @@ export const FACE_SWAPPER_GEM: GeminiGemManifest = {
     prefix: `[FACIAL BIOMETRICS LOCKDOWN MODE]
 Ultra-high fidelity facial reconstruction with biometric preservation.
 Maintain exact facial geometry: landmark alignment, bone structure, eye spacing.
-Preserve microexpressions and facial muscle topology.`,
+Preserve microexpressions and facial muscle topology.
+
+[BODY MARKING PRESERVATION - CRITICAL]
+PRESERVE EXACT original tattoos - do NOT add, remove, or modify any tattoos.
+Maintain all existing body markings, scars, and skin features WITHOUT alteration.
+The subject's tattoos are FIXED reference points - replicate them EXACTLY as shown.
+DO NOT invent new tattoos or body art that doesn't exist in the reference image.`,
     
     suffix: `Technical requirements:
 - Exact replication of facial proportions (Golden Ratio Φ ≈ 1.618)
@@ -69,7 +75,10 @@ Preserve microexpressions and facial muscle topology.`,
     negativePrompt: `deformed face, asymmetric eyes, wrong eye color, plastic skin, airbrushed, 
 uncanny valley, facial distortion, mask artifacts, halo around face, color mismatch, 
 wrong skin tone, floating features, disconnected face, blurred edges, 
-bad facial anatomy, extra features, missing features, wrong proportions`,
+bad facial anatomy, extra features, missing features, wrong proportions,
+extra tattoos, new tattoos, additional body art, tattoo modifications, altered tattoos,
+tattoos appearing where none exist, invented tattoos, different tattoo designs,
+modified skin markings, added scars, removed tattoos, tattoo style changes`,
     
     qualityModifiers: [
       "photorealistic skin texture",
@@ -88,7 +97,11 @@ bad facial anatomy, extra features, missing features, wrong proportions`,
       "maintain original identity",
       "biometric consistency",
       "facial landmark preservation",
-      "expression microdetail capture"
+      "expression microdetail capture",
+      "preserve exact tattoos",
+      "maintain body markings",
+      "no tattoo alterations",
+      "skin marking fidelity"
     ],
     
     anatomyModifiers: [
@@ -103,13 +116,13 @@ bad facial anatomy, extra features, missing features, wrong proportions`,
   
   technicalParams: {
     cfgScaleRange: [7, 9],
-    denoisingStrengthRange: [0.1, 0.3],
+    denoisingStrengthRange: [0.15, 0.25],
     recommendedSamplers: ["DPM++ 2M Karras", "Euler a"],
     controlNetWeights: {
       openPose: 1.0,
-      depth: 0.7,
-      canny: 0.5,
-      ipAdapter: 0.55
+      depth: 0.8,
+      canny: 0.6,
+      ipAdapter: 0.75
     }
   },
   
@@ -119,7 +132,10 @@ bad facial anatomy, extra features, missing features, wrong proportions`,
     "Chromatic compatibility - matching white balance and saturation",
     "Temporal stability - no flicker between frames",
     "Edge seamlessness - invisible mask transitions",
-    "Lighting consistency - shadows match scene key light"
+    "Lighting consistency - shadows match scene key light",
+    "Tattoo preservation - NO new tattoos added",
+    "Body marking fidelity - all original tattoos preserved exactly",
+    "Skin feature accuracy - scars and marks unchanged"
   ]
 };
 
@@ -154,7 +170,9 @@ Target: Indistinguishable from real smartphone photography.`,
 overly posed, stock photo aesthetic, unnatural colors, oversaturated, 
 HDR artifacts, artificial bokeh, lens flare abuse, plastic skin texture,
 fashion magazine style, advertising aesthetic, corporate look,
-deformed hands, extra fingers, bad anatomy, mutated limbs`,
+deformed hands, extra fingers, bad anatomy, mutated limbs,
+extra tattoos, new tattoos, additional body art, tattoo modifications, altered tattoos,
+tattoos appearing where none exist, invented tattoos, different tattoo designs`,
     
     qualityModifiers: [
       "authentic UGC aesthetic",
@@ -173,7 +191,10 @@ deformed hands, extra fingers, bad anatomy, mutated limbs`,
       "recognizable subject",
       "preserved distinctive features",
       "maintained facial structure",
-      "consistent skin tone"
+      "consistent skin tone",
+      "preserve original tattoos",
+      "maintain body art exactly",
+      "skin marking consistency"
     ],
     
     anatomyModifiers: [
@@ -188,13 +209,13 @@ deformed hands, extra fingers, bad anatomy, mutated limbs`,
   
   technicalParams: {
     cfgScaleRange: [7, 10],
-    denoisingStrengthRange: [0.15, 0.35],
+    denoisingStrengthRange: [0.15, 0.30],
     recommendedSamplers: ["DPM++ 2M Karras", "Euler a"],
     controlNetWeights: {
       openPose: 1.0,
-      depth: 0.6,
-      canny: 0.4,
-      ipAdapter: 0.6
+      depth: 0.7,
+      canny: 0.5,
+      ipAdapter: 0.70
     }
   },
   
@@ -204,13 +225,116 @@ deformed hands, extra fingers, bad anatomy, mutated limbs`,
     "Natural imperfections - not overly processed",
     "Anatomy correctness - no deformed features",
     "Lighting realism - consistent with scene",
-    "Platform optimization - correct aspect ratio and color"
+    "Platform optimization - correct aspect ratio and color",
+    "Tattoo fidelity - original tattoos preserved",
+    "Body marking accuracy - no new markings added"
+  ]
+};
+
+/**
+ * TATTOO PRESERVATION Gem Manifest
+ * Specialized in: Preserving tattoos, scars, and body markings with exact fidelity
+ * Use case: Face swap for tattooed subjects where body art must remain unchanged
+ */
+export const TATTOO_PRESERVATION_GEM: GeminiGemManifest = {
+  id: "tattoo_preservation",
+  name: "TATTOO PRESERVATION",
+  description: "Especialista em preservar tatuagens, cicatrizes e marcas corporais com fidelidade exata",
+  category: "identity_preservation",
+  priority: 1,
+  
+  promptEnhancements: {
+    prefix: `[TATTOO & BODY MARKING PRESERVATION MODE - MAXIMUM PRIORITY]
+This is a TATTOOED subject. Their tattoos are FIXED IDENTITY MARKERS.
+CRITICAL: Preserve ALL existing tattoos EXACTLY as shown in reference.
+DO NOT add ANY new tattoos, body art, or skin markings.
+DO NOT modify, extend, or alter existing tattoo designs.
+DO NOT remove or fade any visible tattoos.
+Tattoo locations, sizes, and designs must match reference PRECISELY.
+
+[SKIN FIDELITY LOCKDOWN]
+Treat all visible skin markings as immutable reference points.
+Replicate exact tattoo line work, shading, and color saturation.
+Preserve natural skin texture around and within tattoo areas.`,
+    
+    suffix: `Tattoo preservation requirements:
+- EXACT replication of all visible tattoos (position, size, design, color)
+- NO new tattoos or body art invention
+- NO tattoo modifications, extensions, or style changes
+- Preserve tattoo edges and boundaries precisely
+- Maintain original tattoo color saturation and contrast
+- Keep scar tissue and skin imperfections intact
+- Replicate tattoo aging/wear if present in reference
+
+VALIDATION: Count the tattoos in reference vs output - must match exactly.`,
+    
+    negativePrompt: `extra tattoos, new tattoos, additional tattoos, invented tattoos,
+tattoo modifications, altered tattoos, extended tattoos, changed tattoo designs,
+tattoos appearing where none exist, different tattoo style, removed tattoos,
+faded tattoos that should be visible, wrong tattoo placement, incorrect tattoo size,
+added body art, new piercings, new scars, modified skin markings,
+tattoo color changes, tattoo line work alterations, missing tattoos`,
+    
+    qualityModifiers: [
+      "exact tattoo replication",
+      "precise body art preservation",
+      "tattoo-accurate skin rendering",
+      "original ink colors maintained",
+      "tattoo line work fidelity",
+      "skin marking consistency",
+      "body art reference matching",
+      "tattoo boundary preservation"
+    ],
+    
+    fidelityModifiers: [
+      "zero tattoo alterations",
+      "exact tattoo count preservation",
+      "tattoo position lock",
+      "body marking immutability",
+      "skin feature preservation",
+      "tattoo design fidelity",
+      "original body art only",
+      "no invented markings"
+    ],
+    
+    anatomyModifiers: [
+      "tattoo placement accuracy",
+      "correct skin topology",
+      "natural tattoo curvature on body",
+      "proper tattoo perspective",
+      "anatomically consistent markings",
+      "body-accurate tattoo sizing"
+    ]
+  },
+  
+  technicalParams: {
+    cfgScaleRange: [8, 10],
+    denoisingStrengthRange: [0.10, 0.20],
+    recommendedSamplers: ["DPM++ 2M Karras", "Euler a"],
+    controlNetWeights: {
+      openPose: 1.0,
+      depth: 0.9,
+      canny: 0.8,
+      ipAdapter: 0.85
+    }
+  },
+  
+  qualityChecks: [
+    "Tattoo count match - exact same number as reference",
+    "Tattoo position accuracy - correct body placement",
+    "Tattoo design fidelity - no alterations to artwork",
+    "Tattoo size consistency - matches reference proportions",
+    "No invented tattoos - zero new body art",
+    "Color accuracy - ink colors match reference",
+    "Scar preservation - all skin features maintained",
+    "Boundary sharpness - tattoo edges are crisp"
   ]
 };
 
 export const GEMINI_GEMS: Record<string, GeminiGemManifest> = {
   face_swapper: FACE_SWAPPER_GEM,
   ai_instagram_media: AI_INSTAGRAM_MEDIA_GEM,
+  tattoo_preservation: TATTOO_PRESERVATION_GEM,
 };
 
 export interface GemOptimizationResult {
