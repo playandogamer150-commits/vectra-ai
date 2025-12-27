@@ -77,6 +77,7 @@ const VFX_OPTIONS = [
   { id: "vhs", label: "VHS", icon: Tv, description: "Efeito de fita VHS retrô dos anos 80/90" },
   { id: "35mm", label: "35MM", icon: Film, description: "Granulação e textura de filme analógico 35mm" },
   { id: "nvg", label: "NVG", icon: Eye, description: "Visão noturna com tonalidade verde militar" },
+  { id: "sony90s", label: "GHS", icon: "sony90s", description: "Sony GHS 2000 - Visão noturna dos anos 90 com fósforo verde" },
   { id: "cine", label: "CINE", icon: Video, description: "Color grading cinematográfico profissional" },
   { id: "gltch", label: "GLTCH", icon: Zap, description: "Efeito de glitch digital e distorção" },
   { id: "blum", label: "BLUM", icon: SunDim, description: "Efeito bloom com brilho suave nas luzes" },
@@ -174,14 +175,47 @@ function AccordionSection({ title, icon, isOpen, onToggle, children, testId, bad
 }
 
 interface TooltipButtonProps {
-  option: { id: string; label: string; icon: React.ComponentType<{ className?: string }>; description: string };
+  option: { id: string; label: string; icon: React.ComponentType<{ className?: string }> | string; description: string };
   isSelected: boolean;
   onClick: () => void;
   testId: string;
   showLabel?: boolean;
 }
 
+function Sony90sIcon({ className }: { className?: string }) {
+  return (
+    <svg 
+      className={className} 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="6" strokeDasharray="2 2" />
+      <circle cx="12" cy="12" r="2" fill="currentColor" />
+      <line x1="12" y1="2" x2="12" y2="5" />
+      <line x1="12" y1="19" x2="12" y2="22" />
+      <line x1="2" y1="12" x2="5" y2="12" />
+      <line x1="19" y1="12" x2="22" y2="12" />
+      <text x="12" y="16" fontSize="4" textAnchor="middle" fill="currentColor" stroke="none">90s</text>
+    </svg>
+  );
+}
+
+function renderVfxIcon(icon: React.ComponentType<{ className?: string }> | string, size: string = "w-3.5 h-3.5") {
+  if (icon === "sony90s") {
+    return <Sony90sIcon className={size} />;
+  }
+  const IconComponent = icon as React.ComponentType<{ className?: string }>;
+  return <IconComponent className={size} />;
+}
+
 function TooltipButton({ option, isSelected, onClick, testId, showLabel = false }: TooltipButtonProps) {
+  const renderIcon = () => renderVfxIcon(option.icon, "w-3.5 h-3.5");
+
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -192,7 +226,7 @@ function TooltipButton({ option, isSelected, onClick, testId, showLabel = false 
           className={cn("gap-1.5", showLabel ? "" : "px-2")}
           data-testid={testId}
         >
-          <option.icon className="w-3.5 h-3.5" />
+          {renderIcon()}
           {showLabel && <span className="text-xs">{option.label}</span>}
         </Button>
       </TooltipTrigger>
@@ -397,7 +431,7 @@ export function VectraCinematicPanel({
         {VFX_OPTIONS.map(opt => (
           <div key={opt.id} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30">
             <div className="p-1 rounded bg-muted">
-              <opt.icon className="w-3.5 h-3.5" />
+              {renderVfxIcon(opt.icon, "w-3.5 h-3.5")}
             </div>
             <div>
               <p className="text-xs font-medium">{opt.label}</p>

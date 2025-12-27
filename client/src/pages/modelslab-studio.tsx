@@ -944,6 +944,7 @@ export default function ModelsLabStudioPage() {
             "vhs": "VHS tape recording effect with scan lines, tape distortion, chromatic aberration, analog video noise, magnetic tape artifacts, VCR aesthetic",
             "35mm": "35mm analog film photography with authentic film grain, halation, color rendition of Kodak Portra, slight vignetting, film emulsion texture",
             "nvg": "NIGHT VISION GOGGLES view, GREEN MONOCHROME phosphor screen, NVG grain noise, infrared illumination glow, military thermal imaging aesthetic, Gen 3 night vision look",
+            "sony90s": "SONY GHS 2000 camcorder night vision from the 1990s, green phosphor screen glow, VHS-quality infrared recording, 90s night shot mode, consumer-grade night vision with visible scan lines, ghosting artifacts, low-light amplification noise, vintage Sony Handycam NightShot aesthetic, green monochrome with white hot spots",
             "cine": "cinematic movie color grading, anamorphic lens flare, Hollywood blockbuster look, theatrical film print colors, 2.39:1 aspect ratio feel",
             "gltch": "digital glitch effect with RGB split, data corruption artifacts, pixel displacement, VHS tracking errors, databending aesthetic",
             "blum": "heavy bloom lighting effect, bright light diffusion, dreamy glow, overexposed highlights bleeding, soft focus bloom",
