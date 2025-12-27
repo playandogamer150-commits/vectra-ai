@@ -103,6 +103,16 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
+    console.log("[auth] Login attempt", { 
+      hostname: req.hostname, 
+      protocol: req.protocol,
+      secure: req.secure,
+      headers: {
+        host: req.headers.host,
+        origin: req.headers.origin,
+        referer: req.headers.referer,
+      }
+    });
     ensureStrategy(req.hostname);
     passport.authenticate(`replitauth:${req.hostname}`, {
       prompt: "login consent",
@@ -111,6 +121,13 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/callback", (req, res, next) => {
+    console.log("[auth] Callback received", { 
+      hostname: req.hostname,
+      query: req.query,
+      hasError: !!req.query.error,
+      error: req.query.error,
+      errorDescription: req.query.error_description
+    });
     ensureStrategy(req.hostname);
     passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: "/",
