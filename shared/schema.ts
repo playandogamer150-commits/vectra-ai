@@ -240,6 +240,14 @@ export const savedImages = pgTable("saved_images", {
     width?: number;
     height?: number;
     generationTime?: number;
+    imageQuality?: "hq" | "standard";
+    modelId?: string;
+    cinematicSettings?: {
+      optics?: { style?: string; aspectRatio?: string; sampleCount?: number };
+      vfx?: { effects?: string[]; intensity?: number };
+      styleDna?: { brand?: string; fit?: string };
+      activeGems?: string[];
+    };
   }>().default({}),
   isFavorite: integer("is_favorite").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -677,6 +685,24 @@ export const saveImageRequestSchema = z.object({
     width: z.number().optional(),
     height: z.number().optional(),
     generationTime: z.number().optional(),
+    imageQuality: z.enum(["hq", "standard"]).optional(),
+    modelId: z.string().optional(),
+    cinematicSettings: z.object({
+      optics: z.object({
+        style: z.string().optional(),
+        aspectRatio: z.string().optional(),
+        sampleCount: z.number().optional(),
+      }).optional(),
+      vfx: z.object({
+        effects: z.array(z.string()).optional(),
+        intensity: z.number().optional(),
+      }).optional(),
+      styleDna: z.object({
+        brand: z.string().optional(),
+        fit: z.string().optional(),
+      }).optional(),
+      activeGems: z.array(z.string()).optional(),
+    }).optional(),
   }).optional().default({}),
 });
 
