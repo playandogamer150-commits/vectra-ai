@@ -18,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useI18n } from "@/lib/i18n";
 
 interface VectraCinematicPanelProps {
@@ -50,6 +52,8 @@ export interface CinematicSettings {
     moodboard: { id: string; url: string }[];
   };
   customApiKey?: string;
+  bodyFidelity?: number;
+  preserveTattoos?: boolean;
 }
 
 interface SubjectData {
@@ -274,6 +278,9 @@ export function VectraCinematicPanel({
   
   const [customApiKey, setCustomApiKey] = useState("");
   
+  const [bodyFidelity, setBodyFidelity] = useState(75);
+  const [preserveTattoos, setPreserveTattoos] = useState(true);
+  
   const [openSection, setOpenSection] = useState<string | null>("optics");
 
   const toggleSection = (section: string) => {
@@ -306,6 +313,8 @@ export function VectraCinematicPanel({
           moodboard,
         },
         customApiKey: customApiKey || undefined,
+        bodyFidelity,
+        preserveTattoos,
       };
       onSettingsChange(settings);
     }
@@ -314,7 +323,7 @@ export function VectraCinematicPanel({
     vfxEffects, vfxIntensity,
     subjectA, subjectB,
     styleBrand, styleLayering, styleFit, styleOuterwear, styleFootwear, styleBottom, moodboard,
-    customApiKey, onSettingsChange
+    customApiKey, bodyFidelity, preserveTattoos, onSettingsChange
   ]);
 
   const handleImageUpload = useCallback((
@@ -666,6 +675,47 @@ export function VectraCinematicPanel({
               testId="upload-face"
             />
           </VectraTabContent>
+          
+          <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-4">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-500">FIDELIDADE</Badge>
+              <span className="text-xs text-muted-foreground">Preservar detalhes corporais</span>
+            </div>
+            
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium">Fidelidade Corporal</span>
+                <span className="text-xs text-muted-foreground">{bodyFidelity}%</span>
+              </div>
+              <VectraSlider
+                value={bodyFidelity}
+                onChange={setBodyFidelity}
+                min={0}
+                max={100}
+                testId="slider-body-fidelity"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Maior fidelidade = menos criatividade da IA. Ideal para preservar tatuagens, cicatrizes e marcas.
+              </p>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="preserve-tattoos" className="text-xs font-medium">
+                  Preservar Tatuagens
+                </Label>
+                <p className="text-[10px] text-muted-foreground">
+                  Força modelo com mais controle para não adicionar/remover tatuagens
+                </p>
+              </div>
+              <Switch
+                id="preserve-tattoos"
+                checked={preserveTattoos}
+                onCheckedChange={setPreserveTattoos}
+                data-testid="switch-preserve-tattoos"
+              />
+            </div>
+          </div>
         </div>
       </AccordionSection>
 
