@@ -819,13 +819,14 @@ export async function registerRoutes(
       if (validated.cinematicSettings) {
         const cs = validated.cinematicSettings;
         
-        // Optics settings
-        if (cs.optics?.style && cs.optics.style !== "cinematic") {
+        // Optics settings - Camera style that defines the overall visual aesthetic
+        if (cs.optics?.style) {
           const opticsMap: Record<string, string> = {
-            "smartphone": "smartphone real-life photo, authentic mobile photography",
-            "iphone-hdr": "iPhone HDR max photo, vibrant colors, dynamic range",
-            "realistic-raw": "realistic RAW photo, unprocessed, natural",
-            "forensic-dslr": "forensic DSLR, sharp focus, clinical precision",
+            "cinematic": "professional cinematic photography, anamorphic lens, shallow depth of field, Hollywood film quality, 4K resolution",
+            "smartphone": "authentic smartphone photo, real-life mobile photography, natural lighting, casual candid shot, iPhone quality",
+            "iphone-hdr": "iPhone 15 Pro Max HDR photo, Apple ProRAW, vibrant dynamic range, Smart HDR 5, photorealistic mobile capture",
+            "realistic-raw": "unprocessed RAW photo, no post-processing, natural unedited look, direct from camera sensor, authentic documentary style",
+            "forensic-dslr": "forensic DSLR photography, sharp clinical focus, evidence-grade precision, high detail capture, professional documentation",
           };
           if (opticsMap[cs.optics.style]) {
             cinematicModifiers.push(opticsMap[cs.optics.style]);
@@ -833,23 +834,23 @@ export async function registerRoutes(
           }
         }
         
-        // VFX effects
+        // VFX effects - Visual post-processing effects that transform the image
         if (cs.vfx?.effects && cs.vfx.effects.length > 0) {
           const vfxMap: Record<string, string> = {
-            "vhs": "VHS tape effect, retro analog distortion, chromatic aberration, magnetic tape artifacts",
-            "35mm": "35mm film grain, analog texture, cinematic warmth, Kodak film emulation",
-            "nvg": "night vision goggles POV, monochrome green phosphor display, military NVG thermal imaging, infrared sensor view, green tinted night vision camera footage, tactical night operations aesthetic",
-            "cine": "cinematic color grading, anamorphic lens flares, Hollywood color science",
-            "gltch": "digital glitch effect, data corruption aesthetic, databending artifacts",
-            "blum": "bloom lighting effect, ethereal glow, soft highlights, dreamy atmosphere",
-            "grain": "film grain texture, subtle noise, analog feel, ISO noise pattern",
-            "leak": "light leak effect, vintage photography, warm light streaks, lens flare",
-            "scan": "scan lines overlay, CRT monitor effect, retro display, interlaced video",
-            "noir": "noir black and white, dramatic shadows, film noir, high contrast monochrome",
-            "teal": "teal and orange color grading, Hollywood blockbuster look, complementary color scheme",
+            "vhs": "VHS tape recording aesthetic, retro 1980s video quality, chromatic aberration, magnetic tape distortion, analog noise, tracking lines, RGB color bleeding",
+            "35mm": "35mm analog film stock, Kodak Portra 400 emulation, organic film grain texture, cinematic warmth, photochemical color science, slight vignette",
+            "nvg": "NIGHT VISION GOGGLES POV, monochrome phosphor green tint, military Gen3 NVG display, infrared thermal imaging overlay, tactical night operations aesthetic, green-scale image intensifier",
+            "cine": "professional cinematic color grading, ARRI Alexa look, anamorphic horizontal lens flares, Hollywood blockbuster color science, cinematic letterbox feel",
+            "gltch": "digital glitch art effect, data corruption aesthetic, pixel sorting, RGB channel displacement, databending artifacts, broken display simulation",
+            "blum": "ethereal bloom lighting effect, soft dreamy glow on highlights, diffused light halos, romantic atmospheric haze, lens diffusion filter",
+            "grain": "organic film grain texture pattern, analog ISO noise, subtle photographic noise, celluloid texture, authentic film stock feel",
+            "leak": "vintage light leak effect, warm orange and red light streaks, film camera light leak, Lomography aesthetic, sun flare artifacts",
+            "scan": "CRT monitor scan lines, retro interlaced video display, horizontal line overlay, old TV screen effect, phosphor dot pattern",
+            "noir": "classic film noir black and white, dramatic chiaroscuro lighting, high contrast monochrome, deep shadows, 1940s crime thriller aesthetic",
+            "teal": "Hollywood teal and orange color grading, complementary color scheme, blockbuster movie look, Michael Bay color science, cinematic contrast",
           };
           const intensity = cs.vfx.intensity || 3;
-          const intensityPrefix = intensity >= 4 ? "strong " : intensity <= 1 ? "subtle " : "";
+          const intensityPrefix = intensity >= 5 ? "EXTREMELY STRONG " : intensity >= 4 ? "STRONG " : intensity <= 1 ? "SUBTLE " : "";
           
           cs.vfx.effects.forEach(effect => {
             if (effect !== "off" && vfxMap[effect]) {
@@ -859,15 +860,16 @@ export async function registerRoutes(
           });
         }
         
-        // Style DNA
+        // Style DNA - Fashion and clothing aesthetics
         if (cs.styleDna) {
+          // Brand aesthetic
           if (cs.styleDna.brand && cs.styleDna.brand !== "auto") {
             const brandMap: Record<string, string> = {
-              "streetwear": "streetwear urban aesthetic, casual street style",
-              "luxury": "luxury high fashion, premium sophisticated look",
-              "minimalist": "minimalist clean design, understated elegance",
-              "vintage": "vintage retro aesthetic, timeless classic style",
-              "techwear": "techwear futuristic functional, technical fashion",
+              "streetwear": "streetwear urban fashion, casual street style, hypebeast aesthetic, Supreme/Off-White influence, urban contemporary look",
+              "luxury": "luxury high fashion aesthetic, premium designer look, Gucci/Louis Vuitton sophistication, elegant upscale style, haute couture influence",
+              "minimalist": "minimalist clean design, understated elegance, neutral tones, COS/Uniqlo aesthetic, less is more philosophy, refined simplicity",
+              "vintage": "vintage retro aesthetic, timeless classic style, thrift store finds, 70s/80s/90s inspired fashion, nostalgic wardrobe",
+              "techwear": "futuristic techwear aesthetic, functional technical fashion, Acronym/Nike ACG style, utility pockets, water-resistant materials, cyberpunk influence",
             };
             if (brandMap[cs.styleDna.brand]) {
               cinematicModifiers.push(brandMap[cs.styleDna.brand]);
@@ -875,16 +877,83 @@ export async function registerRoutes(
             }
           }
           
+          // Layering style
+          if (cs.styleDna.layering && cs.styleDna.layering !== "relaxed") {
+            const layeringMap: Record<string, string> = {
+              "minimal": "minimal layering, single layer outfit, clean simple clothing",
+              "light": "light layering, two layer outfit, casual everyday look",
+              "medium": "medium layering, three layers, well-coordinated outfit",
+              "heavy": "heavy layering, multiple layers, complex styled outfit, fashion-forward stacking",
+            };
+            if (layeringMap[cs.styleDna.layering]) {
+              cinematicModifiers.push(layeringMap[cs.styleDna.layering]);
+              cinematicFilters["style_layering"] = cs.styleDna.layering;
+            }
+          }
+          
+          // Fit style
           if (cs.styleDna.fit && cs.styleDna.fit !== "regular") {
             const fitMap: Record<string, string> = {
-              "oversized": "oversized relaxed fit clothing",
-              "relaxed": "relaxed comfortable fit",
-              "slim": "slim fitted silhouette",
-              "tailored": "tailored bespoke fit, precision tailoring",
+              "oversized": "oversized baggy fit clothing, relaxed silhouette, loose comfortable garments, streetwear proportions",
+              "relaxed": "relaxed comfortable fit, casual everyday proportions, easy-going silhouette",
+              "slim": "slim fitted silhouette, tailored close-fitting clothes, modern slim cut",
+              "tailored": "bespoke tailored fit, precision-cut garments, custom-fitted clothing, sartorial excellence",
             };
             if (fitMap[cs.styleDna.fit]) {
               cinematicModifiers.push(fitMap[cs.styleDna.fit]);
               cinematicFilters["style_fit"] = cs.styleDna.fit;
+            }
+          }
+          
+          // Outerwear
+          if (cs.styleDna.outerwear) {
+            const outerwearMap: Record<string, string> = {
+              "jacket": "wearing stylish jacket, fashionable outerwear",
+              "coat": "wearing elegant coat, sophisticated overcoat",
+              "hoodie": "wearing hoodie, casual streetwear hoodie",
+              "blazer": "wearing tailored blazer, smart casual blazer",
+              "puffer": "wearing puffer jacket, quilted down jacket",
+              "leather": "wearing leather jacket, classic biker jacket",
+              "denim": "wearing denim jacket, jean jacket trucker style",
+              "bomber": "wearing bomber jacket, classic flight jacket",
+            };
+            if (outerwearMap[cs.styleDna.outerwear]) {
+              cinematicModifiers.push(outerwearMap[cs.styleDna.outerwear]);
+              cinematicFilters["style_outerwear"] = cs.styleDna.outerwear;
+            }
+          }
+          
+          // Footwear
+          if (cs.styleDna.footwear) {
+            const footwearMap: Record<string, string> = {
+              "sneakers": "wearing stylish sneakers, fashionable athletic shoes",
+              "boots": "wearing boots, stylish leather boots",
+              "loafers": "wearing loafers, elegant slip-on shoes",
+              "dress": "wearing dress shoes, formal oxford shoes",
+              "sandals": "wearing sandals, casual open footwear",
+              "high-tops": "wearing high-top sneakers, basketball style shoes",
+              "running": "wearing running shoes, athletic trainers",
+            };
+            if (footwearMap[cs.styleDna.footwear]) {
+              cinematicModifiers.push(footwearMap[cs.styleDna.footwear]);
+              cinematicFilters["style_footwear"] = cs.styleDna.footwear;
+            }
+          }
+          
+          // Bottom/Pants
+          if (cs.styleDna.bottom) {
+            const bottomMap: Record<string, string> = {
+              "jeans": "wearing denim jeans, classic blue jeans",
+              "chinos": "wearing chino pants, smart casual trousers",
+              "joggers": "wearing jogger pants, comfortable sweatpants",
+              "shorts": "wearing shorts, casual short pants",
+              "cargo": "wearing cargo pants, utility pocket pants",
+              "dress": "wearing dress pants, formal trousers",
+              "wide": "wearing wide-leg pants, relaxed fit trousers",
+            };
+            if (bottomMap[cs.styleDna.bottom]) {
+              cinematicModifiers.push(bottomMap[cs.styleDna.bottom]);
+              cinematicFilters["style_bottom"] = cs.styleDna.bottom;
             }
           }
         }
