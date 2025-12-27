@@ -924,56 +924,73 @@ export default function ModelsLabStudioPage() {
       // Build enhanced prompt with cinematic settings if available
       let enhancedPrompt = prompt;
       if (cinematicSettings) {
-        const cinematicParts: string[] = [];
+        const cinematicPrefix: string[] = []; // High priority - goes at START
+        const cinematicSuffix: string[] = []; // Lower priority - goes at END
+        
+        // Get intensity level (0-100) and create intensity modifier
+        const intensity = cinematicSettings.vfx?.intensity ?? 50;
+        const getIntensityPrefix = (i: number) => {
+          if (i >= 90) return "EXTREMELY STRONG, MAXIMUM";
+          if (i >= 70) return "VERY STRONG, DOMINANT";
+          if (i >= 50) return "STRONG, VISIBLE";
+          if (i >= 30) return "MODERATE, NOTICEABLE";
+          return "SUBTLE, SLIGHT";
+        };
+        const intensityPrefix = getIntensityPrefix(intensity);
+        
+        // Add VFX effects with STRONG descriptions - these go at the START for priority
+        if (cinematicSettings.vfx?.effects && cinematicSettings.vfx.effects.length > 0) {
+          const vfxMap: Record<string, string> = {
+            "vhs": "VHS tape recording effect with scan lines, tape distortion, chromatic aberration, analog video noise, magnetic tape artifacts, VCR aesthetic",
+            "35mm": "35mm analog film photography with authentic film grain, halation, color rendition of Kodak Portra, slight vignetting, film emulsion texture",
+            "nvg": "NIGHT VISION GOGGLES view, GREEN MONOCHROME phosphor screen, NVG grain noise, infrared illumination glow, military thermal imaging aesthetic, Gen 3 night vision look",
+            "cine": "cinematic movie color grading, anamorphic lens flare, Hollywood blockbuster look, theatrical film print colors, 2.39:1 aspect ratio feel",
+            "gltch": "digital glitch effect with RGB split, data corruption artifacts, pixel displacement, VHS tracking errors, databending aesthetic",
+            "blum": "heavy bloom lighting effect, bright light diffusion, dreamy glow, overexposed highlights bleeding, soft focus bloom",
+            "grain": "heavy film grain texture, analog noise pattern, high ISO look, grainy photographic texture throughout image",
+            "leak": "strong light leak effect, color bleeding from edges, lens flare streaks, vintage camera light exposure, orange and cyan light leaks",
+            "scan": "CRT scanlines overlay, interlaced video lines, retro monitor display, cathode ray tube aesthetic, horizontal scan lines visible",
+            "noir": "black and white noir style, high contrast monochrome, dramatic shadows, film noir cinematography, moody dark aesthetic",
+            "teal": "teal and orange color grading, Hollywood blockbuster color palette, complementary color contrast, cinematic color correction"
+          };
+          
+          cinematicSettings.vfx.effects.forEach(effect => {
+            if (effect !== "off" && vfxMap[effect]) {
+              // Add with intensity prefix for strong effect
+              cinematicPrefix.push(`${intensityPrefix} ${vfxMap[effect]}`);
+            }
+          });
+        }
         
         // Add optics style
         if (cinematicSettings.optics?.style && cinematicSettings.optics.style !== "cinematic") {
           const styleMap: Record<string, string> = {
-            "smartphone": "smartphone real-life photo style",
-            "iphone-hdr": "iPhone HDR max photo style",
-            "realistic-raw": "realistic RAW photo",
-            "forensic-dslr": "forensic DSLR sharp photo"
+            "smartphone": "smartphone real-life authentic photo, mobile phone camera quality",
+            "iphone-hdr": "iPhone 15 Pro Max HDR photo, Apple ProRAW quality, computational photography",
+            "realistic-raw": "realistic RAW unprocessed photo, professional camera sensor output",
+            "forensic-dslr": "forensic DSLR evidence photography, sharp clinical documentation style"
           };
           if (styleMap[cinematicSettings.optics.style]) {
-            cinematicParts.push(styleMap[cinematicSettings.optics.style]);
+            cinematicSuffix.push(styleMap[cinematicSettings.optics.style]);
           }
-        }
-        
-        // Add VFX effects
-        if (cinematicSettings.vfx?.effects && cinematicSettings.vfx.effects.length > 0) {
-          const vfxMap: Record<string, string> = {
-            "vhs": "VHS tape effect",
-            "35mm": "35mm film grain",
-            "nvg": "night vision green tint",
-            "cine": "cinematic color grading",
-            "gltch": "digital glitch effect",
-            "blum": "bloom lighting effect",
-            "grain": "film grain texture",
-            "leak": "light leak effect",
-            "scan": "scan lines overlay",
-            "noir": "noir black and white",
-            "teal": "teal and orange color grading"
-          };
-          cinematicSettings.vfx.effects.forEach(effect => {
-            if (effect !== "off" && vfxMap[effect]) {
-              cinematicParts.push(vfxMap[effect]);
-            }
-          });
         }
         
         // Add style DNA
         if (cinematicSettings.styleDna) {
           if (cinematicSettings.styleDna.brand && cinematicSettings.styleDna.brand !== "auto") {
-            cinematicParts.push(`${cinematicSettings.styleDna.brand} aesthetic`);
+            cinematicSuffix.push(`${cinematicSettings.styleDna.brand} brand aesthetic, fashion style`);
           }
           if (cinematicSettings.styleDna.fit) {
-            cinematicParts.push(`${cinematicSettings.styleDna.fit} fit clothing`);
+            cinematicSuffix.push(`${cinematicSettings.styleDna.fit} fit clothing style`);
           }
         }
         
-        // Append cinematic modifiers to prompt
-        if (cinematicParts.length > 0) {
-          enhancedPrompt = `${prompt}, ${cinematicParts.join(", ")}`;
+        // Build final prompt: VFX PREFIX + original + suffix
+        // VFX goes FIRST for maximum priority in image generation
+        if (cinematicPrefix.length > 0 || cinematicSuffix.length > 0) {
+          const prefix = cinematicPrefix.length > 0 ? cinematicPrefix.join(", ") + ", " : "";
+          const suffix = cinematicSuffix.length > 0 ? ", " + cinematicSuffix.join(", ") : "";
+          enhancedPrompt = `${prefix}${prompt}${suffix}`;
         }
       }
       
