@@ -1583,6 +1583,20 @@ export default function ModelsLabStudioPage() {
                   {/* Action Buttons */}
                   <div className="pt-4 border-t flex flex-wrap gap-2">
                     <Button
+                      onClick={() => generateImageMutation.mutate()}
+                      disabled={isGeneratingImage || !prompt.trim() || images.length === 0}
+                      className="flex-1"
+                      variant="default"
+                      data-testid="button-regenerate"
+                    >
+                      {isGeneratingImage ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                      )}
+                      {t.modelslab.regenerate || "Regenerate"}
+                    </Button>
+                    <Button
                       onClick={() => {
                         if (result.output && result.output.length > 0) {
                           openVideoDialogWithImage(result.output[0]);
