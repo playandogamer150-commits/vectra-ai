@@ -20,6 +20,7 @@ import { setupAuth, registerAuthRoutes } from "./replit_integrations/auth";
 import { stripeService } from "./stripeService";
 import { getStripePublishableKey } from "./stripeClient";
 import { fetchWithTimeout } from "./lib/fetch-with-timeout";
+import { applyGeminiGemsOptimization, getAvailableGems, GEMINI_GEMS } from "./prompt-engine/gemini-gems";
 
 const DEV_USER_ID = "dev_user";
 const IS_PRODUCTION = process.env.NODE_ENV === "production" || process.env.REPLIT_DEPLOYMENT === "1";
@@ -676,6 +677,30 @@ export async function registerRoutes(
     }
   });
 
+  // Gemini Gems Optimization Endpoints
+  app.get("/api/gemini-gems", async (_req, res) => {
+    try {
+      const gems = getAvailableGems();
+      res.json(gems);
+    } catch (error) {
+      console.error("Error fetching Gemini gems:", error);
+      res.status(500).json({ error: "Failed to fetch Gemini gems" });
+    }
+  });
+
+  app.get("/api/gemini-gems/:id", async (req, res) => {
+    try {
+      const gem = GEMINI_GEMS[req.params.id];
+      if (!gem) {
+        return res.status(404).json({ error: "Gemini gem not found" });
+      }
+      res.json(gem);
+    } catch (error) {
+      console.error("Error fetching Gemini gem:", error);
+      res.status(500).json({ error: "Failed to fetch Gemini gem" });
+    }
+  });
+
   app.get("/api/history", async (_req, res) => {
     try {
       const history = await storage.getHistory();
@@ -906,6 +931,24 @@ export async function registerRoutes(
           },
         };
       }
+      
+      // Apply Gemini Gems optimizations for ultra-realistic UGC and facial biometrics
+      let gemOptimization = null;
+      if (validated.geminiGems && validated.geminiGems.length > 0) {
+        gemOptimization = applyGeminiGemsOptimization(
+          result.compiledPrompt,
+          validated.geminiGems,
+          validated.restrictions
+        );
+        result = {
+          ...result,
+          compiledPrompt: gemOptimization.enhancedPrompt,
+          metadata: {
+            ...result.metadata,
+            filterCount: result.metadata.filterCount + validated.geminiGems.length,
+          },
+        };
+      }
 
       const savedPrompt = await storage.createGeneratedPrompt({
         userId: null,
@@ -933,6 +976,16 @@ export async function registerRoutes(
       const response: Record<string, unknown> = { ...savedPrompt };
       if (characterPack) {
         response.characterPack = characterPack;
+      }
+      
+      // Include Gemini Gems optimization info
+      if (gemOptimization) {
+        response.gemOptimization = {
+          appliedGems: gemOptimization.appliedGems,
+          negativePrompt: gemOptimization.negativePrompt,
+          technicalRecommendations: gemOptimization.technicalRecommendations,
+          qualityChecklist: gemOptimization.qualityChecklist,
+        };
       }
 
       res.json(response);

@@ -176,7 +176,39 @@ Workers receive signed payloads with:
 
 Workers must sign responses with HMAC and include `X-Signature` + `X-Timestamp` headers.
 
+## Gemini Gems Optimization System
+
+### Overview
+Two specialized AI optimization gems integrated into the prompt engine for ultra-realistic image generation:
+
+### Available Gems
+- **FACE-SWAPPER** (`face_swapper`): VFX-grade facial biometrics lockdown
+  - Category: facial_biometrics
+  - Use case: Exact facial replication with identity preservation
+  - Quality modifiers: 32K MF, RAW output, FaceID preservation
+  - Technical params: CFG 7.5, denoising 0.35, ControlNet 0.85
+  
+- **A.I INSTAGRAM MEDIA** (`ai_instagram_media`): Instagram-optimized UGC photorealism  
+  - Category: identity_preservation
+  - Use case: Authentic UGC content with handheld aesthetic
+  - Quality modifiers: iPhone 15 Pro Max sensor emulation
+  - Technical params: CFG 8.0, denoising 0.40, ControlNet 0.75
+
+### API Endpoints
+- `GET /api/gemini-gems` - List all available gems
+- `GET /api/gemini-gems/:id` - Get gem details with manifest
+
+### Integration
+- Gems apply prompt enhancements (prefix/suffix) and negative prompts
+- Admin-only access via toggles in ModelsLab Studio UI
+- Files: `server/prompt-engine/gemini-gems.ts`
+
 ## Recent Changes
+- 2024-12-27: Added Gemini Gems optimization system for admin users:
+  - Two specialized gems: FACE-SWAPPER and A.I INSTAGRAM MEDIA
+  - Prompt enhancement pipeline with quality modifiers and technical params
+  - Admin-only UI toggles in ModelsLab Studio
+  - API endpoints for gem management
 - 2024-12-25: Implemented tiered image quota system for Free plan:
   - 5 HQ images/day (Nano Banana Pro via v7 API - Google's best image model)
   - 5 Standard images/day (Realistic Vision 5.1 via v6 API - fallback)

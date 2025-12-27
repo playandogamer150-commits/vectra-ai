@@ -1,0 +1,362 @@
+/**
+ * Gemini Gems Optimization System
+ * 
+ * Two specialized optimization manifests for ultra-realistic UGC and facial biometrics:
+ * - FACE-SWAPPER: Facial biometrics lockdown, consistency, VFX-grade quality
+ * - A.I INSTAGRAM MEDIA: Instagram-optimized identity preservation, photorealism
+ */
+
+export interface GeminiGemManifest {
+  id: string;
+  name: string;
+  description: string;
+  category: "facial_biometrics" | "identity_preservation" | "ugc_realism";
+  priority: number;
+  
+  // Prompt injection rules
+  promptEnhancements: {
+    prefix?: string;
+    suffix?: string;
+    negativePrompt?: string;
+    qualityModifiers: string[];
+    fidelityModifiers: string[];
+    anatomyModifiers: string[];
+  };
+  
+  // Technical parameters (for ModelsLab/SD integration)
+  technicalParams: {
+    cfgScaleRange: [number, number];
+    denoisingStrengthRange: [number, number];
+    recommendedSamplers: string[];
+    controlNetWeights: {
+      openPose?: number;
+      depth?: number;
+      canny?: number;
+      ipAdapter?: number;
+    };
+  };
+  
+  // Validation rules
+  qualityChecks: string[];
+}
+
+/**
+ * FACE-SWAPPER Gem Manifest
+ * Specialized in: Ultra-realistic face swap, biometric lockdown, VFX-grade consistency
+ * Based on: DeepFaceLab, InsightFace, ReActor pipelines
+ */
+export const FACE_SWAPPER_GEM: GeminiGemManifest = {
+  id: "face_swapper",
+  name: "FACE-SWAPPER",
+  description: "Especialista em face-swap de nível VFX com lockdown biométrico facial",
+  category: "facial_biometrics",
+  priority: 1,
+  
+  promptEnhancements: {
+    prefix: `[FACIAL BIOMETRICS LOCKDOWN MODE]
+Ultra-high fidelity facial reconstruction with biometric preservation.
+Maintain exact facial geometry: landmark alignment, bone structure, eye spacing.
+Preserve microexpressions and facial muscle topology.`,
+    
+    suffix: `Technical requirements:
+- Exact replication of facial proportions (Golden Ratio Φ ≈ 1.618)
+- Consistent lighting direction on facial planes
+- Seamless blending with no visible mask edges
+- Skin texture preservation (pores, fine lines, natural imperfections)
+- Eye reflection consistency with scene lighting
+- Hair-to-face boundary natural transition`,
+    
+    negativePrompt: `deformed face, asymmetric eyes, wrong eye color, plastic skin, airbrushed, 
+uncanny valley, facial distortion, mask artifacts, halo around face, color mismatch, 
+wrong skin tone, floating features, disconnected face, blurred edges, 
+bad facial anatomy, extra features, missing features, wrong proportions`,
+    
+    qualityModifiers: [
+      "photorealistic skin texture",
+      "detailed skin pores",
+      "natural subsurface scattering",
+      "accurate facial shadows",
+      "lifelike eye reflections",
+      "anatomically correct proportions",
+      "cinematic facial lighting",
+      "8K facial detail"
+    ],
+    
+    fidelityModifiers: [
+      "exact replication",
+      "perfect fidelity",
+      "maintain original identity",
+      "biometric consistency",
+      "facial landmark preservation",
+      "expression microdetail capture"
+    ],
+    
+    anatomyModifiers: [
+      "correct eye spacing",
+      "natural nose bridge alignment",
+      "accurate lip proportions",
+      "proper ear placement",
+      "natural jawline curvature",
+      "anatomically correct neck transition"
+    ]
+  },
+  
+  technicalParams: {
+    cfgScaleRange: [7, 9],
+    denoisingStrengthRange: [0.1, 0.3],
+    recommendedSamplers: ["DPM++ 2M Karras", "Euler a"],
+    controlNetWeights: {
+      openPose: 1.0,
+      depth: 0.7,
+      canny: 0.5,
+      ipAdapter: 0.55
+    }
+  },
+  
+  qualityChecks: [
+    "Identity coherence - subject remains recognizable",
+    "Zero uncanny valley - natural expressions",
+    "Chromatic compatibility - matching white balance and saturation",
+    "Temporal stability - no flicker between frames",
+    "Edge seamlessness - invisible mask transitions",
+    "Lighting consistency - shadows match scene key light"
+  ]
+};
+
+/**
+ * A.I INSTAGRAM MEDIA Gem Manifest
+ * Specialized in: Instagram-optimized photorealism, UGC authenticity, identity preservation
+ * Based on: LoRA training, IP-Adapter FaceID, adaptive memory learning
+ */
+export const AI_INSTAGRAM_MEDIA_GEM: GeminiGemManifest = {
+  id: "ai_instagram_media",
+  name: "A.I INSTAGRAM MEDIA",
+  description: "Especialista em mídia Instagram fotorrealista com preservação de identidade",
+  category: "identity_preservation",
+  priority: 2,
+  
+  promptEnhancements: {
+    prefix: `[INSTAGRAM UGC PHOTOREALISM MODE]
+Generate authentic user-generated content style imagery.
+Priority: Identity preservation > Artistic style.
+Target: Indistinguishable from real smartphone photography.`,
+    
+    suffix: `Instagram optimization requirements:
+- Natural smartphone camera aesthetics (slight lens distortion, authentic bokeh)
+- Organic lighting conditions (golden hour, natural window light, ambient)
+- Genuine skin texture (not airbrushed, real pores and imperfections visible)
+- Authentic composition (not overly staged, natural candid feel)
+- Platform-native aspect ratios (1:1, 4:5, 9:16 for stories)
+- Color grading consistent with popular Instagram filters (warm tones, slightly lifted blacks)
+- Natural hand/body positioning typical of selfies and UGC`,
+    
+    negativePrompt: `studio lighting, professional photoshoot, airbrushed skin, perfect symmetry,
+overly posed, stock photo aesthetic, unnatural colors, oversaturated, 
+HDR artifacts, artificial bokeh, lens flare abuse, plastic skin texture,
+fashion magazine style, advertising aesthetic, corporate look,
+deformed hands, extra fingers, bad anatomy, mutated limbs`,
+    
+    qualityModifiers: [
+      "authentic UGC aesthetic",
+      "smartphone camera quality",
+      "natural skin imperfections",
+      "organic lighting",
+      "candid composition",
+      "Instagram-native colors",
+      "genuine photorealism",
+      "lived-in authenticity"
+    ],
+    
+    fidelityModifiers: [
+      "identity lock",
+      "face consistency across generations",
+      "recognizable subject",
+      "preserved distinctive features",
+      "maintained facial structure",
+      "consistent skin tone"
+    ],
+    
+    anatomyModifiers: [
+      "natural hand positions",
+      "correct finger count",
+      "anatomically accurate limbs",
+      "proper body proportions",
+      "realistic joint articulation",
+      "natural pose biomechanics"
+    ]
+  },
+  
+  technicalParams: {
+    cfgScaleRange: [7, 10],
+    denoisingStrengthRange: [0.15, 0.35],
+    recommendedSamplers: ["DPM++ 2M Karras", "Euler a"],
+    controlNetWeights: {
+      openPose: 1.0,
+      depth: 0.6,
+      canny: 0.4,
+      ipAdapter: 0.6
+    }
+  },
+  
+  qualityChecks: [
+    "Identity preservation - subject clearly recognizable",
+    "UGC authenticity - looks like real smartphone photo",
+    "Natural imperfections - not overly processed",
+    "Anatomy correctness - no deformed features",
+    "Lighting realism - consistent with scene",
+    "Platform optimization - correct aspect ratio and color"
+  ]
+};
+
+export const GEMINI_GEMS: Record<string, GeminiGemManifest> = {
+  face_swapper: FACE_SWAPPER_GEM,
+  ai_instagram_media: AI_INSTAGRAM_MEDIA_GEM,
+};
+
+export interface GemOptimizationResult {
+  enhancedPrompt: string;
+  negativePrompt: string;
+  appliedGems: string[];
+  technicalRecommendations: {
+    cfgScale: number;
+    denoisingStrength: number;
+    sampler: string;
+    controlNetWeights: Record<string, number>;
+  };
+  qualityChecklist: string[];
+}
+
+/**
+ * Apply Gemini Gems optimization to a compiled prompt
+ */
+export function applyGeminiGemsOptimization(
+  originalPrompt: string,
+  activeGems: string[],
+  existingNegative?: string
+): GemOptimizationResult {
+  const appliedGems: string[] = [];
+  const prefixes: string[] = [];
+  const suffixes: string[] = [];
+  const negatives: string[] = existingNegative ? [existingNegative] : [];
+  const qualityMods: string[] = [];
+  const fidelityMods: string[] = [];
+  const anatomyMods: string[] = [];
+  const qualityChecklist: string[] = [];
+  
+  let avgCfgScale = 7.5;
+  let avgDenoising = 0.25;
+  const controlNetWeights: Record<string, number> = {
+    openPose: 1.0,
+    depth: 0.5,
+    canny: 0.4,
+    ipAdapter: 0.5
+  };
+  let gemCount = 0;
+  
+  for (const gemId of activeGems) {
+    const gem = GEMINI_GEMS[gemId];
+    if (!gem) continue;
+    
+    appliedGems.push(gem.name);
+    
+    if (gem.promptEnhancements.prefix) {
+      prefixes.push(gem.promptEnhancements.prefix);
+    }
+    if (gem.promptEnhancements.suffix) {
+      suffixes.push(gem.promptEnhancements.suffix);
+    }
+    if (gem.promptEnhancements.negativePrompt) {
+      negatives.push(gem.promptEnhancements.negativePrompt);
+    }
+    
+    qualityMods.push(...gem.promptEnhancements.qualityModifiers);
+    fidelityMods.push(...gem.promptEnhancements.fidelityModifiers);
+    anatomyMods.push(...gem.promptEnhancements.anatomyModifiers);
+    qualityChecklist.push(...gem.qualityChecks);
+    
+    // Average technical params
+    const [minCfg, maxCfg] = gem.technicalParams.cfgScaleRange;
+    const [minDenoise, maxDenoise] = gem.technicalParams.denoisingStrengthRange;
+    avgCfgScale += (minCfg + maxCfg) / 2;
+    avgDenoising += (minDenoise + maxDenoise) / 2;
+    
+    // Merge ControlNet weights (take max)
+    const cnWeights = gem.technicalParams.controlNetWeights;
+    if (cnWeights.openPose) controlNetWeights.openPose = Math.max(controlNetWeights.openPose, cnWeights.openPose);
+    if (cnWeights.depth) controlNetWeights.depth = Math.max(controlNetWeights.depth, cnWeights.depth);
+    if (cnWeights.canny) controlNetWeights.canny = Math.max(controlNetWeights.canny, cnWeights.canny);
+    if (cnWeights.ipAdapter) controlNetWeights.ipAdapter = Math.max(controlNetWeights.ipAdapter, cnWeights.ipAdapter);
+    
+    gemCount++;
+  }
+  
+  // Calculate averages
+  if (gemCount > 0) {
+    avgCfgScale = avgCfgScale / (gemCount + 1);
+    avgDenoising = avgDenoising / (gemCount + 1);
+  }
+  
+  // Build enhanced prompt
+  const enhancedParts: string[] = [];
+  
+  // Add prefixes
+  if (prefixes.length > 0) {
+    enhancedParts.push(prefixes.join("\n\n"));
+  }
+  
+  // Add original prompt
+  enhancedParts.push(originalPrompt);
+  
+  // Add quality/fidelity/anatomy modifiers inline
+  const uniqueQuality = Array.from(new Set(qualityMods)).slice(0, 8);
+  const uniqueFidelity = Array.from(new Set(fidelityMods)).slice(0, 6);
+  const uniqueAnatomy = Array.from(new Set(anatomyMods)).slice(0, 6);
+  
+  if (uniqueQuality.length > 0) {
+    enhancedParts.push(`Quality: ${uniqueQuality.join(", ")}`);
+  }
+  if (uniqueFidelity.length > 0) {
+    enhancedParts.push(`Fidelity: ${uniqueFidelity.join(", ")}`);
+  }
+  if (uniqueAnatomy.length > 0) {
+    enhancedParts.push(`Anatomy: ${uniqueAnatomy.join(", ")}`);
+  }
+  
+  // Add suffixes
+  if (suffixes.length > 0) {
+    enhancedParts.push(suffixes.join("\n\n"));
+  }
+  
+  const enhancedPrompt = enhancedParts.join("\n\n");
+  const negativePrompt = Array.from(new Set(negatives)).join(", ");
+  
+  return {
+    enhancedPrompt,
+    negativePrompt,
+    appliedGems,
+    technicalRecommendations: {
+      cfgScale: Math.round(avgCfgScale * 10) / 10,
+      denoisingStrength: Math.round(avgDenoising * 100) / 100,
+      sampler: "DPM++ 2M Karras",
+      controlNetWeights
+    },
+    qualityChecklist: Array.from(new Set(qualityChecklist))
+  };
+}
+
+/**
+ * Get available gems for display in UI
+ */
+export function getAvailableGems(): Array<{
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+}> {
+  return Object.values(GEMINI_GEMS).map(gem => ({
+    id: gem.id,
+    name: gem.name,
+    description: gem.description,
+    category: gem.category
+  }));
+}

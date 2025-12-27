@@ -228,6 +228,9 @@ export default function ModelsLabStudioPage() {
   const [showCinematicPanel, setShowCinematicPanel] = useState(false);
   const [cinematicSettings, setCinematicSettings] = useState<CinematicSettings | null>(null);
   
+  // Gemini Gems optimization state
+  const [activeGems, setActiveGems] = useState<string[]>([]);
+  
   // Admin API key state
   const [showAdminKeyModal, setShowAdminKeyModal] = useState(false);
   const [adminApiKey, setAdminApiKey] = useState("");
@@ -243,6 +246,17 @@ export default function ModelsLabStudioPage() {
 
   const { data: filters, isLoading: loadingFilters } = useQuery<Filter[]>({
     queryKey: ["/api/filters"],
+  });
+
+  // Gemini Gems query
+  interface GeminiGem {
+    id: string;
+    name: string;
+    description: string;
+    category: string;
+  }
+  const { data: geminiGems } = useQuery<GeminiGem[]>({
+    queryKey: ["/api/gemini-gems"],
   });
 
   const { data: userBlueprints, isLoading: loadingUserBlueprints } = useQuery<UserBlueprint[]>({
@@ -813,6 +827,7 @@ export default function ModelsLabStudioPage() {
         seed: seed || undefined,
         subject,
         cinematicSettings: showCinematicPanel ? cinematicSettings : undefined,
+        geminiGems: activeGems.length > 0 ? activeGems : undefined,
       });
       return res.json() as Promise<GeneratedPromptResult>;
     },
@@ -1116,6 +1131,62 @@ export default function ModelsLabStudioPage() {
               isPremium={true}
               onSettingsChange={setCinematicSettings}
             />
+          </div>
+        )}
+
+        {/* Gemini Gems Optimization Panel - Admin/Premium Only */}
+        {usageData?.isAdmin && geminiGems && geminiGems.length > 0 && (
+          <div className="mb-8" data-testid="section-gemini-gems">
+            <Card className="bg-gradient-to-br from-amber-500/5 to-orange-500/5 border-amber-500/20">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  Gemini Gems - Otimizadores de IA
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Ative gems especializados para ultra-realismo UGC e lockdown biométrico facial
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {geminiGems.map((gem) => (
+                  <div 
+                    key={gem.id} 
+                    className="flex items-center justify-between p-3 rounded-lg bg-background/50 border border-border/50"
+                    data-testid={`gem-toggle-${gem.id}`}
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm">{gem.name}</span>
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                          {gem.category === "facial_biometrics" ? "Biometria" : 
+                           gem.category === "identity_preservation" ? "Identidade" : "UGC"}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{gem.description}</p>
+                    </div>
+                    <Switch
+                      checked={activeGems.includes(gem.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setActiveGems(prev => [...prev, gem.id]);
+                        } else {
+                          setActiveGems(prev => prev.filter(g => g !== gem.id));
+                        }
+                      }}
+                      data-testid={`switch-gem-${gem.id}`}
+                    />
+                  </div>
+                ))}
+                {activeGems.length > 0 && (
+                  <div className="pt-2 border-t border-border/50">
+                    <p className="text-xs text-amber-400 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />
+                      {activeGems.length} gem{activeGems.length > 1 ? 's' : ''} ativo{activeGems.length > 1 ? 's' : ''} - Otimizações serão aplicadas ao gerar prompt
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         )}
 

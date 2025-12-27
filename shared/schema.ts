@@ -483,6 +483,7 @@ export const generateRequestSchema = z.object({
   loraWeight: z.number().min(0).max(2).optional().default(1),
   targetPlatform: z.string().optional(),
   cinematicSettings: cinematicSettingsSchema,
+  geminiGems: z.array(z.string()).optional().default([]),
 }).refine(data => data.blueprintId || data.userBlueprintId, {
   message: "Either blueprintId or userBlueprintId is required",
 });
