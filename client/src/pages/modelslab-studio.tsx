@@ -235,10 +235,13 @@ export default function ModelsLabStudioPage() {
   const [showAdminKeyModal, setShowAdminKeyModal] = useState(false);
   const [adminApiKey, setAdminApiKey] = useState("");
 
-  // Direct download function - downloads at max resolution without opening new tab
+  // Direct download function - uses server proxy to bypass CORS
   const downloadImage = async (imageUrl: string, filename?: string) => {
     try {
-      const response = await fetch(imageUrl);
+      // Use server proxy to bypass CORS restrictions
+      const proxyUrl = `/api/proxy/media?url=${encodeURIComponent(imageUrl)}`;
+      const response = await fetch(proxyUrl);
+      if (!response.ok) throw new Error("Download failed");
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -260,7 +263,10 @@ export default function ModelsLabStudioPage() {
 
   const downloadVideo = async (videoUrl: string, filename?: string) => {
     try {
-      const response = await fetch(videoUrl);
+      // Use server proxy to bypass CORS restrictions
+      const proxyUrl = `/api/proxy/media?url=${encodeURIComponent(videoUrl)}`;
+      const response = await fetch(proxyUrl);
+      if (!response.ok) throw new Error("Download failed");
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
