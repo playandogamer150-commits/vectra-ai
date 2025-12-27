@@ -302,9 +302,14 @@ export async function registerRoutes(
       
       if (!appUser) {
         // Create the user in the database on first access
+        // Use unique username: prefer name, then email prefix, then replitId
+        const email = user?.claims?.email as string | undefined;
+        const uniqueUsername = user?.claims?.name || 
+          (email ? email.split('@')[0] : null) || 
+          `user_${userId}`;
         appUser = await storage.createAppUserFromReplit(
           userId,
-          user?.claims?.name || "User"
+          uniqueUsername
         );
       }
       
@@ -364,9 +369,13 @@ export async function registerRoutes(
       // Check if user exists, create if not (upsert pattern)
       let appUser = await storage.getAppUser(userId);
       if (!appUser) {
+        const email = user?.claims?.email as string | undefined;
+        const uniqueUsername = user?.claims?.name || 
+          (email ? email.split('@')[0] : null) || 
+          `user_${userId}`;
         appUser = await storage.createAppUserFromReplit(
           userId,
-          user?.claims?.name || "User"
+          uniqueUsername
         );
       }
       
