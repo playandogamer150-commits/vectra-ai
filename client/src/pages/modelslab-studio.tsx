@@ -21,7 +21,7 @@ import {
   Loader2, ImagePlus, Sparkles, X, Download, ExternalLink, Upload, Clipboard,
   ChevronDown, ChevronUp, Layers, SlidersHorizontal, Wand2, RefreshCw, Heart,
   Save, Trash2, FolderOpen, BookmarkPlus, Video, Play, FileJson, FileText as FileTextIcon, FileDown,
-  Square
+  Square, Info, Zap, Film, Palette
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -470,6 +470,7 @@ export default function ModelsLabStudioPage() {
   const [showVideoGallery, setShowVideoGallery] = useState(false);
   const [presetName, setPresetName] = useState("");
   const [showPresetDialog, setShowPresetDialog] = useState(false);
+  const [selectedImageDetails, setSelectedImageDetails] = useState<SavedImage | null>(null);
 
   // Video generation state (Job System)
   const [showVideoDialog, setShowVideoDialog] = useState(false);
@@ -2184,6 +2185,16 @@ export default function ModelsLabStudioPage() {
                             size="icon"
                             variant="ghost"
                             className="h-7 w-7 text-white"
+                            onClick={() => setSelectedImageDetails(img)}
+                            data-testid={`button-info-gallery-${img.id}`}
+                            title={t.modelslab.imageDetails || "Image Details"}
+                          >
+                            <Info className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-white"
                             onClick={() => deleteImageMutation.mutate(img.id)}
                             data-testid={`button-delete-gallery-${img.id}`}
                           >
@@ -2705,6 +2716,178 @@ export default function ModelsLabStudioPage() {
               Salvar API Key
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Details Dialog */}
+      <Dialog open={!!selectedImageDetails} onOpenChange={(open) => !open && setSelectedImageDetails(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Info className="w-5 h-5" />
+              {t.modelslab.imageDetails || "Image Details"}
+            </DialogTitle>
+            <DialogDescription>
+              {t.modelslab.imageDetailsDescription || "Generation settings and metadata for this image"}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedImageDetails && (
+            <div className="space-y-4">
+              {/* Image Preview */}
+              <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
+                <img
+                  src={selectedImageDetails.imageUrl}
+                  alt="Generated image"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+
+              {/* Basic Info */}
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+                <div>
+                  <p className="text-sm text-muted-foreground">{t.modelslab.aspectRatio || "Aspect Ratio"}</p>
+                  <p className="font-medium">{selectedImageDetails.aspectRatio || "1:1"}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">{t.modelslab.createdAt || "Created At"}</p>
+                  <p className="font-medium">{new Date(selectedImageDetails.createdAt).toLocaleString()}</p>
+                </div>
+                {selectedImageDetails.seed && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Seed</p>
+                    <p className="font-mono text-sm">{selectedImageDetails.seed}</p>
+                  </div>
+                )}
+                {selectedImageDetails.metadata?.generationTime != null && typeof selectedImageDetails.metadata.generationTime === 'number' && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">{t.modelslab.generationTime || "Generation Time"}</p>
+                    <p className="font-medium">{(selectedImageDetails.metadata.generationTime / 1000).toFixed(1)}s</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Model & Quality */}
+              {(selectedImageDetails.metadata?.modelId || selectedImageDetails.metadata?.imageQuality) && (
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-medium flex items-center gap-2 mb-3">
+                    <Zap className="w-4 h-4" />
+                    {t.modelslab.model || "Model"}
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedImageDetails.metadata?.modelId && (
+                      <Badge variant="secondary">
+                        {selectedImageDetails.metadata.modelId === "nano-banana-pro" ? "Nano Banana Pro (HQ)" : "Realistic Vision 5.1"}
+                      </Badge>
+                    )}
+                    {selectedImageDetails.metadata?.imageQuality && (
+                      <Badge variant={selectedImageDetails.metadata.imageQuality === "hq" ? "default" : "outline"}>
+                        {selectedImageDetails.metadata.imageQuality === "hq" ? "High Quality" : "Standard"}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* VFX Effects */}
+              {Array.isArray(selectedImageDetails.metadata?.cinematicSettings?.vfx?.effects) && 
+               selectedImageDetails.metadata.cinematicSettings.vfx.effects.length > 0 && (
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-medium flex items-center gap-2 mb-3">
+                    <Film className="w-4 h-4" />
+                    VFX Effects
+                  </h4>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {selectedImageDetails.metadata.cinematicSettings.vfx.effects.map((effect) => (
+                      <Badge key={effect} variant="outline" className="capitalize">
+                        {String(effect).replace(/_/g, " ")}
+                      </Badge>
+                    ))}
+                  </div>
+                  {typeof selectedImageDetails.metadata.cinematicSettings.vfx.intensity === 'number' && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Intensity: {selectedImageDetails.metadata.cinematicSettings.vfx.intensity}%
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Optics & Style DNA */}
+              {(selectedImageDetails.metadata?.cinematicSettings?.optics || 
+                selectedImageDetails.metadata?.cinematicSettings?.styleDna) && (
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-medium flex items-center gap-2 mb-3">
+                    <Palette className="w-4 h-4" />
+                    {t.modelslab.cinematicSettings || "Cinematic Settings"}
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    {selectedImageDetails.metadata?.cinematicSettings?.optics?.style && (
+                      <div>
+                        <p className="text-muted-foreground">Optics Style</p>
+                        <p className="capitalize">{selectedImageDetails.metadata.cinematicSettings.optics.style}</p>
+                      </div>
+                    )}
+                    {selectedImageDetails.metadata?.cinematicSettings?.styleDna?.brand && (
+                      <div>
+                        <p className="text-muted-foreground">Brand DNA</p>
+                        <p className="capitalize">{selectedImageDetails.metadata.cinematicSettings.styleDna.brand}</p>
+                      </div>
+                    )}
+                    {selectedImageDetails.metadata?.cinematicSettings?.styleDna?.fit && (
+                      <div>
+                        <p className="text-muted-foreground">Fit Style</p>
+                        <p className="capitalize">{selectedImageDetails.metadata.cinematicSettings.styleDna.fit}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Active Gems */}
+              {Array.isArray(selectedImageDetails.metadata?.cinematicSettings?.activeGems) && 
+               selectedImageDetails.metadata.cinematicSettings.activeGems.length > 0 && (
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-medium flex items-center gap-2 mb-3">
+                    <Sparkles className="w-4 h-4" />
+                    Gemini Gems
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedImageDetails.metadata.cinematicSettings.activeGems.map((gem) => (
+                      <Badge key={gem} variant="secondary" className="uppercase text-xs">
+                        {String(gem).replace(/_/g, " ")}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Prompt */}
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <h4 className="font-medium mb-2">Prompt</h4>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedImageDetails.prompt}</p>
+              </div>
+
+              {/* Applied Filters */}
+              {selectedImageDetails.appliedFilters && 
+               typeof selectedImageDetails.appliedFilters === 'object' && 
+               Object.keys(selectedImageDetails.appliedFilters).length > 0 && (
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-medium flex items-center gap-2 mb-3">
+                    <SlidersHorizontal className="w-4 h-4" />
+                    {t.modelslab.appliedFilters || "Applied Filters"}
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    {Object.entries(selectedImageDetails.appliedFilters).map(([key, value]) => (
+                      <div key={key} className="flex justify-between">
+                        <span className="text-muted-foreground capitalize">{key.replace(/_/g, " ")}</span>
+                        <span className="capitalize">{String(value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
