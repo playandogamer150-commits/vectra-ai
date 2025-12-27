@@ -111,9 +111,12 @@ export class ModelsLabProvider implements VideoProvider {
     // The visual content is already in the image, we just need motion description
     const safePrompt = this.sanitizePromptForVideo(input.prompt);
 
+    // IMPORTANT: Use exact model_id from registry - this determines which model generates the video
+    const modelId = model.modelIdParam;
+    
     const requestBody = {
       key: this.apiKey,
-      model_id: model.modelIdParam,
+      model_id: modelId,
       init_image: input.sourceImageUrl,
       prompt: safePrompt,
       negative_prompt: input.negativePrompt || "low quality, blurry, distorted, amateur, static, frozen",
@@ -125,13 +128,14 @@ export class ModelsLabProvider implements VideoProvider {
 
     const endpoint = `${MODELSLAB_BASE_URL}${model.endpoint}`;
     
-    console.log("[ModelsLab] Image-to-Video Request:", {
-      endpoint,
-      model_id: model.modelIdParam,
-      model_display: model.displayName,
-      aspectRatio,
-      duration: input.durationSeconds,
-    });
+    console.log("[ModelsLab] ========== VIDEO GENERATION REQUEST ==========");
+    console.log("[ModelsLab] Model ID:", modelId);
+    console.log("[ModelsLab] Model Display Name:", model.displayName);
+    console.log("[ModelsLab] Aspect Ratio:", aspectRatio);
+    console.log("[ModelsLab] Endpoint:", endpoint);
+    console.log("[ModelsLab] Duration:", input.durationSeconds);
+    console.log("[ModelsLab] Full Request Body:", JSON.stringify({ ...requestBody, key: "[REDACTED]" }, null, 2));
+    console.log("[ModelsLab] =================================================");
 
     const response = await fetchWithTimeout(endpoint, {
       method: "POST",
@@ -140,7 +144,15 @@ export class ModelsLabProvider implements VideoProvider {
     }, 90000); // 90s timeout for video generation
 
     const data: ModelsLabResponse = await response.json();
-    console.log("[ModelsLab] Image-to-Video Response:", data);
+    console.log("[ModelsLab] ========== VIDEO GENERATION RESPONSE ==========");
+    console.log("[ModelsLab] Status:", data.status);
+    console.log("[ModelsLab] Job ID:", data.id);
+    console.log("[ModelsLab] ETA:", data.eta);
+    console.log("[ModelsLab] Message:", data.message || "N/A");
+    console.log("[ModelsLab] Fetch URL:", data.fetch_result || "N/A");
+    console.log("[ModelsLab] Has Output:", !!data.output?.length);
+    console.log("[ModelsLab] Full Response:", JSON.stringify(data, null, 2));
+    console.log("[ModelsLab] =================================================");
 
     return this.parseCreateResponse(data);
   }
