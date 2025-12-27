@@ -1069,6 +1069,9 @@ export default function ModelsLabStudioPage() {
         images: allImages,
         aspectRatio: cinematicSettings?.optics?.aspectRatio || aspectRatio,
         cinematicSettings: cinematicSettings || undefined,
+        activeGems: activeGems.length > 0 ? activeGems : undefined,
+        bodyFidelity: cinematicSettings?.bodyFidelity,
+        preserveTattoos: cinematicSettings?.preserveTattoos,
       });
       return res.json() as Promise<ModelsLabResponse>;
     },

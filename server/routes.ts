@@ -1503,11 +1503,23 @@ export async function registerRoutes(
         }
       }
 
-      const { prompt, images, aspectRatio } = req.body;
+      const { prompt, images, aspectRatio, activeGems, bodyFidelity, preserveTattoos, negativePrompt } = req.body;
       
       if (!prompt) {
         return res.status(400).json({ error: "Prompt is required" });
       }
+      
+      // Determine if we need precise control mode (for gems/tattoo preservation)
+      // When gems are active or preserveTattoos is enabled, we use Realistic Vision v6
+      // which accepts strength, negative_prompt, and other control parameters
+      const hasActiveGems = Array.isArray(activeGems) && activeGems.length > 0;
+      const needsTattooPreservation = preserveTattoos === true || 
+        (hasActiveGems && (activeGems.includes("face_swapper") || activeGems.includes("tattoo_preservation")));
+      const usePreciseControlMode = needsTattooPreservation || (hasActiveGems && bodyFidelity && bodyFidelity > 50);
+      
+      // Calculate strength based on bodyFidelity (inverse relationship)
+      // Higher fidelity = lower strength = less AI creativity = better preservation
+      const fidelityStrength = bodyFidelity ? Math.max(0.15, Math.min(0.7, (100 - bodyFidelity) / 100)) : 0.5;
       
       if (!images || !Array.isArray(images) || images.length === 0) {
         return res.status(400).json({ error: "At least one image is required" });
@@ -1592,16 +1604,42 @@ export async function registerRoutes(
       }
       
       // Select model based on quota check (HQ = nano-banana-pro, Standard = realistic-vision-51)
-      // All admins always get HQ model
-      const selectedModel = isAdmin ? "nano-banana-pro" : imageQuota?.modelId || "nano-banana-pro";
-      const isHqModel = isAdmin ? true : imageQuota?.imageQuality === "hq";
-      const isNanoBananaPro = selectedModel === "nano-banana-pro";
+      // IMPORTANT: When precise control mode is needed (gems/tattoo preservation), 
+      // we force Realistic Vision v6 even for admins because it accepts control parameters
+      let selectedModel: string;
+      let isHqModel: boolean;
+      let isNanoBananaPro: boolean;
+      
+      if (usePreciseControlMode && isAdmin) {
+        // Force Realistic Vision for precise control when gems/tattoo preservation is active
+        selectedModel = MODELSLAB_MODELS.STANDARD;
+        isHqModel = false;
+        isNanoBananaPro = false;
+        console.log(`Precise control mode active - switching to Realistic Vision for better tattoo/body preservation`);
+      } else if (isAdmin) {
+        selectedModel = "nano-banana-pro";
+        isHqModel = true;
+        isNanoBananaPro = true;
+      } else {
+        selectedModel = imageQuota?.modelId || "nano-banana-pro";
+        isHqModel = imageQuota?.imageQuality === "hq";
+        isNanoBananaPro = selectedModel === "nano-banana-pro";
+      }
+      
+      // Build negative prompt with tattoo preservation if needed
+      let finalNegativePrompt = negativePrompt || "bad quality, blurry, distorted, low resolution, watermark, text";
+      if (needsTattooPreservation) {
+        const tattooNegatives = ", extra tattoos, new tattoos, additional body art, tattoo modifications, " +
+          "invented tattoos, tattoos appearing where none exist, different tattoo designs, " +
+          "altered tattoos, extended tattoos, missing tattoos, removed tattoos, faded tattoos";
+        finalNegativePrompt += tattooNegatives;
+      }
       
       // Nano Banana Pro uses v7 API with different parameters
       let requestBody: any;
       let apiEndpoint: string;
       
-      if (isNanoBananaPro) {
+      if (isNanoBananaPro && !usePreciseControlMode) {
         // Nano Banana Pro - v7 API with multi-image fusion support
         // Convert aspect ratio to Nano Banana format
         const aspectRatioMap: Record<string, string> = {
@@ -1625,25 +1663,34 @@ export async function registerRoutes(
         };
         apiEndpoint = "https://modelslab.com/api/v7/images/image-to-image";
       } else {
-        // Realistic Vision 5.1 - v6 API (standard fallback)
+        // Realistic Vision 5.1 - v6 API with full control parameters
+        // Used when: standard quota, or precise control mode is active (gems/tattoo preservation)
+        const controlStrength = usePreciseControlMode ? fidelityStrength : 0.7;
+        const controlCfg = needsTattooPreservation ? 9.0 : 7.5;
+        const controlSteps = needsTattooPreservation ? "35" : "30";
+        
         requestBody = {
           key: apiKey,
-          model_id: selectedModel,
+          model_id: selectedModel === "nano-banana-pro" ? MODELSLAB_MODELS.STANDARD : selectedModel,
           prompt: truncatedPrompt,
-          negative_prompt: "bad quality, blurry, distorted, low resolution, watermark, text",
+          negative_prompt: finalNegativePrompt,
           init_image: initImage,
           base64: isBase64 ? "yes" : "no",
           width: dimensions.width,
           height: dimensions.height,
           samples: "1",
-          num_inference_steps: "30",
+          num_inference_steps: controlSteps,
           safety_checker: "no",
           enhance_prompt: "no",
-          guidance_scale: 7.5,
-          strength: 0.7,
-          scheduler: "UniPCMultistepScheduler",
+          guidance_scale: controlCfg,
+          strength: controlStrength,
+          scheduler: "DPMSolverMultistepScheduler",
         };
         apiEndpoint = "https://modelslab.com/api/v6/images/img2img";
+        
+        if (usePreciseControlMode) {
+          console.log(`Precise control: strength=${controlStrength.toFixed(2)}, cfg=${controlCfg}, steps=${controlSteps}, tattooMode=${needsTattooPreservation}`);
+        }
       }
       
       console.log(`Sending to ModelsLab ${isNanoBananaPro ? 'v7 Nano Banana Pro' : 'v6 img2img'} (${selectedModel} - ${imageQuota.imageQuality}):`, { 
