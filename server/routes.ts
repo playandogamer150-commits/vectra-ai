@@ -80,6 +80,12 @@ async function checkImageQuotaAndModel(userId: string): Promise<ImageQuotaResult
   
   const appUser = await storage.getAppUser(userId);
   const isPro = appUser?.plan === "pro";
+  const isAdmin = appUser?.isAdmin === 1;
+  
+  // Admins have unlimited access with HQ model
+  if (isAdmin) {
+    return { allowed: true, isPro: true, modelId: MODELSLAB_MODELS.HQ, imageQuality: "hq" };
+  }
   
   if (isPro) {
     return { allowed: true, isPro: true, modelId: MODELSLAB_MODELS.HQ, imageQuality: "hq" };
@@ -129,13 +135,19 @@ async function checkImageQuotaAndModel(userId: string): Promise<ImageQuotaResult
   };
 }
 
-async function checkGenerationLimits(userId: string, type: "prompt" | "image" | "video"): Promise<{ allowed: boolean; reason?: string; isPro: boolean }> {
+async function checkGenerationLimits(userId: string, type: "prompt" | "image" | "video"): Promise<{ allowed: boolean; reason?: string; isPro: boolean; isAdmin?: boolean }> {
   if (IS_PRO_OVERRIDE) {
     return { allowed: true, isPro: true };
   }
   
   const appUser = await storage.getAppUser(userId);
   const isPro = appUser?.plan === "pro";
+  const isAdmin = appUser?.isAdmin === 1;
+  
+  // Admins have unlimited access
+  if (isAdmin) {
+    return { allowed: true, isPro: true, isAdmin: true };
+  }
   
   if (isPro) {
     return { allowed: true, isPro: true };
@@ -677,7 +689,17 @@ export async function registerRoutes(
   app.post("/api/generate", async (req, res) => {
     try {
       const rateLimitKey = req.ip || "anonymous";
-      const isAdminOverride = process.env.ADMIN_OVERRIDE === "true";
+      const isEnvAdminOverride = process.env.ADMIN_OVERRIDE === "true";
+      
+      // Check if logged-in user is admin
+      const userId = getUserId(req);
+      let isUserAdmin = false;
+      if (userId) {
+        const appUser = await storage.getAppUser(userId);
+        isUserAdmin = appUser?.isAdmin === 1;
+      }
+      
+      const isAdminOverride = isEnvAdminOverride || isUserAdmin;
       
       const freeGenerationsPerDay = 3;
       const freeFilterLimit = 3;
@@ -1031,7 +1053,17 @@ export async function registerRoutes(
   app.post("/api/user-blueprints", async (req, res) => {
     try {
       const userId = DEV_USER_ID;
-      const isAdminOverride = process.env.ADMIN_OVERRIDE === "true";
+      const isEnvAdminOverride = process.env.ADMIN_OVERRIDE === "true";
+      
+      // Check if logged-in user is admin
+      const loggedUserId = getUserId(req);
+      let isUserAdmin = false;
+      if (loggedUserId) {
+        const appUser = await storage.getAppUser(loggedUserId);
+        isUserAdmin = appUser?.isAdmin === 1;
+      }
+      
+      const isAdminOverride = isEnvAdminOverride || isUserAdmin;
       
       if (!isAdminOverride) {
         const count = await storage.countUserBlueprints(userId);
@@ -1172,7 +1204,17 @@ export async function registerRoutes(
   app.post("/api/user-blueprints/:id/duplicate", async (req, res) => {
     try {
       const userId = DEV_USER_ID;
-      const isAdminOverride = process.env.ADMIN_OVERRIDE === "true";
+      const isEnvAdminOverride = process.env.ADMIN_OVERRIDE === "true";
+      
+      // Check if logged-in user is admin
+      const loggedUserId = getUserId(req);
+      let isUserAdmin = false;
+      if (loggedUserId) {
+        const appUser = await storage.getAppUser(loggedUserId);
+        isUserAdmin = appUser?.isAdmin === 1;
+      }
+      
+      const isAdminOverride = isEnvAdminOverride || isUserAdmin;
       
       if (!isAdminOverride) {
         const count = await storage.countUserBlueprints(userId);
