@@ -491,9 +491,9 @@ export default function ModelsLabStudioPage() {
   } | null>(null);
   const [videoGenerationStartTime, setVideoGenerationStartTime] = useState<number | null>(null);
 
-  // Save image mutation
+  // Save image mutation with full metadata
   const saveImageMutation = useMutation({
-    mutationFn: async (imageData: { imageUrl: string; prompt: string }) => {
+    mutationFn: async (imageData: { imageUrl: string; prompt: string; generationTimeMs?: number; model?: string }) => {
       return apiRequest("POST", "/api/gallery", {
         ...imageData,
         aspectRatio,
@@ -502,6 +502,27 @@ export default function ModelsLabStudioPage() {
         userBlueprintId: selectedUserBlueprint || undefined,
         appliedFilters: activeFilters,
         seed: seed || undefined,
+        metadata: {
+          generationTime: imageData.generationTimeMs,
+          imageQuality: imageData.model === "nano-banana-pro" ? "hq" : "standard",
+          modelId: imageData.model,
+          cinematicSettings: cinematicSettings ? {
+            optics: cinematicSettings.optics ? {
+              style: cinematicSettings.optics.style,
+              aspectRatio: cinematicSettings.optics.aspectRatio,
+              sampleCount: cinematicSettings.optics.sampleCount,
+            } : undefined,
+            vfx: cinematicSettings.vfx ? {
+              effects: cinematicSettings.vfx.effects,
+              intensity: cinematicSettings.vfx.intensity,
+            } : undefined,
+            styleDna: cinematicSettings.styleDna ? {
+              brand: cinematicSettings.styleDna.brand,
+              fit: cinematicSettings.styleDna.fit,
+            } : undefined,
+            activeGems: activeGems.length > 0 ? activeGems : undefined,
+          } : undefined,
+        },
       });
     },
     onSuccess: () => {
@@ -1690,7 +1711,12 @@ export default function ModelsLabStudioPage() {
                         <Button
                           size="icon"
                           variant="secondary"
-                          onClick={() => saveImageMutation.mutate({ imageUrl, prompt })}
+                          onClick={() => saveImageMutation.mutate({ 
+                            imageUrl, 
+                            prompt,
+                            generationTimeMs: result.generationTime ? result.generationTime * 1000 : undefined,
+                            model: isAdmin ? "nano-banana-pro" : "realistic-vision-51",
+                          })}
                           disabled={saveImageMutation.isPending}
                           data-testid={`button-save-${index}`}
                           title={t.modelslab.saveToGallery || "Save to gallery"}
