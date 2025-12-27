@@ -849,8 +849,8 @@ export async function registerRoutes(
             "noir": "classic film noir black and white, dramatic chiaroscuro lighting, high contrast monochrome, deep shadows, 1940s crime thriller aesthetic",
             "teal": "Hollywood teal and orange color grading, complementary color scheme, blockbuster movie look, Michael Bay color science, cinematic contrast",
           };
-          const intensity = cs.vfx.intensity || 3;
-          const intensityPrefix = intensity >= 5 ? "EXTREMELY STRONG " : intensity >= 4 ? "STRONG " : intensity <= 1 ? "SUBTLE " : "";
+          const intensity = cs.vfx.intensity || 50;
+          const intensityPrefix = intensity >= 80 ? "EXTREMELY STRONG " : intensity >= 60 ? "STRONG " : intensity <= 20 ? "SUBTLE " : "";
           
           cs.vfx.effects.forEach(effect => {
             if (effect !== "off" && vfxMap[effect]) {

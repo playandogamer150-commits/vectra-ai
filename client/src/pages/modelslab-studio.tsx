@@ -977,9 +977,26 @@ export default function ModelsLabStudioPage() {
         }
       }
       
+      // Merge subject images from cinematic panel with main reference images
+      let allImages = [...imageUrls];
+      if (cinematicSettings?.subjects) {
+        const { subjectA, subjectB } = cinematicSettings.subjects;
+        // Add face images first (highest priority for character consistency)
+        if (subjectA?.faceImages?.length) allImages = [...subjectA.faceImages, ...allImages];
+        if (subjectB?.faceImages?.length) allImages = [...subjectB.faceImages, ...allImages];
+        // Add body images
+        if (subjectA?.bodyImages?.length) allImages = [...allImages, ...subjectA.bodyImages];
+        if (subjectB?.bodyImages?.length) allImages = [...allImages, ...subjectB.bodyImages];
+        // Add signature style images
+        if (subjectA?.signatureImages?.length) allImages = [...allImages, ...subjectA.signatureImages];
+        if (subjectB?.signatureImages?.length) allImages = [...allImages, ...subjectB.signatureImages];
+      }
+      // Limit to 14 images (ModelsLab max)
+      allImages = allImages.slice(0, 14);
+      
       const res = await apiRequest("POST", "/api/modelslab/generate", {
         prompt: enhancedPrompt,
-        images: imageUrls,
+        images: allImages,
         aspectRatio: cinematicSettings?.optics?.aspectRatio || aspectRatio,
         cinematicSettings: cinematicSettings || undefined,
       });
