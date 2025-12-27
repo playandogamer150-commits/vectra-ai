@@ -981,15 +981,27 @@ export default function ModelsLabStudioPage() {
       let allImages = [...imageUrls];
       if (cinematicSettings?.subjects) {
         const { subjectA, subjectB } = cinematicSettings.subjects;
+        // Extract URLs from image objects (format: { id: string, url: string })
+        const extractUrls = (imgs: Array<{id: string; url: string}> | undefined) => 
+          imgs?.map(img => img.url).filter(Boolean) || [];
+        
         // Add face images first (highest priority for character consistency)
-        if (subjectA?.faceImages?.length) allImages = [...subjectA.faceImages, ...allImages];
-        if (subjectB?.faceImages?.length) allImages = [...subjectB.faceImages, ...allImages];
+        const faceA = extractUrls(subjectA?.faceImages);
+        const faceB = extractUrls(subjectB?.faceImages);
+        if (faceA.length) allImages = [...faceA, ...allImages];
+        if (faceB.length) allImages = [...faceB, ...allImages];
+        
         // Add body images
-        if (subjectA?.bodyImages?.length) allImages = [...allImages, ...subjectA.bodyImages];
-        if (subjectB?.bodyImages?.length) allImages = [...allImages, ...subjectB.bodyImages];
+        const bodyA = extractUrls(subjectA?.bodyImages);
+        const bodyB = extractUrls(subjectB?.bodyImages);
+        if (bodyA.length) allImages = [...allImages, ...bodyA];
+        if (bodyB.length) allImages = [...allImages, ...bodyB];
+        
         // Add signature style images
-        if (subjectA?.signatureImages?.length) allImages = [...allImages, ...subjectA.signatureImages];
-        if (subjectB?.signatureImages?.length) allImages = [...allImages, ...subjectB.signatureImages];
+        const sigA = extractUrls(subjectA?.signatureImages);
+        const sigB = extractUrls(subjectB?.signatureImages);
+        if (sigA.length) allImages = [...allImages, ...sigA];
+        if (sigB.length) allImages = [...allImages, ...sigB];
       }
       // Limit to 14 images (ModelsLab max)
       allImages = allImages.slice(0, 14);
