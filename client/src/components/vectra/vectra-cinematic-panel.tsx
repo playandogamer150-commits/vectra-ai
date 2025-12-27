@@ -527,17 +527,21 @@ export function VectraCinematicPanel({
           </div>
           
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-xs text-muted-foreground">Samples</span>
-              <span className="text-xs font-mono text-muted-foreground">{sampleCount}</span>
+            <span className="text-xs text-muted-foreground mb-1.5 block">Samples</span>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4].map((count) => (
+                <Button
+                  key={count}
+                  size="sm"
+                  variant={sampleCount === count ? "default" : "outline"}
+                  className="flex-1 h-8 text-xs font-mono"
+                  onClick={() => setSampleCount(count)}
+                  data-testid={`samples-${count}`}
+                >
+                  {count}
+                </Button>
+              ))}
             </div>
-            <VectraSlider
-              value={sampleCount}
-              onChange={setSampleCount}
-              min={1}
-              max={4}
-              testId="slider-samples"
-            />
           </div>
         </div>
       </AccordionSection>
