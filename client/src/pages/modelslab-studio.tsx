@@ -487,6 +487,7 @@ export default function ModelsLabStudioPage() {
     sourceImage: string;
     generatedAt: Date;
     generationTimeMs?: number;
+    model?: string;
   } | null>(null);
   const [videoGenerationStartTime, setVideoGenerationStartTime] = useState<number | null>(null);
 
@@ -658,6 +659,7 @@ export default function ModelsLabStudioPage() {
       sourceImage: selectedImageForVideo,
       generatedAt: new Date(),
       generationTimeMs: generationTime,
+      model: videoAspect === "9:16" ? "Seedance 1.0 Pro I2V" : "Veo 3.1",
     });
     setIsPollingVideo(false);
     setShowVideoDialog(false);
@@ -1845,7 +1847,7 @@ export default function ModelsLabStudioPage() {
                     </div>
                     <div>
                       <p className="text-muted-foreground">{t.modelslab.model}</p>
-                      <p className="font-medium">Stable Video Diffusion</p>
+                      <p className="font-medium">{videoGenerationMeta.model || "AI Video Model"}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">{t.modelslab.generationTime || "Generation Time"}</p>
