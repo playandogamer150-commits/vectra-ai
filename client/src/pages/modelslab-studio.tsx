@@ -235,6 +235,51 @@ export default function ModelsLabStudioPage() {
   const [showAdminKeyModal, setShowAdminKeyModal] = useState(false);
   const [adminApiKey, setAdminApiKey] = useState("");
 
+  // Direct download function - downloads at max resolution without opening new tab
+  const downloadImage = async (imageUrl: string, filename?: string) => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename || `vectra-image-${Date.now()}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Download failed:", error);
+      toast({
+        title: t.common.error || "Error",
+        description: "Failed to download image. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const downloadVideo = async (videoUrl: string, filename?: string) => {
+    try {
+      const response = await fetch(videoUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename || `vectra-video-${Date.now()}.mp4`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Download failed:", error);
+      toast({
+        title: t.common.error || "Error",
+        description: "Failed to download video. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Queries for Prompt Engine
   const { data: profiles, isLoading: loadingProfiles } = useQuery<LlmProfile[]>({
     queryKey: ["/api/profiles"],
@@ -1552,12 +1597,9 @@ export default function ModelsLabStudioPage() {
                         <Button
                           size="icon"
                           variant="secondary"
-                          onClick={() => {
-                            const link = document.createElement("a");
-                            link.href = imageUrl;
-                            link.download = `modelslab-${Date.now()}.png`;
-                            link.click();
-                          }}
+                          onClick={() => downloadImage(imageUrl)}
+                          title="Download"
+                          data-testid={`button-download-${index}`}
                         >
                           <Download className="w-4 h-4" />
                         </Button>
@@ -1785,12 +1827,7 @@ export default function ModelsLabStudioPage() {
                   </Button>
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      const link = document.createElement("a");
-                      link.href = videoResult.output![0];
-                      link.download = `video-${Date.now()}.mp4`;
-                      link.click();
-                    }}
+                    onClick={() => downloadVideo(videoResult.output![0])}
                     data-testid="button-download-video-main"
                   >
                     <Download className="w-4 h-4 mr-2" />
