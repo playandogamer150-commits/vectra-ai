@@ -216,7 +216,7 @@ export function VectraCinematicPanel({
   const [sampleCount, setSampleCount] = useState(1);
   
   const [vfxEffects, setVfxEffects] = useState<string[]>(["off"]);
-  const [vfxIntensity, setVfxIntensity] = useState(3);
+  const [vfxIntensity, setVfxIntensity] = useState(50);
   
   const [subjectTab, setSubjectTab] = useState("a");
   const [subjectA, setSubjectA] = useState<SubjectData>({
@@ -408,7 +408,7 @@ export function VectraCinematicPanel({
       </div>
       <div className="p-3 rounded-lg bg-muted/50">
         <p className="text-xs text-muted-foreground">
-          <strong>Intensidade:</strong> Controla o quão forte os efeitos serão aplicados. 0 = sutil, 5 = extremo.
+          <strong>Intensidade:</strong> Controla o quão forte os efeitos serão aplicados. 0 = sutil, 100 = extremo.
         </p>
       </div>
     </div>
@@ -594,7 +594,7 @@ export function VectraCinematicPanel({
               value={vfxIntensity}
               onChange={setVfxIntensity}
               min={0}
-              max={5}
+              max={100}
               testId="slider-vfx-intensity"
             />
           </div>

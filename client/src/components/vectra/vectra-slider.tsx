@@ -133,20 +133,6 @@ export function VectraSlider({
           style={{ left: `${percentage}%` }}
         />
         
-        {/* Step markers (for small ranges) */}
-        {(max - min) <= 10 && (
-          <div className="absolute inset-0 flex items-center justify-between px-0.5 pointer-events-none">
-            {Array.from({ length: max - min + 1 }, (_, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "w-1 h-1 rounded-full",
-                  i + min <= value ? "bg-white/40" : "bg-white/15"
-                )}
-              />
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
