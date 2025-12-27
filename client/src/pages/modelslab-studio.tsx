@@ -20,7 +20,8 @@ import { queryClient } from "@/lib/queryClient";
 import { 
   Loader2, ImagePlus, Sparkles, X, Download, ExternalLink, Upload, Clipboard,
   ChevronDown, ChevronUp, Layers, SlidersHorizontal, Wand2, RefreshCw, Heart,
-  Save, Trash2, FolderOpen, BookmarkPlus, Video, Play, FileJson, FileText as FileTextIcon, FileDown
+  Save, Trash2, FolderOpen, BookmarkPlus, Video, Play, FileJson, FileText as FileTextIcon, FileDown,
+  Square
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -209,6 +210,7 @@ export default function ModelsLabStudioPage() {
   // Result state
   const [result, setResult] = useState<ModelsLabResponse | null>(null);
   const [isPolling, setIsPolling] = useState(false);
+  const isCancelledRef = useRef(false);
   
   // HQ quota exhausted popup state
   const [showHqExhaustedPopup, setShowHqExhaustedPopup] = useState(false);
@@ -1028,14 +1030,35 @@ export default function ModelsLabStudioPage() {
     },
   });
 
+  // Cancel generation function
+  const cancelGeneration = () => {
+    isCancelledRef.current = true;
+    setIsPolling(false);
+    toast({
+      title: t.modelslab.cancelled || "Generation cancelled",
+      description: t.modelslab.cancelledDescription || "You can now adjust your settings and try again.",
+    });
+  };
+
   const pollForResult = async (fetchUrl: string) => {
     let attempts = 0;
     const maxAttempts = 60;
+    isCancelledRef.current = false; // Reset cancelled state when starting
     
     const poll = async () => {
+      // Check if cancelled before continuing
+      if (isCancelledRef.current) {
+        return;
+      }
+      
       try {
         const res = await apiRequest("POST", "/api/modelslab/status", { fetchUrl });
         const data = await res.json() as ModelsLabResponse;
+        
+        // Check again after fetch in case cancelled during request
+        if (isCancelledRef.current) {
+          return;
+        }
         
         if (data.status === "success" && data.output) {
           setResult(data);
@@ -1063,6 +1086,7 @@ export default function ModelsLabStudioPage() {
           });
         }
       } catch {
+        if (isCancelledRef.current) return;
         setIsPolling(false);
         toast({
           title: t.modelslab.error,
@@ -1543,24 +1567,37 @@ export default function ModelsLabStudioPage() {
                   </Select>
                 </div>
 
-                <Button
-                  onClick={() => generateImageMutation.mutate()}
-                  disabled={isGeneratingImage || !prompt.trim() || images.length === 0}
-                  className="w-full"
-                  data-testid="button-generate"
-                >
-                  {isGeneratingImage ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {isPolling ? t.modelslab.processing : t.modelslab.generating}
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      {t.modelslab.generate}
-                    </>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => generateImageMutation.mutate()}
+                    disabled={isGeneratingImage || !prompt.trim() || images.length === 0}
+                    className="flex-1"
+                    data-testid="button-generate"
+                  >
+                    {isGeneratingImage ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        {isPolling ? t.modelslab.processing : t.modelslab.generating}
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        {t.modelslab.generate}
+                      </>
+                    )}
+                  </Button>
+                  {isGeneratingImage && (
+                    <Button
+                      onClick={cancelGeneration}
+                      variant="destructive"
+                      size="icon"
+                      data-testid="button-cancel-generation"
+                      title={t.modelslab.cancel || "Cancel"}
+                    >
+                      <Square className="w-4 h-4" />
+                    </Button>
                   )}
-                </Button>
+                </div>
               </div>
             </div>
           </div>
