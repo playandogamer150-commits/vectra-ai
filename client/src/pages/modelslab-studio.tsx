@@ -939,28 +939,46 @@ export default function ModelsLabStudioPage() {
         const intensityPrefix = getIntensityPrefix(intensity);
         
         // Add VFX effects with STRONG descriptions - these go at the START for priority
+        // When multiple effects are selected, they are COMBINED into a single cohesive directive
         if (cinematicSettings.vfx?.effects && cinematicSettings.vfx.effects.length > 0) {
           const vfxMap: Record<string, string> = {
-            "vhs": "VHS tape recording effect with scan lines, tape distortion, chromatic aberration, analog video noise, magnetic tape artifacts, VCR aesthetic",
-            "35mm": "35mm analog film photography with authentic film grain, halation, color rendition of Kodak Portra, slight vignetting, film emulsion texture",
-            "nvg": "NIGHT VISION GOGGLES view, GREEN MONOCHROME phosphor screen, NVG grain noise, infrared illumination glow, military thermal imaging aesthetic, Gen 3 night vision look",
-            "sony90s": "SONY GHS 2000 camcorder night vision from the 1990s, green phosphor screen glow, VHS-quality infrared recording, 90s night shot mode, consumer-grade night vision with visible scan lines, ghosting artifacts, low-light amplification noise, vintage Sony Handycam NightShot aesthetic, green monochrome with white hot spots",
-            "cine": "cinematic movie color grading, anamorphic lens flare, Hollywood blockbuster look, theatrical film print colors, 2.39:1 aspect ratio feel",
-            "gltch": "digital glitch effect with RGB split, data corruption artifacts, pixel displacement, VHS tracking errors, databending aesthetic",
-            "blum": "heavy bloom lighting effect, bright light diffusion, dreamy glow, overexposed highlights bleeding, soft focus bloom",
-            "grain": "heavy film grain texture, analog noise pattern, high ISO look, grainy photographic texture throughout image",
-            "leak": "strong light leak effect, color bleeding from edges, lens flare streaks, vintage camera light exposure, orange and cyan light leaks",
-            "scan": "CRT scanlines overlay, interlaced video lines, retro monitor display, cathode ray tube aesthetic, horizontal scan lines visible",
-            "noir": "black and white noir style, high contrast monochrome, dramatic shadows, film noir cinematography, moody dark aesthetic",
-            "teal": "teal and orange color grading, Hollywood blockbuster color palette, complementary color contrast, cinematic color correction"
+            "vhs": "VHS tape recording with scan lines, tape distortion, chromatic aberration, analog video noise, magnetic tape artifacts",
+            "35mm": "35mm analog film with authentic grain, halation, Kodak Portra colors, vignetting, film emulsion texture",
+            "nvg": "NIGHT VISION GOGGLES view with GREEN MONOCHROME phosphor screen, NVG grain, infrared glow, military thermal imaging",
+            "sony90s": "SONY GHS 2000 camcorder night vision 1990s, green phosphor glow, VHS-quality infrared, night shot mode with scan lines, ghosting artifacts",
+            "cine": "cinematic movie color grading, anamorphic lens flare, Hollywood blockbuster theatrical film look",
+            "gltch": "digital glitch with RGB split, data corruption artifacts, pixel displacement, databending aesthetic",
+            "blum": "heavy bloom lighting, bright diffusion, dreamy glow, overexposed highlights bleeding, soft focus",
+            "grain": "heavy film grain texture, analog noise pattern, high ISO grainy photographic texture",
+            "leak": "strong light leak, color bleeding from edges, lens flare streaks, orange and cyan light leaks",
+            "scan": "CRT scanlines overlay, interlaced video lines, cathode ray tube aesthetic, horizontal scan lines",
+            "noir": "black and white noir, high contrast monochrome, dramatic shadows, film noir moody dark aesthetic",
+            "teal": "teal and orange color grading, Hollywood complementary color contrast, cinematic color correction"
           };
+          
+          // Collect all active effects
+          const activeEffects: string[] = [];
+          const effectNames: string[] = [];
           
           cinematicSettings.vfx.effects.forEach(effect => {
             if (effect !== "off" && vfxMap[effect]) {
-              // Add with intensity prefix for strong effect
-              cinematicPrefix.push(`${intensityPrefix} ${vfxMap[effect]}`);
+              activeEffects.push(vfxMap[effect]);
+              effectNames.push(effect.toUpperCase());
             }
           });
+          
+          // If multiple effects, create a COMBINED directive for better fusion
+          if (activeEffects.length > 0) {
+            if (activeEffects.length === 1) {
+              // Single effect - apply directly with intensity
+              cinematicPrefix.push(`${intensityPrefix} ${activeEffects[0]}`);
+            } else {
+              // Multiple effects - create COMBINED/MIXED directive for better fusion
+              const combinedEffectList = effectNames.join(" + ");
+              const fusedDescription = activeEffects.join(" MIXED WITH ");
+              cinematicPrefix.push(`${intensityPrefix} COMBINED VISUAL EFFECTS [${combinedEffectList}]: ${fusedDescription}. BLEND ALL EFFECTS TOGETHER seamlessly into a unified aesthetic`);
+            }
+          }
         }
         
         // Add optics style
