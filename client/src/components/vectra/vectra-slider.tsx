@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { Slider } from "@/components/ui/slider";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 interface VectraSliderProps {
   value: number;
@@ -24,6 +24,65 @@ export function VectraSlider({
   className,
   testId,
 }: VectraSliderProps) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  
+  const percentage = ((value - min) / (max - min)) * 100;
+  
+  const updateValue = useCallback((clientX: number) => {
+    if (!trackRef.current) return;
+    
+    const rect = trackRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const percent = Math.max(0, Math.min(1, x / rect.width));
+    const rawValue = min + percent * (max - min);
+    const steppedValue = Math.round(rawValue / step) * step;
+    const clampedValue = Math.max(min, Math.min(max, steppedValue));
+    
+    if (clampedValue !== value) {
+      onChange(clampedValue);
+    }
+  }, [min, max, step, value, onChange]);
+  
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    updateValue(e.clientX);
+  }, [updateValue]);
+  
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    setIsDragging(true);
+    updateValue(e.touches[0].clientX);
+  }, [updateValue]);
+  
+  useEffect(() => {
+    if (!isDragging) return;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      updateValue(e.clientX);
+    };
+    
+    const handleTouchMove = (e: TouchEvent) => {
+      updateValue(e.touches[0].clientX);
+    };
+    
+    const handleEnd = () => {
+      setIsDragging(false);
+    };
+    
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleEnd);
+    document.addEventListener("touchmove", handleTouchMove);
+    document.addEventListener("touchend", handleEnd);
+    
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleEnd);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleEnd);
+    };
+  }, [isDragging, updateValue]);
+  
   return (
     <div className={cn("space-y-2", className)} data-testid={testId}>
       {(label || showValue) && (
@@ -39,24 +98,56 @@ export function VectraSlider({
         </div>
       )}
       
-      <Slider
-        value={[value]}
-        onValueChange={(vals) => onChange(vals[0])}
-        min={min}
-        max={max}
-        step={step}
+      <div
+        ref={trackRef}
         className={cn(
-          "[&_[role=slider]]:h-3.5 [&_[role=slider]]:w-3.5",
-          "[&_[role=slider]]:bg-white/95 [&_[role=slider]]:border-[rgba(14,16,20,0.3)] [&_[role=slider]]:border-2",
-          "[&_[role=slider]]:shadow-[0_2px_6px_rgba(0,0,0,0.3)]",
-          "[&_[role=slider]]:transition-all [&_[role=slider]]:duration-150 [&_[role=slider]]:ease-[cubic-bezier(0.4,0,0.2,1)]",
-          "[&_[role=slider]]:hover:scale-115 [&_[role=slider]]:hover:shadow-[0_3px_10px_rgba(0,0,0,0.4)]",
-          "[&_[role=slider]]:active:scale-105 [&_[role=slider]]:active:bg-white [&_[role=slider]]:active:shadow-[0_2px_12px_rgba(255,255,255,0.2)]",
-          "[&_[data-orientation=horizontal]]:h-1 [&_[data-orientation=horizontal]]:bg-white/10",
-          "[&_span[data-orientation=horizontal]]:bg-gradient-to-r [&_span[data-orientation=horizontal]]:from-white/60 [&_span[data-orientation=horizontal]]:to-white/80",
-          "[&_span[data-orientation=horizontal]]:transition-all [&_span[data-orientation=horizontal]]:duration-100 [&_span[data-orientation=horizontal]]:ease-out"
+          "relative h-2 w-full rounded-full cursor-pointer select-none",
+          "bg-white/10 backdrop-blur-sm",
+          "transition-all duration-150"
         )}
-      />
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
+      >
+        {/* Filled track */}
+        <div
+          className={cn(
+            "absolute inset-y-0 left-0 rounded-full",
+            "bg-gradient-to-r from-white/50 to-white/70",
+            "transition-all duration-75 ease-out"
+          )}
+          style={{ width: `${percentage}%` }}
+        />
+        
+        {/* Thumb */}
+        <div
+          className={cn(
+            "absolute top-1/2 -translate-y-1/2 -translate-x-1/2",
+            "w-4 h-4 rounded-full",
+            "bg-white shadow-lg",
+            "border-2 border-black/20",
+            "transition-transform duration-100 ease-out",
+            isDragging 
+              ? "scale-110 shadow-[0_0_12px_rgba(255,255,255,0.3)]" 
+              : "hover:scale-105"
+          )}
+          style={{ left: `${percentage}%` }}
+        />
+        
+        {/* Step markers (for small ranges) */}
+        {(max - min) <= 10 && (
+          <div className="absolute inset-0 flex items-center justify-between px-0.5 pointer-events-none">
+            {Array.from({ length: max - min + 1 }, (_, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "w-1 h-1 rounded-full",
+                  i + min <= value ? "bg-white/40" : "bg-white/15"
+                )}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
