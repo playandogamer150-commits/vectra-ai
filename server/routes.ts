@@ -836,17 +836,17 @@ export async function registerRoutes(
         // VFX effects
         if (cs.vfx?.effects && cs.vfx.effects.length > 0) {
           const vfxMap: Record<string, string> = {
-            "vhs": "VHS tape effect, retro analog distortion, chromatic aberration",
-            "35mm": "35mm film grain, analog texture, cinematic warmth",
-            "nvg": "night vision green tint, military thermal imaging",
-            "cine": "cinematic color grading, anamorphic lens flares",
-            "gltch": "digital glitch effect, data corruption aesthetic",
-            "blum": "bloom lighting effect, ethereal glow, soft highlights",
-            "grain": "film grain texture, subtle noise, analog feel",
-            "leak": "light leak effect, vintage photography, warm light streaks",
-            "scan": "scan lines overlay, CRT monitor effect, retro display",
-            "noir": "noir black and white, dramatic shadows, film noir",
-            "teal": "teal and orange color grading, Hollywood blockbuster look",
+            "vhs": "VHS tape effect, retro analog distortion, chromatic aberration, magnetic tape artifacts",
+            "35mm": "35mm film grain, analog texture, cinematic warmth, Kodak film emulation",
+            "nvg": "night vision goggles POV, monochrome green phosphor display, military NVG thermal imaging, infrared sensor view, green tinted night vision camera footage, tactical night operations aesthetic",
+            "cine": "cinematic color grading, anamorphic lens flares, Hollywood color science",
+            "gltch": "digital glitch effect, data corruption aesthetic, databending artifacts",
+            "blum": "bloom lighting effect, ethereal glow, soft highlights, dreamy atmosphere",
+            "grain": "film grain texture, subtle noise, analog feel, ISO noise pattern",
+            "leak": "light leak effect, vintage photography, warm light streaks, lens flare",
+            "scan": "scan lines overlay, CRT monitor effect, retro display, interlaced video",
+            "noir": "noir black and white, dramatic shadows, film noir, high contrast monochrome",
+            "teal": "teal and orange color grading, Hollywood blockbuster look, complementary color scheme",
           };
           const intensity = cs.vfx.intensity || 3;
           const intensityPrefix = intensity >= 4 ? "strong " : intensity <= 1 ? "subtle " : "";
@@ -920,11 +920,12 @@ export async function registerRoutes(
 
       let result = compiler.compile(compileInput);
       
-      // Append cinematic modifiers to compiled prompt if any
+      // Prepend cinematic modifiers to compiled prompt for stronger effect (VFX effects go first)
       if (cinematicModifiers.length > 0) {
+        const cinematicPrefix = `[VISUAL STYLE: ${cinematicModifiers.join(", ")}]\n\n`;
         result = {
           ...result,
-          compiledPrompt: `${result.compiledPrompt}\n\nCinematic Enhancement: ${cinematicModifiers.join(", ")}`,
+          compiledPrompt: `${cinematicPrefix}${result.compiledPrompt}`,
           metadata: {
             ...result.metadata,
             filterCount: result.metadata.filterCount + cinematicModifiers.length,
