@@ -222,4 +222,7 @@ async function initStripe() {
   httpServer.listen(port, "0.0.0.0", () => {
     log(`serving on port ${port}`);
   });
-})();
+})().catch((err) => {
+  console.error("FATAL: Failed to start server:", err);
+  process.exit(1);
+});
