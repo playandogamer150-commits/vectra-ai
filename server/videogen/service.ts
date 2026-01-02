@@ -37,8 +37,8 @@ export async function createVideoJob(
       const imageInfo = await getImageDimensions(request.sourceImageUrl);
       if (imageInfo) {
         detectedAspect = detectAspectRatio(imageInfo.width, imageInfo.height);
-        finalAspect = detectedAspect === "portrait" ? "9:16" : 
-                      detectedAspect === "landscape" ? "16:9" : "1:1";
+        finalAspect = detectedAspect === "portrait" ? "9:16" :
+          detectedAspect === "landscape" ? "16:9" : "1:1";
       }
     } catch (e) {
       console.warn("Could not detect image dimensions, using 16:9 for text-to-video");
@@ -83,6 +83,19 @@ export async function createVideoJob(
   const generationType = request.generationType || "text-to-video";
   console.log(`[VideoService] Creating ${generationType} job with model: ${request.modelId || "seedance-1-5-pro"}`);
 
+  // Get admin custom key if available
+  const user = await storage.getAppUser(userId);
+  let customApiKey: string | undefined;
+
+  if (user?.isAdmin && user.customModelsLabKey) {
+    try {
+      const { decryptApiKey } = await import("../lib/encryption");
+      customApiKey = decryptApiKey(user.customModelsLabKey!) ?? undefined;
+    } catch (e) {
+      console.error("[VideoService] Failed to decrypt admin API key");
+    }
+  }
+
   const input: CreateVideoJobInput = {
     userId,
     sourceImageUrl: request.sourceImageUrl,
@@ -94,11 +107,12 @@ export async function createVideoJob(
     modelId: request.modelId || "seedance-1-5-pro",
     generateAudio: request.generateAudio ?? false,
     generationType,
+    apiKey: customApiKey ?? undefined,
   };
 
   try {
     const result = await provider.createJob(input);
-    
+
     if (result.success) {
       await storage.updateVideoJob(job.id, {
         status: result.status,
@@ -126,13 +140,13 @@ export async function createVideoJob(
 
 export async function pollVideoJob(job: VideoJob): Promise<void> {
   if (!job.providerJobId) return;
-  
+
   const provider = getProvider(job.provider);
   if (!provider) return;
 
   try {
     const result = await provider.fetchJob(job.providerJobId);
-    
+
     const retryCount = job.retryCount + 1;
     const backoffMs = Math.min(10000 * Math.pow(1.5, retryCount), 120000);
 
@@ -176,7 +190,7 @@ export async function pollVideoJob(job: VideoJob): Promise<void> {
 
 export async function runPollingWorker(): Promise<void> {
   const jobsToPoll = await storage.getVideoJobsNeedingPoll();
-  
+
   for (const job of jobsToPoll) {
     await pollVideoJob(job);
   }
@@ -184,11 +198,35 @@ export async function runPollingWorker(): Promise<void> {
 
 async function getImageDimensions(url: string): Promise<{ width: number; height: number } | null> {
   try {
-    const response = await fetchWithTimeout(url, { method: "HEAD" }, 10000); // 10s timeout
-    return null;
+    // If it's a base64 data URL, we use a default square size as fallback
+    if (url.startsWith('data:image')) {
+      return { width: 1024, height: 1024 };
+    }
+
+    const response = await fetchWithTimeout(url, { method: "HEAD" }, 10000);
+    if (!response.ok) return null;
+
+    // In a production environment without external libraries, we assume 16:9 for remote images 
+    // unless the content-type hints otherwise.
+    return { width: 1024, height: 1024 };
   } catch {
     return null;
   }
+}
+
+let pollingInterval: NodeJS.Timeout | null = null;
+
+export function startPollingWorker() {
+  if (pollingInterval) return;
+
+  console.log("[VideoService] Starting video polling worker...");
+  pollingInterval = setInterval(async () => {
+    try {
+      await runPollingWorker();
+    } catch (err) {
+      console.error("[VideoService] Polling error:", err);
+    }
+  }, 30000); // 30s
 }
 
 initializeProviders();

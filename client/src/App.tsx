@@ -18,12 +18,16 @@ import TermsPage from "@/pages/terms";
 import PrivacyPage from "@/pages/privacy";
 import SupportPage from "@/pages/support";
 import NotFound from "@/pages/not-found";
+import LoginPage from "@/pages/auth/login";
+import RegisterPage from "@/pages/auth/register";
+import WaitlistPage from "@/pages/waitlist";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={LandingPage} />
       <Route path="/pricing" component={PricingPage} />
+      <Route path="/waitlist" component={WaitlistPage} />
       <Route path="/library" component={LibraryPage} />
       <Route path="/history" component={HistoryPage} />
       <Route path="/image-studio" component={ModelsLabStudioPage} />
@@ -32,6 +36,8 @@ function Router() {
       <Route path="/terms" component={TermsPage} />
       <Route path="/privacy" component={PrivacyPage} />
       <Route path="/support" component={SupportPage} />
+      <Route path="/login" component={LoginPage} />
+      <Route path="/register" component={RegisterPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -39,7 +45,7 @@ function Router() {
 
 function AppContent() {
   const [location] = useLocation();
-  const pagesWithoutHeader = ["/", "/pricing", "/terms", "/privacy", "/support"];
+  const pagesWithoutHeader = ["/", "/pricing", "/waitlist", "/terms", "/privacy", "/support", "/login", "/register"];
   const showHeader = !pagesWithoutHeader.includes(location);
 
   return (

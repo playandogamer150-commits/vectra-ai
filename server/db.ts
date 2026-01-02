@@ -4,11 +4,25 @@ import * as schema from "@shared/schema";
 
 const { Pool } = pg;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  console.error("CRITICAL ERROR: DATABASE_URL is not defined in the environment.");
+  console.error("Ensure you have a .env file with DATABASE_URL set to your Supabase connection string.");
+  process.exit(1);
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// Support for Supabase Session Pooler (port 6543) requires SSL
+export const pool = new Pool({
+  connectionString: databaseUrl,
+  ssl: databaseUrl.includes("supabase.com") ? { rejectUnauthorized: false } : false,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle database client', err);
+});
+
 export const db = drizzle(pool, { schema });

@@ -20,8 +20,8 @@ export class WebhookHandlers {
 
     const stripe = await getUncachableStripeClient();
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    
-    if (webhookSecret) {
+
+    if (webhookSecret && stripe) {
       try {
         const event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
         await WebhookHandlers.handleEvent(event);
@@ -69,7 +69,7 @@ export class WebhookHandlers {
 
   static async handleSubscriptionCreated(subscriptionId: string, customerId: string, status: string): Promise<void> {
     const plan = status === 'active' || status === 'trialing' ? 'pro' : 'free';
-    
+
     await db.update(appUsers)
       .set({
         stripeSubscriptionId: subscriptionId,
@@ -82,7 +82,7 @@ export class WebhookHandlers {
 
   static async handleSubscriptionUpdated(subscriptionId: string, customerId: string, status: string): Promise<void> {
     const plan = status === 'active' || status === 'trialing' ? 'pro' : 'free';
-    
+
     await db.update(appUsers)
       .set({
         plan: plan,

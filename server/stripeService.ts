@@ -6,6 +6,7 @@ import { getUncachableStripeClient } from './stripeClient';
 export class StripeService {
   async createCustomer(email: string, userId: string, name?: string) {
     const stripe = await getUncachableStripeClient();
+    if (!stripe) throw new Error("Stripe disabled");
     return await stripe.customers.create({
       email,
       name,
@@ -15,6 +16,7 @@ export class StripeService {
 
   async createCheckoutSession(customerId: string, priceId: string, successUrl: string, cancelUrl: string, locale?: string, userId?: string) {
     const stripe = await getUncachableStripeClient();
+    if (!stripe) throw new Error("Stripe disabled");
     const checkoutLocale = locale?.startsWith('en') ? 'en' : 'pt-BR';
     return await stripe.checkout.sessions.create({
       customer: customerId,
@@ -33,6 +35,7 @@ export class StripeService {
 
   async createCustomerPortalSession(customerId: string, returnUrl: string) {
     const stripe = await getUncachableStripeClient();
+    if (!stripe) throw new Error("Stripe disabled");
     return await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: returnUrl,

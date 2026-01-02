@@ -28,13 +28,13 @@ export function getSession() {
     tableName: "sessions",
   });
   return session({
-    secret: process.env.SESSION_SECRET!,
+    secret: process.env.SESSION_SECRET || "vectra-secret-key",
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === "production",
       maxAge: sessionTtl,
     },
   });
@@ -42,7 +42,7 @@ export function getSession() {
 
 function updateUserSession(
   user: any,
-  tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers
+  tokens: any
 ) {
   user.claims = tokens.claims();
   user.access_token = tokens.access_token;
@@ -54,8 +54,8 @@ async function upsertUser(claims: any) {
   await authStorage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
-    firstName: claims["first_name"],
-    lastName: claims["last_name"],
+    firstName: claims["first_name"] || "Admin",
+    lastName: claims["last_name"] || "Local",
     profileImageUrl: claims["profile_image_url"],
   });
 }
@@ -66,10 +66,110 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  const isLocal = !process.env.REPL_ID;
+
+  if (isLocal) {
+    console.log("[auth] Local development detected, bypassing OIDC discovery for development");
+
+    passport.serializeUser((user: any, cb) => cb(null, user));
+    passport.deserializeUser((user: any, cb) => cb(null, user));
+
+    // Track logged out state per session
+    const loggedOutSessions = new Set<string>();
+
+    // Login route for local dev - clears logout flag and redirects to main app
+    app.get("/api/login", (req: any, res) => {
+      // Clear the logged out flag for this session
+      if (req.sessionID) {
+        loggedOutSessions.delete(req.sessionID);
+      }
+
+      // Auto-login the mock user
+      const mockClaims = {
+        sub: "local_dev_user",
+        email: "admin@vectra.ai",
+        first_name: "Admin",
+        last_name: "Local",
+        exp: Math.floor(Date.now() / 1000) + 3600 * 24
+      };
+
+      const mockUser = {
+        id: "local_dev_user",
+        claims: mockClaims,
+        expires_at: mockClaims.exp
+      };
+
+      req.logIn(mockUser, (err: any) => {
+        if (err) {
+          console.error("[auth] Login error:", err);
+          return res.redirect("/");
+        }
+        res.redirect("/image-studio");
+      });
+    });
+
+    // Logout route for local dev - destroys session and redirects to landing page
+    app.get("/api/logout", (req: any, res) => {
+      // Mark this session as logged out BEFORE destroying
+      const oldSessionId = req.sessionID;
+
+      req.logout((err: any) => {
+        if (oldSessionId) {
+          loggedOutSessions.add(oldSessionId);
+        }
+
+        // Regenerate session to get new ID
+        req.session?.regenerate((regenErr: any) => {
+          if (req.sessionID) {
+            loggedOutSessions.add(req.sessionID);
+          }
+          res.redirect("/");
+        });
+      });
+    });
+
+    // Auto-login mock user for local dev (only for /api/* routes that require auth)
+    // Skip if user explicitly logged out
+    app.use(async (req: any, res, next) => {
+      // Skip auto-login for auth routes
+      if (req.path === "/api/login" || req.path === "/api/logout") {
+        return next();
+      }
+
+      // Check if this session was logged out
+      const isLoggedOut = req.sessionID && loggedOutSessions.has(req.sessionID);
+
+      // Only auto-login for /api/* routes that need auth, and user hasn't logged out
+      if (req.path.startsWith('/api') && !req.isAuthenticated() && !isLoggedOut) {
+        const mockClaims = {
+          sub: "local_dev_user",
+          email: "admin@vectra.ai",
+          first_name: "Admin",
+          last_name: "Local",
+          exp: Math.floor(Date.now() / 1000) + 3600 * 24
+        };
+
+        await upsertUser(mockClaims);
+
+        const mockUser = {
+          id: "local_dev_user",
+          claims: mockClaims,
+          expires_at: mockClaims.exp
+        };
+
+        req.logIn(mockUser, (err: any) => next());
+      } else {
+        next();
+      }
+    });
+
+    return;
+  }
+
   const config = await getOidcConfig();
 
   const verify: VerifyFunction = async (
-    tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
+    tokens: any,
     verified: passport.AuthenticateCallback
   ) => {
     const user = {};
@@ -78,10 +178,8 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
-  // Keep track of registered strategies
   const registeredStrategies = new Set<string>();
 
-  // Helper function to ensure strategy exists for a domain
   const ensureStrategy = (domain: string) => {
     const strategyName = `replitauth:${domain}`;
     if (!registeredStrategies.has(strategyName)) {
@@ -99,20 +197,10 @@ export async function setupAuth(app: Express) {
     }
   };
 
-  passport.serializeUser((user: Express.User, cb) => cb(null, user));
-  passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+  passport.serializeUser((user: any, cb) => cb(null, user));
+  passport.deserializeUser((user: any, cb) => cb(null, user));
 
-  app.get("/api/login", (req, res, next) => {
-    console.log("[auth] Login attempt", { 
-      hostname: req.hostname, 
-      protocol: req.protocol,
-      secure: req.secure,
-      headers: {
-        host: req.headers.host,
-        origin: req.headers.origin,
-        referer: req.headers.referer,
-      }
-    });
+  app.get("/api/login", (req: any, res, next) => {
     ensureStrategy(req.hostname);
     passport.authenticate(`replitauth:${req.hostname}`, {
       prompt: "login consent",
@@ -120,61 +208,29 @@ export async function setupAuth(app: Express) {
     })(req, res, next);
   });
 
-  app.get("/api/callback", (req, res, next) => {
-    console.log("[auth] Callback received", { 
-      hostname: req.hostname,
-      query: req.query,
-      hasError: !!req.query.error,
-      error: req.query.error,
-      errorDescription: req.query.error_description
-    });
+  app.get("/api/callback", (req: any, res, next) => {
     ensureStrategy(req.hostname);
-    passport.authenticate(`replitauth:${req.hostname}`, (err: any, user: any, info: any) => {
-      console.log("[auth] Passport authenticate result", { 
-        hasError: !!err, 
-        error: err?.message || err,
-        hasUser: !!user,
-        userEmail: user?.claims?.email,
-        info 
-      });
-      
-      if (err) {
-        console.error("[auth] Authentication error:", err);
-        return res.redirect("/api/login");
-      }
-      
-      if (!user) {
-        console.log("[auth] No user returned from authentication");
-        return res.redirect("/api/login");
-      }
-      
-      req.logIn(user, (loginErr) => {
-        if (loginErr) {
-          console.error("[auth] Login error:", loginErr);
-          return res.redirect("/api/login");
-        }
-        console.log("[auth] Login successful, redirecting to /");
+    passport.authenticate(`replitauth:${req.hostname}`, (err: any, user: any) => {
+      if (err || !user) return res.redirect("/api/login");
+      req.logIn(user, (loginErr: any) => {
+        if (loginErr) return res.redirect("/api/login");
         return res.redirect("/");
       });
     })(req, res, next);
   });
 
-  app.get("/api/logout", (req, res) => {
+  app.get("/api/logout", (req: any, res) => {
     req.logout(() => {
-      res.redirect(
-        client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
-      );
+      res.redirect("/");
     });
   });
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  const user = req.user as any;
+  if (!process.env.REPL_ID) return next(); // Bypass session check in local dev
 
-  if (!req.isAuthenticated() || !user.expires_at) {
+  const user = req.user as any;
+  if (!req.isAuthenticated() || !user?.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
@@ -183,19 +239,5 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     return next();
   }
 
-  const refreshToken = user.refresh_token;
-  if (!refreshToken) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
-
-  try {
-    const config = await getOidcConfig();
-    const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
-    updateUserSession(user, tokenResponse);
-    return next();
-  } catch (error) {
-    res.status(401).json({ message: "Unauthorized" });
-    return;
-  }
+  return res.status(401).json({ message: "Session expired" });
 };

@@ -4,14 +4,14 @@ import { VectraTabs, VectraTabContent } from "./vectra-tabs";
 import { VectraSecureInput } from "./vectra-secure-input";
 import { VectraUploadSlot } from "./vectra-upload-slot";
 import { VectraSlider } from "./vectra-slider";
-import { 
-  Camera, Film, User, Shirt, 
-  Eye, Scan, Square, RectangleVertical, 
+import {
+  Camera, Film, User, Shirt,
+  Eye, Scan, Square, RectangleVertical,
   RectangleHorizontal, Sparkles,
   Video, Smartphone, Focus, Crosshair, Clapperboard,
   Power, Moon, SunDim, Contrast, Droplets, Tv,
   Wand2, Crown, Leaf, Watch, Wrench, Maximize, Minimize,
-  Move, ArrowDownRight, Zap, ChevronDown, HelpCircle, X
+  Move, ArrowDownRight, Zap, ChevronDown, HelpCircle, X, Key
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -122,28 +122,38 @@ interface AccordionSectionProps {
 
 function AccordionSection({ title, icon, isOpen, onToggle, children, testId, badge, helpContent }: AccordionSectionProps) {
   const [helpOpen, setHelpOpen] = useState(false);
-  
+
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
-      <div className="flex items-center">
+      <div className="border border-white/5 bg-white/[0.01] rounded-lg mb-1 overflow-hidden transition-all duration-300 relative group">
         <CollapsibleTrigger asChild>
           <Button
             variant="ghost"
-            className="flex-1 justify-between px-3 py-2 h-auto"
+            className={cn(
+              "w-full justify-between pl-4 pr-10 py-3 h-auto transition-colors",
+              isOpen ? "bg-white/5" : "group-hover:bg-white/5"
+            )}
             data-testid={`${testId}-trigger`}
           >
-            <div className="flex items-center gap-2">
-              {icon}
-              <span className="text-sm font-medium">{title}</span>
+            <div className="flex items-center gap-3">
+              <span className={cn("transition-colors duration-300", isOpen ? "text-white" : "text-white/40")}>
+                {icon}
+              </span>
+              <span className={cn(
+                "text-[11px] font-bold uppercase tracking-[0.1em] transition-colors duration-300",
+                isOpen ? "text-white" : "text-white/60"
+              )}>
+                {title}
+              </span>
               {badge && (
-                <Badge variant="secondary" className="text-xs px-1.5 py-0">
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-white/10 text-white/80 border-white/10">
                   {badge}
                 </Badge>
               )}
             </div>
             <ChevronDown className={cn(
-              "w-4 h-4 transition-transform duration-200",
-              isOpen && "rotate-180"
+              "w-3.5 h-3.5 transition-transform duration-300 text-white/30",
+              isOpen && "rotate-180 text-white"
             )} />
           </Button>
         </CollapsibleTrigger>
@@ -153,10 +163,11 @@ function AccordionSection({ title, icon, isOpen, onToggle, children, testId, bad
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 mr-1"
+                className="absolute right-8 top-1/2 -translate-y-1/2 h-6 w-6 z-10 text-white/20 hover:text-white hover:bg-transparent transition-colors"
+                onClick={(e) => e.stopPropagation()}
                 data-testid={`${testId}-help`}
               >
-                <HelpCircle className="w-4 h-4 text-muted-foreground" />
+                <HelpCircle className="w-3.5 h-3.5" />
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-md" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
@@ -188,13 +199,13 @@ interface TooltipButtonProps {
 
 function Sony90sIcon({ className }: { className?: string }) {
   return (
-    <svg 
-      className={className} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
       strokeLinejoin="round"
     >
       <circle cx="12" cy="12" r="10" />
@@ -224,14 +235,20 @@ function TooltipButton({ option, isSelected, onClick, testId, showLabel = false 
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
-          variant={isSelected ? "default" : "outline"}
+          variant="ghost"
           size="sm"
           onClick={onClick}
-          className={cn("gap-1.5", showLabel ? "" : "px-2")}
+          className={cn(
+            "gap-1.5 h-8 border border-transparent transition-all duration-200",
+            isSelected
+              ? "bg-white text-black hover:bg-white/90 border-white shadow-[0_0_15px_rgba(255,255,255,0.2)]"
+              : "bg-white/5 text-white/40 hover:text-white hover:bg-white/10 hover:border-white/10",
+            showLabel ? "px-3" : "px-2"
+          )}
           data-testid={testId}
         >
           {renderIcon()}
-          {showLabel && <span className="text-xs">{option.label}</span>}
+          {showLabel && <span className="text-[11px] font-medium tracking-tight">{option.label}</span>}
         </Button>
       </TooltipTrigger>
       <TooltipContent side="bottom" className="max-w-[200px]">
@@ -242,20 +259,20 @@ function TooltipButton({ option, isSelected, onClick, testId, showLabel = false 
   );
 }
 
-export function VectraCinematicPanel({ 
-  isPremium, 
+export function VectraCinematicPanel({
+  isPremium,
   onSettingsChange,
-  className 
+  className
 }: VectraCinematicPanelProps) {
   const { t } = useI18n();
-  
+
   const [opticsStyle, setOpticsStyle] = useState("cinematic");
   const [aspectRatio, setAspectRatio] = useState("1:1");
   const [sampleCount, setSampleCount] = useState(1);
-  
+
   const [vfxEffects, setVfxEffects] = useState<string[]>(["off"]);
   const [vfxIntensity, setVfxIntensity] = useState(50);
-  
+
   const [subjectTab, setSubjectTab] = useState("a");
   const [subjectA, setSubjectA] = useState<SubjectData>({
     faceImages: [],
@@ -267,7 +284,7 @@ export function VectraCinematicPanel({
     bodyImages: [],
     signatureImages: [],
   });
-  
+
   const [styleBrand, setStyleBrand] = useState("auto");
   const [styleLayering, setStyleLayering] = useState("relaxed");
   const [styleFit, setStyleFit] = useState("regular");
@@ -275,12 +292,12 @@ export function VectraCinematicPanel({
   const [styleFootwear, setStyleFootwear] = useState("");
   const [styleBottom, setStyleBottom] = useState("");
   const [moodboard, setMoodboard] = useState<{ id: string; url: string }[]>([]);
-  
+
   const [customApiKey, setCustomApiKey] = useState("");
-  
+
   const [bodyFidelity, setBodyFidelity] = useState(75);
   const [preserveTattoos, setPreserveTattoos] = useState(true);
-  
+
   const [openSection, setOpenSection] = useState<string | null>("optics");
 
   const toggleSection = (section: string) => {
@@ -332,13 +349,13 @@ export function VectraCinematicPanel({
     files: File[]
   ) => {
     const setSubject = subject === "a" ? setSubjectA : setSubjectB;
-    
+
     files.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const url = e.target?.result as string;
         const newImage = { id: crypto.randomUUID(), url };
-        
+
         setSubject((prev) => ({
           ...prev,
           [`${type}Images`]: [...prev[`${type}Images`], newImage].slice(0, 20),
@@ -516,8 +533,8 @@ export function VectraCinematicPanel({
           </p>
         </div>
       </div>
-      <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-        <p className="text-xs">
+      <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+        <p className="text-xs text-white/80">
           <strong>Dica Pro:</strong> Quanto mais fotos de referência você adicionar, maior será a consistência do personagem gerado (recomendado: 3-5 fotos).
         </p>
       </div>
@@ -525,7 +542,7 @@ export function VectraCinematicPanel({
   );
 
   return (
-    <div className={cn("vectra-cinematic-panel divide-y divide-border/50 rounded-lg border bg-card", className)}>
+    <div className={cn("vectra-cinematic-panel divide-y divide-white/5 rounded-lg border-none bg-transparent", className)}>
       {/* Optics Section */}
       <AccordionSection
         title="Óptica"
@@ -552,7 +569,7 @@ export function VectraCinematicPanel({
               ))}
             </div>
           </div>
-          
+
           <div>
             <span className="text-xs text-muted-foreground mb-1.5 block">Proporção</span>
             <div className="flex gap-1">
@@ -568,7 +585,7 @@ export function VectraCinematicPanel({
               ))}
             </div>
           </div>
-          
+
           <div>
             <span className="text-xs text-muted-foreground mb-1.5 block">Samples</span>
             <div className="flex gap-1">
@@ -576,8 +593,13 @@ export function VectraCinematicPanel({
                 <Button
                   key={count}
                   size="sm"
-                  variant={sampleCount === count ? "default" : "outline"}
-                  className="flex-1 h-8 text-xs font-mono"
+                  variant="ghost"
+                  className={cn(
+                    "flex-1 h-8 text-xs font-mono border border-transparent transition-all duration-200",
+                    sampleCount === count
+                      ? "bg-white text-black hover:bg-white/90 border-white"
+                      : "bg-white/5 text-white/40 hover:text-white hover:bg-white/10"
+                  )}
                   onClick={() => setSampleCount(count)}
                   data-testid={`samples-${count}`}
                 >
@@ -627,7 +649,7 @@ export function VectraCinematicPanel({
               ))}
             </div>
           </div>
-          
+
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-xs text-muted-foreground">Intensidade</span>
@@ -664,7 +686,7 @@ export function VectraCinematicPanel({
             onTabChange={setSubjectTab}
             testId="tabs-subjects"
           />
-          
+
           <VectraTabContent>
             <VectraUploadSlot
               images={currentSubject.faceImages}
@@ -675,13 +697,13 @@ export function VectraCinematicPanel({
               testId="upload-face"
             />
           </VectraTabContent>
-          
-          <div className="mt-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 space-y-4">
+
+          <div className="mt-4 p-3 rounded-lg bg-white/5 border border-white/10 space-y-4">
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-500">FIDELIDADE</Badge>
+              <Badge variant="outline" className="text-[10px] border-white/40 text-white/60">FIDELIDADE</Badge>
               <span className="text-xs text-muted-foreground">Preservar detalhes corporais</span>
             </div>
-            
+
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium">Fidelidade Corporal</span>
@@ -698,7 +720,7 @@ export function VectraCinematicPanel({
                 Maior fidelidade = menos criatividade da IA. Ideal para preservar tatuagens, cicatrizes e marcas.
               </p>
             </div>
-            
+
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label htmlFor="preserve-tattoos" className="text-xs font-medium">
@@ -743,7 +765,7 @@ export function VectraCinematicPanel({
               ))}
             </div>
           </div>
-          
+
           <div>
             <span className="text-xs text-muted-foreground mb-1.5 block">Caimento (Fit)</span>
             <div className="flex flex-wrap gap-1">
@@ -763,12 +785,20 @@ export function VectraCinematicPanel({
 
       {/* Custom API Key - Only for Premium */}
       {isPremium && (
-        <div className="p-3">
+        <div className="p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-white/50">
+              <Key className="w-3 h-3" strokeWidth={1.5} />
+              API Key Personalizada
+            </div>
+            <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-white/10 text-white/30 bg-white/[0.02]">
+              Opcional
+            </Badge>
+          </div>
           <VectraSecureInput
             value={customApiKey}
             onChange={setCustomApiKey}
             onTest={testApiKey}
-            label="API Key Personalizada"
             testId="input-custom-api-key"
           />
         </div>

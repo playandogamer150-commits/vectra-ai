@@ -45,8 +45,8 @@ export function Header() {
   ];
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-background/80 backdrop-blur-sm border-b border-border">
-      <div className="max-w-6xl mx-auto h-full px-6 flex items-center justify-between gap-6">
+    <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-black/50 backdrop-blur-xl border-b border-white/10 supports-[backdrop-filter]:bg-black/20">
+      <div className="max-w-[1400px] mx-auto h-full px-6 flex items-center justify-between gap-6">
         <Link href="/" className="flex items-center gap-2.5 shrink-0 group" data-testid="link-home-logo">
           <MonoIcon name="logo" className="w-7 h-7 transition-transform group-hover:scale-105" />
           <span className="text-base font-medium tracking-tight" data-testid="text-logo">{BRAND.name}</span>
@@ -62,8 +62,8 @@ export function Header() {
                   className={`
                     relative px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150
                     flex items-center gap-1.5
-                    ${isActive 
-                      ? "text-foreground bg-secondary" 
+                    ${isActive
+                      ? "text-foreground bg-secondary"
                       : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                     }
                   `}
@@ -79,15 +79,7 @@ export function Header() {
 
         <div className="flex items-center gap-1.5">
           <LanguageToggle />
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={toggleTheme}
-            className="w-9 h-9 rounded-lg"
-            data-testid="button-theme-toggle"
-          >
-            {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </Button>
+
 
           {profile ? (
             <DropdownMenu>
@@ -111,7 +103,7 @@ export function Header() {
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium truncate">{profile.displayName || profile.username}</p>
                     {profile.isAdmin === 1 ? (
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-amber-500/20 text-amber-500 border-amber-500/30">
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4 bg-white/10 text-white border-white/20">
                         <Sparkles className="w-2.5 h-2.5 mr-0.5" />
                         Admin
                       </Badge>
@@ -186,8 +178,8 @@ export function Header() {
                     className={`
                       w-full px-4 py-3 rounded-lg text-sm font-medium transition-all duration-150
                       flex items-center gap-2.5 text-left
-                      ${isActive 
-                        ? "text-foreground bg-secondary" 
+                      ${isActive
+                        ? "text-foreground bg-secondary"
                         : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                       }
                     `}

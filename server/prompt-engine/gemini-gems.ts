@@ -12,7 +12,7 @@ export interface GeminiGemManifest {
   description: string;
   category: "facial_biometrics" | "identity_preservation" | "ugc_realism";
   priority: number;
-  
+
   // Prompt injection rules
   promptEnhancements: {
     prefix?: string;
@@ -22,7 +22,7 @@ export interface GeminiGemManifest {
     fidelityModifiers: string[];
     anatomyModifiers: string[];
   };
-  
+
   // Technical parameters (for ModelsLab/SD integration)
   technicalParams: {
     cfgScaleRange: [number, number];
@@ -35,7 +35,7 @@ export interface GeminiGemManifest {
       ipAdapter?: number;
     };
   };
-  
+
   // Validation rules
   qualityChecks: string[];
 }
@@ -51,7 +51,7 @@ export const FACE_SWAPPER_GEM: GeminiGemManifest = {
   description: "Especialista em face-swap de nível VFX com lockdown biométrico facial",
   category: "facial_biometrics",
   priority: 1,
-  
+
   promptEnhancements: {
     prefix: `[FACIAL BIOMETRICS LOCKDOWN MODE]
 Ultra-high fidelity facial reconstruction with biometric preservation.
@@ -63,7 +63,7 @@ PRESERVE EXACT original tattoos - do NOT add, remove, or modify any tattoos.
 Maintain all existing body markings, scars, and skin features WITHOUT alteration.
 The subject's tattoos are FIXED reference points - replicate them EXACTLY as shown.
 DO NOT invent new tattoos or body art that doesn't exist in the reference image.`,
-    
+
     suffix: `Technical requirements:
 - Exact replication of facial proportions (Golden Ratio Φ ≈ 1.618)
 - Consistent lighting direction on facial planes
@@ -71,7 +71,7 @@ DO NOT invent new tattoos or body art that doesn't exist in the reference image.
 - Skin texture preservation (pores, fine lines, natural imperfections)
 - Eye reflection consistency with scene lighting
 - Hair-to-face boundary natural transition`,
-    
+
     negativePrompt: `deformed face, asymmetric eyes, wrong eye color, plastic skin, airbrushed, 
 uncanny valley, facial distortion, mask artifacts, halo around face, color mismatch, 
 wrong skin tone, floating features, disconnected face, blurred edges, 
@@ -79,7 +79,7 @@ bad facial anatomy, extra features, missing features, wrong proportions,
 extra tattoos, new tattoos, additional body art, tattoo modifications, altered tattoos,
 tattoos appearing where none exist, invented tattoos, different tattoo designs,
 modified skin markings, added scars, removed tattoos, tattoo style changes`,
-    
+
     qualityModifiers: [
       "photorealistic skin texture",
       "detailed skin pores",
@@ -90,7 +90,7 @@ modified skin markings, added scars, removed tattoos, tattoo style changes`,
       "cinematic facial lighting",
       "8K facial detail"
     ],
-    
+
     fidelityModifiers: [
       "exact replication",
       "perfect fidelity",
@@ -103,7 +103,7 @@ modified skin markings, added scars, removed tattoos, tattoo style changes`,
       "no tattoo alterations",
       "skin marking fidelity"
     ],
-    
+
     anatomyModifiers: [
       "correct eye spacing",
       "natural nose bridge alignment",
@@ -113,7 +113,7 @@ modified skin markings, added scars, removed tattoos, tattoo style changes`,
       "anatomically correct neck transition"
     ]
   },
-  
+
   technicalParams: {
     cfgScaleRange: [7, 9],
     denoisingStrengthRange: [0.15, 0.25],
@@ -125,7 +125,7 @@ modified skin markings, added scars, removed tattoos, tattoo style changes`,
       ipAdapter: 0.75
     }
   },
-  
+
   qualityChecks: [
     "Identity coherence - subject remains recognizable",
     "Zero uncanny valley - natural expressions",
@@ -150,13 +150,13 @@ export const AI_INSTAGRAM_MEDIA_GEM: GeminiGemManifest = {
   description: "Especialista em mídia Instagram fotorrealista com preservação de identidade",
   category: "identity_preservation",
   priority: 2,
-  
+
   promptEnhancements: {
     prefix: `[INSTAGRAM UGC PHOTOREALISM MODE]
 Generate authentic user-generated content style imagery.
 Priority: Identity preservation > Artistic style.
 Target: Indistinguishable from real smartphone photography.`,
-    
+
     suffix: `Instagram optimization requirements:
 - Natural smartphone camera aesthetics (slight lens distortion, authentic bokeh)
 - Organic lighting conditions (golden hour, natural window light, ambient)
@@ -165,7 +165,7 @@ Target: Indistinguishable from real smartphone photography.`,
 - Platform-native aspect ratios (1:1, 4:5, 9:16 for stories)
 - Color grading consistent with popular Instagram filters (warm tones, slightly lifted blacks)
 - Natural hand/body positioning typical of selfies and UGC`,
-    
+
     negativePrompt: `studio lighting, professional photoshoot, airbrushed skin, perfect symmetry,
 overly posed, stock photo aesthetic, unnatural colors, oversaturated, 
 HDR artifacts, artificial bokeh, lens flare abuse, plastic skin texture,
@@ -173,7 +173,7 @@ fashion magazine style, advertising aesthetic, corporate look,
 deformed hands, extra fingers, bad anatomy, mutated limbs,
 extra tattoos, new tattoos, additional body art, tattoo modifications, altered tattoos,
 tattoos appearing where none exist, invented tattoos, different tattoo designs`,
-    
+
     qualityModifiers: [
       "authentic UGC aesthetic",
       "smartphone camera quality",
@@ -184,7 +184,7 @@ tattoos appearing where none exist, invented tattoos, different tattoo designs`,
       "genuine photorealism",
       "lived-in authenticity"
     ],
-    
+
     fidelityModifiers: [
       "identity lock",
       "face consistency across generations",
@@ -196,7 +196,7 @@ tattoos appearing where none exist, invented tattoos, different tattoo designs`,
       "maintain body art exactly",
       "skin marking consistency"
     ],
-    
+
     anatomyModifiers: [
       "natural hand positions",
       "correct finger count",
@@ -206,7 +206,7 @@ tattoos appearing where none exist, invented tattoos, different tattoo designs`,
       "natural pose biomechanics"
     ]
   },
-  
+
   technicalParams: {
     cfgScaleRange: [7, 10],
     denoisingStrengthRange: [0.15, 0.30],
@@ -218,7 +218,7 @@ tattoos appearing where none exist, invented tattoos, different tattoo designs`,
       ipAdapter: 0.70
     }
   },
-  
+
   qualityChecks: [
     "Identity preservation - subject clearly recognizable",
     "UGC authenticity - looks like real smartphone photo",
@@ -239,10 +239,10 @@ tattoos appearing where none exist, invented tattoos, different tattoo designs`,
 export const TATTOO_PRESERVATION_GEM: GeminiGemManifest = {
   id: "tattoo_preservation",
   name: "TATTOO PRESERVATION",
-  description: "Especialista em preservar tatuagens, cicatrizes e marcas corporais com fidelidade exata",
+  description: "Especialista em preservação de tatuagens e marcas corporais",
   category: "identity_preservation",
   priority: 1,
-  
+
   promptEnhancements: {
     prefix: `[TATTOO & BODY MARKING PRESERVATION MODE - MAXIMUM PRIORITY]
 This is a TATTOOED subject. Their tattoos are FIXED IDENTITY MARKERS.
@@ -256,7 +256,7 @@ Tattoo locations, sizes, and designs must match reference PRECISELY.
 Treat all visible skin markings as immutable reference points.
 Replicate exact tattoo line work, shading, and color saturation.
 Preserve natural skin texture around and within tattoo areas.`,
-    
+
     suffix: `Tattoo preservation requirements:
 - EXACT replication of all visible tattoos (position, size, design, color)
 - NO new tattoos or body art invention
@@ -267,14 +267,14 @@ Preserve natural skin texture around and within tattoo areas.`,
 - Replicate tattoo aging/wear if present in reference
 
 VALIDATION: Count the tattoos in reference vs output - must match exactly.`,
-    
+
     negativePrompt: `extra tattoos, new tattoos, additional tattoos, invented tattoos,
 tattoo modifications, altered tattoos, extended tattoos, changed tattoo designs,
 tattoos appearing where none exist, different tattoo style, removed tattoos,
 faded tattoos that should be visible, wrong tattoo placement, incorrect tattoo size,
 added body art, new piercings, new scars, modified skin markings,
 tattoo color changes, tattoo line work alterations, missing tattoos`,
-    
+
     qualityModifiers: [
       "exact tattoo replication",
       "precise body art preservation",
@@ -285,7 +285,7 @@ tattoo color changes, tattoo line work alterations, missing tattoos`,
       "body art reference matching",
       "tattoo boundary preservation"
     ],
-    
+
     fidelityModifiers: [
       "zero tattoo alterations",
       "exact tattoo count preservation",
@@ -296,7 +296,7 @@ tattoo color changes, tattoo line work alterations, missing tattoos`,
       "original body art only",
       "no invented markings"
     ],
-    
+
     anatomyModifiers: [
       "tattoo placement accuracy",
       "correct skin topology",
@@ -306,7 +306,7 @@ tattoo color changes, tattoo line work alterations, missing tattoos`,
       "body-accurate tattoo sizing"
     ]
   },
-  
+
   technicalParams: {
     cfgScaleRange: [8, 10],
     denoisingStrengthRange: [0.10, 0.20],
@@ -318,7 +318,7 @@ tattoo color changes, tattoo line work alterations, missing tattoos`,
       ipAdapter: 0.85
     }
   },
-  
+
   qualityChecks: [
     "Tattoo count match - exact same number as reference",
     "Tattoo position accuracy - correct body placement",
@@ -331,10 +331,82 @@ tattoo color changes, tattoo line work alterations, missing tattoos`,
   ]
 };
 
+/**
+ * REAL LIFE CONTEXT Gem Manifest
+ * Specialized in: Forcing real-life, human, documentary-style context
+ */
+export const REAL_LIFE_CONTEXT_GEM: GeminiGemManifest = {
+  id: "real_life_context",
+  name: "REAL LIFE CONTEXT",
+  description: "Força um contexto humano de vida real, documental e cru",
+  category: "ugc_realism",
+  priority: 3,
+
+  promptEnhancements: {
+    prefix: `[REAL LIFE DOCUMENTARY MODE]
+CONTEXT: REAL LIFE, RAW REALITY, HUMAN EXPERIENCE.
+Subject must be grounded in a believable, tangible, real-world environment.
+Avoid generic backgrounds. Use specific, lived-in, cluttered, imperfect settings.
+Lighting must be motivated by realistic sources (fluorescent, sunlight, practical lamps).`,
+
+    suffix: `Realism requirements:
+- Imperfect composition (documentary style)
+- Natural, unposed body language
+- Cluttered, detailed backgrounds implying a history
+- Realistic textures (dust, scratches, fabric wear)
+- No "perfect" studio lighting
+- Contextual storytelling elements`,
+
+    negativePrompt: `cgi, 3d render, anime, cartoon, sketch, painting, unreal engine, 
+perfect studio lighting, empty background, generic background, 
+floating objects, physical impossibilities, dreamlike, fantasy, 
+overly clean, sterile environment, ai generated look, plastic`,
+
+    qualityModifiers: [
+      "raw documentary style",
+      "real life context",
+      "human imperfection",
+      "tangible atmosphere",
+      "lived-in environment",
+      "environmental storytelling"
+    ],
+
+    fidelityModifiers: [
+      "contextual grounding",
+      "realistic scale",
+      "physical plausibility",
+      "environmental interaction"
+    ],
+
+    anatomyModifiers: [
+      "relaxed posture",
+      "natural weight distribution",
+      "candid expression"
+    ]
+  },
+
+  technicalParams: {
+    cfgScaleRange: [5, 8],
+    denoisingStrengthRange: [0.3, 0.5],
+    recommendedSamplers: ["DPM++ 2M SDE Karras"],
+    controlNetWeights: {
+      ipAdapter: 0.6,
+      depth: 0.6
+    }
+  },
+
+  qualityChecks: [
+    "Is the environment believable?",
+    "Does it look like a real photo?",
+    "Are textures realistic?"
+  ]
+};
+
 export const GEMINI_GEMS: Record<string, GeminiGemManifest> = {
   face_swapper: FACE_SWAPPER_GEM,
   ai_instagram_media: AI_INSTAGRAM_MEDIA_GEM,
   tattoo_preservation: TATTOO_PRESERVATION_GEM,
+  real_life_context: REAL_LIFE_CONTEXT_GEM
 };
 
 export interface GemOptimizationResult {
@@ -366,7 +438,7 @@ export function applyGeminiGemsOptimization(
   const fidelityMods: string[] = [];
   const anatomyMods: string[] = [];
   const qualityChecklist: string[] = [];
-  
+
   let avgCfgScale = 7.5;
   let avgDenoising = 0.25;
   const controlNetWeights: Record<string, number> = {
@@ -376,13 +448,13 @@ export function applyGeminiGemsOptimization(
     ipAdapter: 0.5
   };
   let gemCount = 0;
-  
+
   for (const gemId of activeGems) {
     const gem = GEMINI_GEMS[gemId];
     if (!gem) continue;
-    
+
     appliedGems.push(gem.name);
-    
+
     if (gem.promptEnhancements.prefix) {
       prefixes.push(gem.promptEnhancements.prefix);
     }
@@ -392,50 +464,50 @@ export function applyGeminiGemsOptimization(
     if (gem.promptEnhancements.negativePrompt) {
       negatives.push(gem.promptEnhancements.negativePrompt);
     }
-    
+
     qualityMods.push(...gem.promptEnhancements.qualityModifiers);
     fidelityMods.push(...gem.promptEnhancements.fidelityModifiers);
     anatomyMods.push(...gem.promptEnhancements.anatomyModifiers);
     qualityChecklist.push(...gem.qualityChecks);
-    
+
     // Average technical params
     const [minCfg, maxCfg] = gem.technicalParams.cfgScaleRange;
     const [minDenoise, maxDenoise] = gem.technicalParams.denoisingStrengthRange;
     avgCfgScale += (minCfg + maxCfg) / 2;
     avgDenoising += (minDenoise + maxDenoise) / 2;
-    
+
     // Merge ControlNet weights (take max)
     const cnWeights = gem.technicalParams.controlNetWeights;
     if (cnWeights.openPose) controlNetWeights.openPose = Math.max(controlNetWeights.openPose, cnWeights.openPose);
     if (cnWeights.depth) controlNetWeights.depth = Math.max(controlNetWeights.depth, cnWeights.depth);
     if (cnWeights.canny) controlNetWeights.canny = Math.max(controlNetWeights.canny, cnWeights.canny);
     if (cnWeights.ipAdapter) controlNetWeights.ipAdapter = Math.max(controlNetWeights.ipAdapter, cnWeights.ipAdapter);
-    
+
     gemCount++;
   }
-  
+
   // Calculate averages
   if (gemCount > 0) {
     avgCfgScale = avgCfgScale / (gemCount + 1);
     avgDenoising = avgDenoising / (gemCount + 1);
   }
-  
+
   // Build enhanced prompt
   const enhancedParts: string[] = [];
-  
+
   // Add prefixes
   if (prefixes.length > 0) {
     enhancedParts.push(prefixes.join("\n\n"));
   }
-  
+
   // Add original prompt
   enhancedParts.push(originalPrompt);
-  
+
   // Add quality/fidelity/anatomy modifiers inline
   const uniqueQuality = Array.from(new Set(qualityMods)).slice(0, 8);
   const uniqueFidelity = Array.from(new Set(fidelityMods)).slice(0, 6);
   const uniqueAnatomy = Array.from(new Set(anatomyMods)).slice(0, 6);
-  
+
   if (uniqueQuality.length > 0) {
     enhancedParts.push(`Quality: ${uniqueQuality.join(", ")}`);
   }
@@ -445,15 +517,15 @@ export function applyGeminiGemsOptimization(
   if (uniqueAnatomy.length > 0) {
     enhancedParts.push(`Anatomy: ${uniqueAnatomy.join(", ")}`);
   }
-  
+
   // Add suffixes
   if (suffixes.length > 0) {
     enhancedParts.push(suffixes.join("\n\n"));
   }
-  
+
   const enhancedPrompt = enhancedParts.join("\n\n");
   const negativePrompt = Array.from(new Set(negatives)).join(", ");
-  
+
   return {
     enhancedPrompt,
     negativePrompt,

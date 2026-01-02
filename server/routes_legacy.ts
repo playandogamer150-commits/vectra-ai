@@ -1,11 +1,11 @@
-import type { Express, Request } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { compiler } from "./prompt-engine/compiler";
 import { defaultProfiles, defaultBlueprints, defaultBlocks, defaultFilters, defaultBaseModels } from "./prompt-engine/presets";
-import { 
-  generateRequestSchema, 
-  createUserBlueprintRequestSchema, 
+import {
+  generateRequestSchema,
+  createUserBlueprintRequestSchema,
   updateUserBlueprintRequestSchema,
   saveImageRequestSchema,
   saveVideoRequestSchema,
@@ -21,17 +21,35 @@ import { stripeService } from "./stripeService";
 import { getStripePublishableKey } from "./stripeClient";
 import { fetchWithTimeout } from "./lib/fetch-with-timeout";
 import { applyGeminiGemsOptimization, getAvailableGems, GEMINI_GEMS } from "./prompt-engine/gemini-gems";
+import { sql } from "drizzle-orm";
+import { db } from "./db";
+import { log } from "./lib/logger";
+import { sendWelcomeEmail } from "./lib/email";
+
+// Self-healing migration: Ensure banner_url exists
+(async () => {
+  try {
+    await db.execute(sql`ALTER TABLE app_users ADD COLUMN IF NOT EXISTS banner_url TEXT;`);
+    log("[Migration] Ensured banner_url column exists in app_users", "db");
+  } catch (error) {
+    log(`[Migration] Failed to check/add banner_url column: ${error}`, "db", "error");
+  }
+})();
 
 const DEV_USER_ID = "dev_user";
-const IS_PRODUCTION = process.env.NODE_ENV === "production" || process.env.REPLIT_DEPLOYMENT === "1";
+// SECURITY: Fail-safe default. If NODE_ENV is not explicitly 'development', assume production.
+const IS_DEVELOPMENT = process.env.NODE_ENV === "development";
+const IS_PRODUCTION = !IS_DEVELOPMENT;
 
 function getUserId(req: Request): string | null {
   const user = req.user as any;
   if (user?.claims?.sub) {
     return user.claims.sub;
   }
-  // In development, allow dev_user fallback for testing
-  if (!IS_PRODUCTION) {
+  // SECURITY: Only allow dev_user fallback in explicit development mode
+  if (IS_DEVELOPMENT) {
+    // Optional: Add a header check to prevent accidental reliance even in dev?
+    // For now, adhering to strict environment check is sufficient.
     return DEV_USER_ID;
   }
   return null;
@@ -52,7 +70,7 @@ const FREE_LIMITS = {
   promptsPerDay: 10,
   imagesHqPerDay: 5,       // Nano Banana Pro (ultra-realistic)
   imagesStandardPerDay: 5, // Realistic Vision 51 (standard) - 5 additional after HQ exhausted
-  videosPerDay: 0,
+  videosPerDay: 2,         // Enable video generation for free tier (was 0)
 };
 
 interface ImageQuotaResult {
@@ -78,56 +96,56 @@ async function checkImageQuotaAndModel(userId: string): Promise<ImageQuotaResult
   if (IS_PRO_OVERRIDE) {
     return { allowed: true, isPro: true, modelId: MODELSLAB_MODELS.HQ, imageQuality: "hq" };
   }
-  
+
   const appUser = await storage.getAppUser(userId);
   const isPro = appUser?.plan === "pro";
   const isAdmin = appUser?.isAdmin === 1;
-  
+
   // Admins have unlimited access with HQ model
   if (isAdmin) {
     return { allowed: true, isPro: true, modelId: MODELSLAB_MODELS.HQ, imageQuality: "hq" };
   }
-  
+
   if (isPro) {
     return { allowed: true, isPro: true, modelId: MODELSLAB_MODELS.HQ, imageQuality: "hq" };
   }
-  
+
   const usage = await storage.getImageUsageTodayByQuality(userId);
   const quotas = {
     hq: { used: usage.hq, limit: FREE_LIMITS.imagesHqPerDay },
     standard: { used: usage.standard, limit: FREE_LIMITS.imagesStandardPerDay },
   };
-  
+
   // Check HQ quota first (Realistic Vision 5.1 - best quality)
   if (usage.hq < FREE_LIMITS.imagesHqPerDay) {
-    return { 
-      allowed: true, 
-      isPro: false, 
-      modelId: MODELSLAB_MODELS.HQ, 
+    return {
+      allowed: true,
+      isPro: false,
+      modelId: MODELSLAB_MODELS.HQ,
       imageQuality: "hq",
       quotas,
     };
   }
-  
+
   // If HQ exhausted, check standard quota (Anything V3 - faster)
   if (usage.standard < FREE_LIMITS.imagesStandardPerDay) {
     // hqExhausted=true signals frontend to show popup about model downgrade
     const isFirstStandardImage = usage.standard === 0;
-    return { 
-      allowed: true, 
-      isPro: false, 
-      modelId: MODELSLAB_MODELS.STANDARD, 
+    return {
+      allowed: true,
+      isPro: false,
+      modelId: MODELSLAB_MODELS.STANDARD,
       imageQuality: "standard",
       hqExhausted: isFirstStandardImage, // Show popup only on first standard image
       quotas,
     };
   }
-  
+
   // Both quotas exhausted
   const totalUsed = usage.hq + usage.standard;
   const totalLimit = FREE_LIMITS.imagesHqPerDay + FREE_LIMITS.imagesStandardPerDay;
-  return { 
-    allowed: false, 
+  return {
+    allowed: false,
     reason: `Limite diário de imagens atingido (${totalUsed}/${totalLimit}). Faça upgrade para Pro para continuar.`,
     isPro: false,
     modelId: "",
@@ -140,42 +158,42 @@ async function checkGenerationLimits(userId: string, type: "prompt" | "image" | 
   if (IS_PRO_OVERRIDE) {
     return { allowed: true, isPro: true };
   }
-  
+
   const appUser = await storage.getAppUser(userId);
   const isPro = appUser?.plan === "pro";
   const isAdmin = appUser?.isAdmin === 1;
-  
+
   // Admins have unlimited access
   if (isAdmin) {
     return { allowed: true, isPro: true, isAdmin: true };
   }
-  
+
   if (isPro) {
     return { allowed: true, isPro: true };
   }
-  
+
   // For images, use the tiered quota system
   if (type === "image") {
     const imageQuota = await checkImageQuotaAndModel(userId);
-    return { 
-      allowed: imageQuota.allowed, 
+    return {
+      allowed: imageQuota.allowed,
       reason: imageQuota.reason,
       isPro: imageQuota.isPro,
     };
   }
-  
+
   const usageToday = await storage.getUsageToday(userId, type);
   const limit = type === "prompt" ? FREE_LIMITS.promptsPerDay : FREE_LIMITS.videosPerDay;
-  
+
   if (usageToday >= limit) {
     const limitName = type === "prompt" ? "prompt" : "video";
-    return { 
-      allowed: false, 
+    return {
+      allowed: false,
       reason: `Daily ${limitName} limit reached (${limit}/${limit}). Upgrade to Pro for unlimited.`,
       isPro: false,
     };
   }
-  
+
   return { allowed: true, isPro: false };
 }
 
@@ -185,7 +203,7 @@ async function logUsage(userId: string, type: "prompt" | "image" | "video", meta
 
 const LEGACY_FILTER_KEYS = [
   "body_type",
-  "pose_style", 
+  "pose_style",
   "clothing_state",
   "setting",
   "lighting",
@@ -208,23 +226,40 @@ async function seedDatabase() {
     console.log(`Cleaned up ${deletedCount} legacy filters from database`);
   }
 
+  console.log("Checking database seeds...");
+
+  // Profiles
   const existingProfiles = await storage.getProfiles();
-  if (existingProfiles.length === 0) {
-    console.log("Seeding database with initial data...");
-    
-    for (const profile of defaultProfiles) {
+  const existingProfileNames = new Set(existingProfiles.map(p => p.name));
+  for (const profile of defaultProfiles) {
+    if (!existingProfileNames.has(profile.name)) {
       await storage.createProfile(profile);
     }
-    
-    for (const blueprint of defaultBlueprints) {
+  }
+
+  // Blueprints
+  const existingBlueprints = await storage.getBlueprints();
+  const existingBlueprintNames = new Set(existingBlueprints.map(b => b.name));
+  for (const blueprint of defaultBlueprints) {
+    if (!existingBlueprintNames.has(blueprint.name)) {
       await storage.createBlueprint(blueprint);
     }
-    
-    for (const block of defaultBlocks) {
+  }
+
+  // Blocks
+  const existingBlocks = await storage.getBlocks();
+  const existingBlockKeys = new Set(existingBlocks.map(b => b.key));
+  for (const block of defaultBlocks) {
+    if (!existingBlockKeys.has(block.key) && block.key) {
       await storage.createBlock(block);
     }
-    
-    for (const filter of defaultFilters) {
+  }
+
+  // Filters
+  const existingFilters = await storage.getFilters();
+  const existingFilterKeys = new Set(existingFilters.map(f => f.key));
+  for (const filter of defaultFilters) {
+    if (!existingFilterKeys.has(filter.key)) {
       await storage.createFilter({
         key: filter.key,
         label: filter.label,
@@ -233,35 +268,33 @@ async function seedDatabase() {
         isPremium: 0,
       });
     }
-    
-    for (const baseModel of defaultBaseModels) {
-      await storage.createBaseModel(baseModel);
-    }
-    
-    console.log("Database seeded successfully!");
-  } else {
-    // Sync missing blueprints
-    const existingBlueprints = await storage.getBlueprints();
-    const existingBlueprintNames = new Set(existingBlueprints.map(b => b.name));
-    
-    for (const blueprint of defaultBlueprints) {
-      if (!existingBlueprintNames.has(blueprint.name)) {
-        console.log(`Adding missing blueprint: ${blueprint.name}`);
-        await storage.createBlueprint(blueprint);
-      }
-    }
-    
-    // Sync missing blocks
-    const existingBlocks = await storage.getBlocks();
-    const existingBlockKeys = new Set(existingBlocks.map(b => b.key));
-    
-    for (const block of defaultBlocks) {
-      if (!existingBlockKeys.has(block.key)) {
-        console.log(`Adding missing block: ${block.key}`);
-        await storage.createBlock(block);
-      }
+  }
+
+  // Base Models
+  const existingBaseModels = await storage.getBaseModels();
+  const existingModelIds = new Set(existingBaseModels.map(m => (m as any).modelId || m.id));
+  for (const baseModel of defaultBaseModels) {
+    if (!existingModelIds.has((baseModel as any).modelId || (baseModel as any).id)) {
+      await storage.createBaseModel(baseModel as any);
     }
   }
+
+  // Ensure dev_user exists with admin rights for local development
+  if (!IS_PRODUCTION) {
+    const devUser = await storage.getAppUser(DEV_USER_ID);
+    if (!devUser) {
+      console.log("Creating local dev_user with admin rights...");
+      await storage.createAppUserFromReplit(DEV_USER_ID, "Developer");
+      await storage.updateAppUser(DEV_USER_ID, {
+        isAdmin: 1,
+        plan: "pro",
+        // @ts-ignore - Handle potential schema mismatches for optional fields
+        credits: 1000
+      } as any);
+    }
+  }
+
+  console.log("Database seed check complete!");
 }
 
 export async function registerRoutes(
@@ -271,7 +304,7 @@ export async function registerRoutes(
   // Setup auth BEFORE other routes
   await setupAuth(app);
   registerAuthRoutes(app);
-  
+
   await seedDatabase();
 
   const profiles = await storage.getProfiles();
@@ -282,24 +315,60 @@ export async function registerRoutes(
 
   registerLoraRoutes(app);
 
+  // Waitlist endpoint
+  app.post("/api/waitlist", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email || !email.includes("@")) {
+        return res.status(400).json({ error: "Invalid email" });
+      }
+
+      // Check if already in waitlist
+      const existing = await storage.getWaitlistEntry(email);
+      if (existing) {
+        const count = await storage.getWaitlistCount();
+        return res.json({ success: true, position: count + 2847 });
+      }
+
+      await storage.addToWaitlist(email);
+      const count = await storage.getWaitlistCount();
+
+      // Async email sending (don't block response)
+      sendWelcomeEmail(email, count + 2847).catch(err => {
+        log(`Failed to send welcome email to ${email}: ${err}`, "email", "error");
+      });
+
+      res.json({ success: true, position: count + 2847 });
+    } catch (err) {
+      log(`Waitlist error: ${err}`, "api", "error");
+      res.status(500).json({ error: "Failed to join waitlist" });
+    }
+  });
+
   // Profile routes
   app.get("/api/profile", async (req, res) => {
     try {
       const userId = requireAuth(req, res);
       if (!userId) return;
-      
+
       const user = req.user as any;
-      
+
       if (userId === DEV_USER_ID) {
         // In dev mode, use localStorage-like behavior via a static variable
         const devTutorialCompleted = (global as any).__devTutorialCompleted ?? 0;
+
+        // Try to fetch from DB to see if we seeded it (should be true)
+        const dbUser = await storage.getAppUser(DEV_USER_ID);
+
         return res.json({
           id: DEV_USER_ID,
           username: user?.claims?.name || "Developer",
           email: user?.claims?.email || null,
-          plan: "free",
+          plan: dbUser?.plan || "pro",
+          isAdmin: dbUser?.isAdmin || 1,
           displayName: user?.claims?.name || "Developer",
           avatarUrl: user?.claims?.profile_image || null,
+          bannerUrl: null,
           tagline: null,
           timezone: "America/Sao_Paulo",
           defaultLanguage: "pt-BR",
@@ -308,24 +377,26 @@ export async function registerRoutes(
           tutorialCompleted: devTutorialCompleted,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
+          isPro: (dbUser?.plan === "pro") || true,
+          isTrial: false
         });
       }
 
       let appUser = await storage.getAppUser(userId);
-      
+
       if (!appUser) {
         // Create the user in the database on first access
         // Use unique username: prefer name, then email prefix, then replitId
         const email = user?.claims?.email as string | undefined;
-        const uniqueUsername = user?.claims?.name || 
-          (email ? email.split('@')[0] : null) || 
+        const uniqueUsername = user?.claims?.name ||
+          (email ? email.split('@')[0] : null) ||
           `user_${userId}`;
         appUser = await storage.createAppUserFromReplit(
           userId,
           uniqueUsername
         );
       }
-      
+
       // Check if user's email is in admin list and update isAdmin flag
       const userEmail = user?.claims?.email;
       if (userEmail) {
@@ -334,16 +405,16 @@ export async function registerRoutes(
         const adminEmailsEnv = process.env.ADMIN_EMAILS?.split(",").map(e => e.trim().toLowerCase()) || [];
         const isAdminInEnv = adminEmailsEnv.includes(userEmail.toLowerCase());
         const isAdminEmail = isAdminInDb || isAdminInEnv;
-        
-        console.log("[admin-check]", { 
-          userEmail, 
-          isAdminInDb, 
-          isAdminInEnv, 
-          isAdminEmail, 
+
+        console.log("[admin-check]", {
+          userEmail,
+          isAdminInDb,
+          isAdminInEnv,
+          isAdminEmail,
           currentIsAdmin: appUser.isAdmin,
-          adminEmailsEnv 
+          adminEmailsEnv
         });
-        
+
         if (isAdminEmail && appUser.isAdmin !== 1) {
           console.log("[admin-check] Updating user to admin");
           appUser = (await storage.updateAppUser(userId, { isAdmin: 1 })) || appUser;
@@ -365,9 +436,9 @@ export async function registerRoutes(
     try {
       const userId = requireAuth(req, res);
       if (!userId) return;
-      
+
       const user = req.user as any;
-      
+
       if (userId === DEV_USER_ID) {
         const data = updateProfileSchema.parse(req.body);
         // Persist tutorialCompleted in dev mode
@@ -378,22 +449,22 @@ export async function registerRoutes(
       }
 
       const data = updateProfileSchema.parse(req.body);
-      
+
       // Check if user exists, create if not (upsert pattern)
       let appUser = await storage.getAppUser(userId);
       if (!appUser) {
         const email = user?.claims?.email as string | undefined;
-        const uniqueUsername = user?.claims?.name || 
-          (email ? email.split('@')[0] : null) || 
+        const uniqueUsername = user?.claims?.name ||
+          (email ? email.split('@')[0] : null) ||
           `user_${userId}`;
         appUser = await storage.createAppUserFromReplit(
           userId,
           uniqueUsername
         );
       }
-      
+
       const updated = await storage.updateAppUser(userId, data);
-      
+
       if (!updated) {
         return res.status(500).json({ error: "Failed to update profile" });
       }
@@ -413,9 +484,9 @@ export async function registerRoutes(
     try {
       const userId = requireAuth(req, res);
       if (!userId) return;
-      
+
       const user = req.user as any;
-      
+
       if (userId === DEV_USER_ID) {
         const data = updateProfileSchema.parse(req.body);
         if (typeof data.tutorialCompleted === "number") {
@@ -425,7 +496,7 @@ export async function registerRoutes(
       }
 
       const data = updateProfileSchema.parse(req.body);
-      
+
       let appUser = await storage.getAppUser(userId);
       if (!appUser) {
         appUser = await storage.createAppUserFromReplit(
@@ -433,9 +504,9 @@ export async function registerRoutes(
           user?.claims?.name || "User"
         );
       }
-      
+
       const updated = await storage.updateAppUser(userId, data);
-      
+
       if (!updated) {
         return res.status(500).json({ error: "Failed to update profile" });
       }
@@ -457,7 +528,7 @@ export async function registerRoutes(
       if (!userId) return;
 
       const { imageData } = req.body;
-      
+
       if (!imageData || typeof imageData !== "string") {
         return res.status(400).json({ error: "Image data is required" });
       }
@@ -476,7 +547,7 @@ export async function registerRoutes(
 
       // Update user avatar
       const updated = await storage.updateAppUser(userId, { avatarUrl: imageData });
-      
+
       if (!updated) {
         return res.status(500).json({ error: "Failed to update avatar" });
       }
@@ -495,7 +566,7 @@ export async function registerRoutes(
       if (!userId) return;
 
       const updated = await storage.updateAppUser(userId, { avatarUrl: null });
-      
+
       if (!updated) {
         return res.status(500).json({ error: "Failed to remove avatar" });
       }
@@ -507,17 +578,82 @@ export async function registerRoutes(
     }
   });
 
+  // Banner upload endpoint
+  app.post("/api/profile/banner", async (req, res) => {
+    try {
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+
+      console.log(`[Banner Upload] Start - User: ${userId}`);
+      const { imageData } = req.body;
+
+      if (!imageData || typeof imageData !== "string") {
+        console.log("[Banner Upload] Error: No image data");
+        return res.status(400).json({ error: "Image data is required" });
+      }
+
+      const sizeInMB = imageData.length / (1024 * 1024);
+      console.log(`[Banner Upload] Image Size: ${sizeInMB.toFixed(2)} MB`);
+
+      // Validate base64 data URL format
+      const dataUrlMatch = imageData.match(/^data:image\/(jpeg|jpg|png|webp);base64,/);
+      if (!dataUrlMatch) {
+        console.log("[Banner Upload] Error: Invalid format");
+        return res.status(400).json({ error: "Invalid image format. Use JPEG, PNG or WebP." });
+      }
+
+      // Check size (limit to ~15MB of original file size)
+      const MAX_SIZE = 15 * 1024 * 1024 * 1.37; // ~15MB accounting for base64 overhead
+      if (imageData.length > MAX_SIZE) {
+        console.log("[Banner Upload] Error: Size exceeded");
+        return res.status(400).json({ error: "Image too large. Maximum size is 15MB." });
+      }
+
+      // Update user banner
+      console.log("[Banner Upload] Updating DB...");
+      const updated = await storage.updateAppUser(userId, { bannerUrl: imageData });
+
+      if (!updated) {
+        return res.status(500).json({ error: "Failed to update banner" });
+      }
+
+      res.json({ success: true, bannerUrl: imageData });
+    } catch (error) {
+      console.error("Error uploading banner:", error);
+      res.status(500).json({ error: "Failed to upload banner" });
+    }
+  });
+
+  // Remove banner endpoint
+  app.delete("/api/profile/banner", async (req, res) => {
+    try {
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+
+      const updated = await storage.updateAppUser(userId, { bannerUrl: null });
+
+      if (!updated) {
+        return res.status(500).json({ error: "Failed to remove banner" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing banner:", error);
+      res.status(500).json({ error: "Failed to remove banner" });
+    }
+  });
+
   app.get("/api/profile/usage", async (req, res) => {
     try {
       const userId = requireAuth(req, res);
       if (!userId) return;
-      
+
       const history = await storage.getHistory(userId);
       const loraModels = await storage.getLoraModels(userId);
       const userBlueprints = await storage.getUserBlueprints(userId);
       const savedImages = await storage.getSavedImages(userId);
       const savedVideos = await storage.getSavedVideos(userId);
-      
+
       let trainedLorasCount = 0;
       for (const model of loraModels) {
         const versions = await storage.getLoraVersions(model.id);
@@ -525,7 +661,7 @@ export async function registerRoutes(
       }
 
       const today = new Date().toISOString().split("T")[0];
-      const promptsToday = history.filter(h => 
+      const promptsToday = history.filter(h =>
         h.createdAt && h.createdAt.toISOString().split("T")[0] === today
       ).length;
 
@@ -538,7 +674,7 @@ export async function registerRoutes(
       const imageUsageByQuality = await storage.getImageUsageTodayByQuality(userId);
       const videosUsedToday = await storage.getUsageToday(userId, "video");
       const promptsUsedToday = await storage.getUsageToday(userId, "prompt");
-      
+
       const totalImagesUsed = imageUsageByQuality.hq + imageUsageByQuality.standard;
       const totalImagesLimit = FREE_LIMITS.imagesHqPerDay + FREE_LIMITS.imagesStandardPerDay;
 
@@ -555,17 +691,17 @@ export async function registerRoutes(
         hasCustomKey,
         daily: {
           prompts: { used: promptsUsedToday, limit: (isPro || isAdmin) ? -1 : FREE_LIMITS.promptsPerDay },
-          images: { 
-            used: hasCustomKey ? 0 : totalImagesUsed, 
+          images: {
+            used: hasCustomKey ? 0 : totalImagesUsed,
             limit: (isPro || hasCustomKey) ? -1 : totalImagesLimit,
-            hq: { 
-              used: hasCustomKey ? 0 : imageUsageByQuality.hq, 
+            hq: {
+              used: hasCustomKey ? 0 : imageUsageByQuality.hq,
               limit: (isPro || hasCustomKey) ? -1 : FREE_LIMITS.imagesHqPerDay,
               model: MODELSLAB_MODELS.HQ,
               label: "Nano Banana Pro (HQ)",
             },
-            standard: { 
-              used: hasCustomKey ? 0 : imageUsageByQuality.standard, 
+            standard: {
+              used: hasCustomKey ? 0 : imageUsageByQuality.standard,
               limit: (isPro || hasCustomKey) ? -1 : FREE_LIMITS.imagesStandardPerDay,
               model: MODELSLAB_MODELS.STANDARD,
               label: "Realistic Vision 5.1 (Standard)",
@@ -605,40 +741,44 @@ export async function registerRoutes(
     try {
       const userId = requireAuth(req, res);
       if (!userId) return;
-      
+
       const user = await storage.getAppUser(userId);
       if (!user || user.isAdmin !== 1) {
+        log(`Unauthorized admin access attempt by ${userId}`, "security", "warn");
         return res.status(403).json({ error: "Admin access required" });
       }
-      
+
       const { apiKey } = req.body;
       if (!apiKey || typeof apiKey !== "string") {
         return res.status(400).json({ error: "API key is required" });
       }
-      
+
       // Encrypt the API key before storing
       const { encryptApiKey } = await import("./lib/encryption");
       const encryptedKey = encryptApiKey(apiKey);
-      
+
       await storage.updateAppUser(userId, { customModelsLabKey: encryptedKey });
+
+      log(`Admin ${userId} updated custom API key`, "audit", "warn");
+
       res.json({ success: true });
     } catch (error) {
-      console.error("Error saving API key:", error);
+      log(`Error saving API key: ${error}`, "admin", "error");
       res.status(500).json({ error: "Failed to save API key" });
     }
   });
-  
+
   // Admin: Remove custom API key
   app.delete("/api/admin/api-key", async (req, res) => {
     try {
       const userId = requireAuth(req, res);
       if (!userId) return;
-      
+
       const user = await storage.getAppUser(userId);
       if (!user || user.isAdmin !== 1) {
         return res.status(403).json({ error: "Admin access required" });
       }
-      
+
       await storage.updateAppUser(userId, { customModelsLabKey: null });
       res.json({ success: true });
     } catch (error) {
@@ -715,7 +855,7 @@ export async function registerRoutes(
     try {
       const rateLimitKey = req.ip || "anonymous";
       const isEnvAdminOverride = process.env.ADMIN_OVERRIDE === "true";
-      
+
       // Check if logged-in user is admin
       const userId = getUserId(req);
       let isUserAdmin = false;
@@ -723,16 +863,16 @@ export async function registerRoutes(
         const appUser = await storage.getAppUser(userId);
         isUserAdmin = appUser?.isAdmin === 1;
       }
-      
+
       const isAdminOverride = isEnvAdminOverride || isUserAdmin;
-      
+
       const freeGenerationsPerDay = 3;
       const freeFilterLimit = 3;
-      
+
       if (!isAdminOverride) {
         const canProceed = await storage.checkRateLimit(rateLimitKey, freeGenerationsPerDay, 24 * 60 * 60 * 1000);
         if (!canProceed) {
-          return res.status(429).json({ 
+          return res.status(429).json({
             error: "Daily generation limit reached. Upgrade to Pro for unlimited generations.",
             isPremiumRequired: true
           });
@@ -740,21 +880,21 @@ export async function registerRoutes(
       }
 
       const validated = generateRequestSchema.parse(req.body);
-      
+
       if (!isAdminOverride) {
         const premiumFilters = await storage.getFilters();
         const premiumFilterKeys = premiumFilters.filter(f => f.isPremium === 1).map(f => f.key);
         const appliedPremiumFilters = Object.keys(validated.filters).filter(k => premiumFilterKeys.includes(k));
-        
+
         if (appliedPremiumFilters.length > 0) {
-          return res.status(403).json({ 
+          return res.status(403).json({
             error: `Premium filters detected: ${appliedPremiumFilters.join(", ")}. Upgrade to Pro to use these filters.`,
             isPremiumRequired: true
           });
         }
-        
+
         if (Object.keys(validated.filters).length > freeFilterLimit) {
-          return res.status(403).json({ 
+          return res.status(403).json({
             error: `Free plan limited to ${freeFilterLimit} filters. Upgrade to Pro for unlimited filters.`,
             isPremiumRequired: true
           });
@@ -793,7 +933,7 @@ export async function registerRoutes(
 
       // Always reset LoRA state before each request to prevent leaking between requests
       compiler.setActiveLora(null);
-      
+
       // Activate LoRA if provided and valid
       if (validated.loraVersionId) {
         const loraVersion = await storage.getLoraVersion(validated.loraVersionId);
@@ -815,10 +955,10 @@ export async function registerRoutes(
       // Merge cinematicSettings into filters for unified processing
       const cinematicFilters: Record<string, string> = {};
       const cinematicModifiers: string[] = [];
-      
+
       if (validated.cinematicSettings) {
         const cs = validated.cinematicSettings;
-        
+
         // Optics settings - Camera style that defines the overall visual aesthetic
         if (cs.optics?.style) {
           const opticsMap: Record<string, string> = {
@@ -833,7 +973,7 @@ export async function registerRoutes(
             cinematicFilters["camera_style"] = cs.optics.style;
           }
         }
-        
+
         // VFX effects - Visual post-processing effects that transform the image
         if (cs.vfx?.effects && cs.vfx.effects.length > 0) {
           const vfxMap: Record<string, string> = {
@@ -851,7 +991,7 @@ export async function registerRoutes(
           };
           const intensity = cs.vfx.intensity || 50;
           const intensityPrefix = intensity >= 80 ? "EXTREMELY STRONG " : intensity >= 60 ? "STRONG " : intensity <= 20 ? "SUBTLE " : "";
-          
+
           cs.vfx.effects.forEach(effect => {
             if (effect !== "off" && vfxMap[effect]) {
               cinematicModifiers.push(`${intensityPrefix}${vfxMap[effect]}`);
@@ -859,7 +999,7 @@ export async function registerRoutes(
             }
           });
         }
-        
+
         // Style DNA - Fashion and clothing aesthetics
         if (cs.styleDna) {
           // Brand aesthetic
@@ -876,7 +1016,7 @@ export async function registerRoutes(
               cinematicFilters["style_brand"] = cs.styleDna.brand;
             }
           }
-          
+
           // Layering style
           if (cs.styleDna.layering && cs.styleDna.layering !== "relaxed") {
             const layeringMap: Record<string, string> = {
@@ -890,7 +1030,7 @@ export async function registerRoutes(
               cinematicFilters["style_layering"] = cs.styleDna.layering;
             }
           }
-          
+
           // Fit style
           if (cs.styleDna.fit && cs.styleDna.fit !== "regular") {
             const fitMap: Record<string, string> = {
@@ -904,7 +1044,7 @@ export async function registerRoutes(
               cinematicFilters["style_fit"] = cs.styleDna.fit;
             }
           }
-          
+
           // Outerwear
           if (cs.styleDna.outerwear) {
             const outerwearMap: Record<string, string> = {
@@ -922,7 +1062,7 @@ export async function registerRoutes(
               cinematicFilters["style_outerwear"] = cs.styleDna.outerwear;
             }
           }
-          
+
           // Footwear
           if (cs.styleDna.footwear) {
             const footwearMap: Record<string, string> = {
@@ -939,7 +1079,7 @@ export async function registerRoutes(
               cinematicFilters["style_footwear"] = cs.styleDna.footwear;
             }
           }
-          
+
           // Bottom/Pants
           if (cs.styleDna.bottom) {
             const bottomMap: Record<string, string> = {
@@ -958,7 +1098,7 @@ export async function registerRoutes(
           }
         }
       }
-      
+
       // Merge cinematic filters with user filters
       const mergedFilters = { ...validated.filters, ...cinematicFilters };
 
@@ -979,7 +1119,7 @@ export async function registerRoutes(
       const loraSupportingPlatforms = ["flux", "sdxl", "stable_diffusion", "sd1.5", "sd_1.5"];
       const targetPlatform = validated.targetPlatform?.toLowerCase() || "";
       const platformSupportsLora = loraSupportingPlatforms.some(p => targetPlatform.includes(p));
-      
+
       if (validated.loraVersionId && validated.targetPlatform && !platformSupportsLora) {
         // Generate Character Pack for non-LoRA platforms
         characterPack = compiler.generateCharacterPack(compileInput, validated.targetPlatform);
@@ -988,7 +1128,7 @@ export async function registerRoutes(
       }
 
       let result = compiler.compile(compileInput);
-      
+
       // Prepend cinematic modifiers to compiled prompt for stronger effect (VFX effects go first)
       if (cinematicModifiers.length > 0) {
         const cinematicPrefix = `[VISUAL STYLE: ${cinematicModifiers.join(", ")}]\n\n`;
@@ -1001,7 +1141,7 @@ export async function registerRoutes(
           },
         };
       }
-      
+
       // Apply Gemini Gems optimizations for ultra-realistic UGC and facial biometrics
       let gemOptimization = null;
       if (validated.geminiGems && validated.geminiGems.length > 0) {
@@ -1047,7 +1187,7 @@ export async function registerRoutes(
       if (characterPack) {
         response.characterPack = characterPack;
       }
-      
+
       // Include Gemini Gems optimization info
       if (gemOptimization) {
         response.gemOptimization = {
@@ -1071,7 +1211,7 @@ export async function registerRoutes(
   app.post("/api/save-version", async (req, res) => {
     try {
       const { promptId } = req.body;
-      
+
       if (!promptId) {
         return res.status(400).json({ error: "promptId is required" });
       }
@@ -1124,11 +1264,12 @@ export async function registerRoutes(
   // User Custom Blueprints API
   const FREE_BLUEPRINT_LIMIT = 2;
 
-  app.get("/api/user-blueprints", async (_req, res) => {
+  app.get("/api/user-blueprints", async (req, res) => {
     try {
-      const userId = DEV_USER_ID;
+      const userId = requireAuth(req, res);
+      if (!userId) return;
       const blueprints = await storage.getUserBlueprints(userId);
-      
+
       const blueprintsWithVersions = await Promise.all(
         blueprints.map(async (bp) => {
           const latestVersion = await storage.getUserBlueprintLatestVersion(bp.id);
@@ -1139,7 +1280,7 @@ export async function registerRoutes(
           };
         })
       );
-      
+
       res.json(blueprintsWithVersions);
     } catch (error) {
       console.error("Error fetching user blueprints:", error);
@@ -1149,19 +1290,20 @@ export async function registerRoutes(
 
   app.get("/api/user-blueprints/:id", async (req, res) => {
     try {
-      const userId = DEV_USER_ID;
+      const userId = requireAuth(req, res);
+      if (!userId) return;
       const blueprint = await storage.getUserBlueprint(req.params.id);
-      
+
       if (!blueprint) {
         return res.status(404).json({ error: "Blueprint not found" });
       }
-      
+
       if (blueprint.userId !== userId) {
         return res.status(403).json({ error: "Access denied" });
       }
-      
+
       const latestVersion = await storage.getUserBlueprintLatestVersion(blueprint.id);
-      
+
       res.json({
         ...blueprint,
         blocks: latestVersion?.blocks || [],
@@ -1175,9 +1317,10 @@ export async function registerRoutes(
 
   app.post("/api/user-blueprints", async (req, res) => {
     try {
-      const userId = DEV_USER_ID;
+      const userId = requireAuth(req, res);
+      if (!userId) return;
       const isEnvAdminOverride = process.env.ADMIN_OVERRIDE === "true";
-      
+
       // Check if logged-in user is admin
       const loggedUserId = getUserId(req);
       let isUserAdmin = false;
@@ -1185,9 +1328,9 @@ export async function registerRoutes(
         const appUser = await storage.getAppUser(loggedUserId);
         isUserAdmin = appUser?.isAdmin === 1;
       }
-      
+
       const isAdminOverride = isEnvAdminOverride || isUserAdmin;
-      
+
       if (!isAdminOverride) {
         const count = await storage.countUserBlueprints(userId);
         if (count >= FREE_BLUEPRINT_LIMIT) {
@@ -1197,19 +1340,19 @@ export async function registerRoutes(
           });
         }
       }
-      
+
       const validated = createUserBlueprintRequestSchema.parse(req.body);
-      
+
       const allBlocks = await storage.getBlocks();
       const validBlockKeys = allBlocks.map(b => b.key);
       const invalidBlocks = validated.blocks.filter(b => !validBlockKeys.includes(b));
-      
+
       if (invalidBlocks.length > 0) {
         return res.status(400).json({
           error: `Invalid block keys: ${invalidBlocks.join(", ")}`,
         });
       }
-      
+
       const result = await storage.createUserBlueprint(
         {
           userId,
@@ -1223,7 +1366,7 @@ export async function registerRoutes(
         validated.blocks,
         validated.constraints
       );
-      
+
       res.json({
         ...result.blueprint,
         blocks: result.version.blocks,
@@ -1240,21 +1383,22 @@ export async function registerRoutes(
 
   app.patch("/api/user-blueprints/:id", async (req, res) => {
     try {
-      const userId = DEV_USER_ID;
+      const userId = requireAuth(req, res);
+      if (!userId) return;
       const validated = updateUserBlueprintRequestSchema.parse(req.body);
-      
+
       if (validated.blocks) {
         const allBlocks = await storage.getBlocks();
         const validBlockKeys = allBlocks.map(b => b.key);
         const invalidBlocks = validated.blocks.filter(b => !validBlockKeys.includes(b));
-        
+
         if (invalidBlocks.length > 0) {
           return res.status(400).json({
             error: `Invalid block keys: ${invalidBlocks.join(", ")}`,
           });
         }
       }
-      
+
       const result = await storage.updateUserBlueprint(
         req.params.id,
         userId,
@@ -1268,11 +1412,11 @@ export async function registerRoutes(
         validated.blocks,
         validated.constraints
       );
-      
+
       if (!result) {
         return res.status(404).json({ error: "Blueprint not found or access denied" });
       }
-      
+
       res.json({
         ...result.blueprint,
         blocks: result.version.blocks,
@@ -1289,13 +1433,14 @@ export async function registerRoutes(
 
   app.delete("/api/user-blueprints/:id", async (req, res) => {
     try {
-      const userId = DEV_USER_ID;
+      const userId = requireAuth(req, res);
+      if (!userId) return;
       const deleted = await storage.deleteUserBlueprint(req.params.id, userId);
-      
+
       if (!deleted) {
         return res.status(404).json({ error: "Blueprint not found or access denied" });
       }
-      
+
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting user blueprint:", error);
@@ -1305,17 +1450,18 @@ export async function registerRoutes(
 
   app.get("/api/user-blueprints/:id/versions", async (req, res) => {
     try {
-      const userId = DEV_USER_ID;
+      const userId = requireAuth(req, res);
+      if (!userId) return;
       const blueprint = await storage.getUserBlueprint(req.params.id);
-      
+
       if (!blueprint) {
         return res.status(404).json({ error: "Blueprint not found" });
       }
-      
+
       if (blueprint.userId !== userId) {
         return res.status(403).json({ error: "Access denied" });
       }
-      
+
       const versions = await storage.getUserBlueprintVersions(req.params.id);
       res.json(versions);
     } catch (error) {
@@ -1326,9 +1472,10 @@ export async function registerRoutes(
 
   app.post("/api/user-blueprints/:id/duplicate", async (req, res) => {
     try {
-      const userId = DEV_USER_ID;
+      const userId = requireAuth(req, res);
+      if (!userId) return;
       const isEnvAdminOverride = process.env.ADMIN_OVERRIDE === "true";
-      
+
       // Check if logged-in user is admin
       const loggedUserId = getUserId(req);
       let isUserAdmin = false;
@@ -1336,9 +1483,9 @@ export async function registerRoutes(
         const appUser = await storage.getAppUser(loggedUserId);
         isUserAdmin = appUser?.isAdmin === 1;
       }
-      
+
       const isAdminOverride = isEnvAdminOverride || isUserAdmin;
-      
+
       if (!isAdminOverride) {
         const count = await storage.countUserBlueprints(userId);
         if (count >= FREE_BLUEPRINT_LIMIT) {
@@ -1348,19 +1495,19 @@ export async function registerRoutes(
           });
         }
       }
-      
+
       const blueprint = await storage.getUserBlueprint(req.params.id);
-      
+
       if (!blueprint) {
         return res.status(404).json({ error: "Blueprint not found" });
       }
-      
+
       if (blueprint.userId !== userId) {
         return res.status(403).json({ error: "Access denied" });
       }
-      
+
       const latestVersion = await storage.getUserBlueprintLatestVersion(blueprint.id);
-      
+
       const result = await storage.createUserBlueprint(
         {
           userId,
@@ -1374,7 +1521,7 @@ export async function registerRoutes(
         latestVersion?.blocks || [],
         latestVersion?.constraints || []
       );
-      
+
       res.json({
         ...result.blueprint,
         blocks: result.version.blocks,
@@ -1401,7 +1548,7 @@ export async function registerRoutes(
     try {
       const userId = requireAuth(req, res);
       if (!userId) return;
-      
+
       const appUser = await storage.getAppUser(userId);
       if (!appUser || appUser.plan !== "pro") {
         return res.status(403).json({ error: "Premium feature only" });
@@ -1426,18 +1573,18 @@ export async function registerRoutes(
             num_inference_steps: "1",
           }),
         });
-        
+
         if (!testResponse.ok && testResponse.status >= 500) {
           // Server error - cannot determine key validity
-          return res.status(503).json({ 
-            valid: false, 
+          return res.status(503).json({
+            valid: false,
             error: "ModelsLab service temporarily unavailable",
             transient: true
           });
         }
-        
+
         const testData = await testResponse.json() as { status?: string; message?: string };
-        
+
         // Check for explicit invalid key message
         if (testData.status === "error") {
           const msg = (testData.message || "").toLowerCase();
@@ -1445,19 +1592,19 @@ export async function registerRoutes(
             return res.status(400).json({ valid: false, error: "Invalid API key" });
           }
           // Other errors (rate limit, quota, etc.) mean the key exists but has issues
-          return res.status(400).json({ 
-            valid: false, 
+          return res.status(400).json({
+            valid: false,
             error: testData.message || "API key validation failed",
             transient: false
           });
         }
-        
+
         // Key is valid (status is success or processing)
         res.json({ valid: true });
       } catch (networkError) {
         console.error("Network error validating API key:", networkError);
-        res.status(503).json({ 
-          valid: false, 
+        res.status(503).json({
+          valid: false,
           error: "Could not connect to ModelsLab service",
           transient: true
         });
@@ -1481,21 +1628,21 @@ export async function registerRoutes(
       const isAdmin = user?.isAdmin === 1;
       const encryptedApiKey = user?.customModelsLabKey;
       const hasCustomKey = isAdmin && !!encryptedApiKey;
-      
+
       // All admins bypass quotas, regardless of having a custom key
       let imageQuota: ImageQuotaResult;
       if (isAdmin) {
         // Admins get unlimited HQ access
-        imageQuota = { 
-          allowed: true, 
-          isPro: true, 
-          modelId: MODELSLAB_MODELS.HQ, 
-          imageQuality: "hq" 
+        imageQuota = {
+          allowed: true,
+          isPro: true,
+          modelId: MODELSLAB_MODELS.HQ,
+          imageQuality: "hq"
         };
       } else {
         imageQuota = await checkImageQuotaAndModel(userId);
         if (!imageQuota.allowed) {
-          return res.status(403).json({ 
+          return res.status(403).json({
             error: imageQuota.reason,
             isPremiumRequired: true,
             quotas: imageQuota.quotas,
@@ -1503,28 +1650,234 @@ export async function registerRoutes(
         }
       }
 
-      const { prompt, images, aspectRatio, activeGems, bodyFidelity, preserveTattoos, negativePrompt } = req.body;
-      
+      const { prompt, images, aspectRatio, activeGems, bodyFidelity, preserveTattoos, negativePrompt, cinematicSettings, rawSubject } = req.body;
+
       if (!prompt) {
         return res.status(400).json({ error: "Prompt is required" });
       }
-      
-      // Determine if we need precise control mode (for gems/tattoo preservation)
-      // When gems are active or preserveTattoos is enabled, we use Realistic Vision v6
-      // which accepts strength, negative_prompt, and other control parameters
+
+      // ============ VECTRA UNIFIED PROMPT SYSTEM ============
+      // CRITICAL: Nano Banana Pro prioritizes the BEGINNING of the prompt
+      // Structure: [SUBJECT FIRST] + [Technical Directives as suffix]
+
       const hasActiveGems = Array.isArray(activeGems) && activeGems.length > 0;
-      const needsTattooPreservation = preserveTattoos === true || 
+      const needsTattooPreservation = preserveTattoos === true ||
         (hasActiveGems && (activeGems.includes("face_swapper") || activeGems.includes("tattoo_preservation")));
       const usePreciseControlMode = needsTattooPreservation || (hasActiveGems && bodyFidelity && bodyFidelity > 50);
-      
-      // Calculate strength based on bodyFidelity (inverse relationship)
-      // Higher fidelity = lower strength = less AI creativity = better preservation
-      const fidelityStrength = bodyFidelity ? Math.max(0.15, Math.min(0.7, (100 - bodyFidelity) / 100)) : 0.5;
-      
+
+      // ============ EXTRACT USER SUBJECT FROM COMPILED PROMPT ============
+      // The compiled prompt contains technical directives + subject
+      // We need to identify and PRIORITIZE the actual user request
+
+      // PRIORITY 1: Use rawSubject directly from frontend if available
+      let userSubject = rawSubject || "";
+
+      // PRIORITY 2: Try to find the subject line in the compiled prompt
+      if (!userSubject) {
+        const subjectMatch = prompt.match(/Subject:\s*(.+?)(?:\n|$)/i);
+        if (subjectMatch) {
+          userSubject = subjectMatch[1].trim();
+        } else {
+          // Look for any lines that seem like user content (not technical directives)
+          const lines = prompt.split('\n');
+          for (const line of lines) {
+            const cleanLine = line.trim();
+            // Skip technical directive lines
+            if (cleanLine.startsWith('[') || cleanLine.startsWith('CRITICAL') ||
+              cleanLine.startsWith('Quality:') || cleanLine.startsWith('Fidelity:') ||
+              cleanLine.startsWith('Anatomy:') || cleanLine.startsWith('Technical') ||
+              cleanLine.includes('LOCKDOWN') || cleanLine.includes('PRESERVATION') ||
+              cleanLine.length === 0) {
+              continue;
+            }
+            // This might be user content
+            if (cleanLine.length > 20 && !cleanLine.startsWith('-')) {
+              // Check if it looks like a description/subject
+              if (cleanLine.toLowerCase().includes('esse') ||
+                cleanLine.toLowerCase().includes('this') ||
+                cleanLine.toLowerCase().includes('homem') ||
+                cleanLine.toLowerCase().includes('mulher') ||
+                cleanLine.toLowerCase().includes('woman') ||
+                cleanLine.toLowerCase().includes('man') ||
+                cleanLine.toLowerCase().includes('person') ||
+                cleanLine.toLowerCase().includes('usando') ||
+                cleanLine.toLowerCase().includes('wearing')) {
+                userSubject = cleanLine;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      console.log(`[SUBJECT] rawSubject: "${(rawSubject || 'none').substring(0, 50)}", userSubject: "${userSubject.substring(0, 50)}"`);
+
+      // ============ BUILD NANO BANANA PRO OPTIMIZED PROMPT ============
+      // The model works best with: [SCENE DESCRIPTION] [SUBJECT] [STYLE MODIFIERS]
+      // NOT with long technical preambles that bury the user's actual request
+
+      let optimizedPrompt = "";
+
+      // PRIORITY 1: User's actual scene/subject request goes FIRST
+      if (userSubject) {
+        optimizedPrompt = `SCENE: ${userSubject}\n\n`;
+      }
+
+      // PRIORITY 2: Add the rest of the compiled prompt (but trimmed)
+      // Remove verbose technical sections that don't help the model
+      let cleanedPrompt = prompt;
+
+      // Remove overly long technical sections
+      cleanedPrompt = cleanedPrompt.replace(/\[FACIAL BIOMETRICS LOCKDOWN MODE\][\s\S]*?Preserve microexpressions[^\n]*\n/gi, '[PRESERVE EXACT FACE] ');
+      cleanedPrompt = cleanedPrompt.replace(/\[BODY MARKING PRESERVATION[^\]]*\][\s\S]*?DO NOT invent[^\n]*\n/gi, '[PRESERVE EXACT TATTOOS] ');
+      cleanedPrompt = cleanedPrompt.replace(/\[ULTRA-REALISM MODE[^\]]*\][\s\S]*?uncanny valley\./gi, '[PHOTOREALISTIC] ');
+      cleanedPrompt = cleanedPrompt.replace(/\[INSTAGRAM UGC PHOTOREALISM MODE\][\s\S]*?smartphone photography\./gi, '[AUTHENTIC SMARTPHONE PHOTO] ');
+      cleanedPrompt = cleanedPrompt.replace(/\[TATTOO[^\]]*PRESERVATION[^\]]*\][\s\S]*?PRECISELY\./gi, '[PRESERVE TATTOOS] ');
+
+      // Remove duplicate newlines and trim
+      cleanedPrompt = cleanedPrompt.replace(/\n{3,}/g, '\n\n').trim();
+
+      // If we extracted a subject, remove it from the cleaned prompt to avoid duplication
+      if (userSubject && cleanedPrompt.includes(userSubject)) {
+        cleanedPrompt = cleanedPrompt.replace(userSubject, '');
+      }
+
+      // Add the cleaned prompt
+      optimizedPrompt += cleanedPrompt;
+
+      // PRIORITY 3: Add concise style directives at end based on gems
+      const styleDirectives: string[] = [];
+
+      if (hasActiveGems) {
+        if (activeGems.includes("face_swapper")) {
+          styleDirectives.push("preserve exact facial features");
+        }
+        if (activeGems.includes("ai_instagram_media")) {
+          styleDirectives.push("authentic UGC smartphone photo style");
+        }
+        if (activeGems.includes("tattoo_preservation")) {
+          styleDirectives.push("preserve exact tattoos ONLY where they exist in reference");
+        }
+      }
+
+      // Add anti-CGI directives (concise)
+      const needsUltraRealism = hasActiveGems ||
+        prompt.toLowerCase().includes("photorealistic") ||
+        prompt.toLowerCase().includes("real");
+
+      if (needsUltraRealism) {
+        styleDirectives.push("photorealistic quality");
+        styleDirectives.push("no CGI or 3D render aesthetics");
+      }
+
+      if (styleDirectives.length > 0) {
+        optimizedPrompt += `\n\nStyle: ${styleDirectives.join(", ")}`;
+      }
+
+      // ============ FACIAL TATTOO BIOMETRIC LOCKDOWN ULTRA ============
+      // When tattoo preservation is active, add explicit FACIAL TATTOO controls
+      if (needsTattooPreservation) {
+        const facialTattooLockdown = `
+
+[FACIAL TATTOO BIOMETRIC LOCKDOWN - ULTRA PRIORITY]
+CRITICAL INSTRUCTION: This subject has SPECIFIC facial tattoos only in EXACT locations.
+DO NOT ADD any tattoos to: forehead, eyebrows, temples, cheeks (unless present in reference), chin, neck, ears.
+DO NOT EXTEND existing tattoos beyond their reference boundaries.
+DO NOT CREATE new facial markings, spots, shadows that look like tattoos.
+ONLY replicate the EXACT tattoos visible in the reference images.
+Any skin area WITHOUT a tattoo in the reference MUST remain clean and unmarked.
+This is a HARD CONSTRAINT - violation means image rejection.`;
+
+        optimizedPrompt = facialTattooLockdown + "\n\n" + optimizedPrompt;
+
+        console.log(`[FACIAL-LOCKDOWN] Added facial tattoo biometric lockdown to prompt`);
+      }
+
+      // Use the optimized prompt as the unified prompt
+      let unifiedPrompt = optimizedPrompt;
+
+      console.log(`[OPTIMIZED-PROMPT] Length: ${unifiedPrompt.length} chars, Subject extracted: ${!!userSubject}`);
+      console.log(`[PROMPT-PREVIEW] First 300 chars: ${unifiedPrompt.substring(0, 300)}`);
+
+      // ============ BUILD UNIFIED NEGATIVE PROMPT ============
+      const antiCgiNegatives = [
+        "CGI", "3D render", "computer generated", "artificial lighting", "plastic skin",
+        "airbrushed", "smooth skin", "wax figure", "mannequin", "doll-like",
+        "video game", "cartoon", "illustration", "digital art", "octane render"
+      ];
+
+      let unifiedNegativePrompt = negativePrompt || "bad quality, blurry, distorted, low resolution, watermark, text";
+
+      if (needsUltraRealism) {
+        unifiedNegativePrompt += ", " + antiCgiNegatives.join(", ");
+      }
+
+      // ============ FACIAL TATTOO ULTRA NEGATIVE PROMPTS ============
+      // Extremely specific negative prompts for facial tattoo regions
+      if (needsTattooPreservation) {
+        const facialTattooNegatives = [
+          // General tattoo invention prevention
+          "extra tattoos", "new tattoos", "additional tattoos", "invented tattoos",
+          "tattoos appearing where none exist", "different tattoo designs", "modified tattoos",
+          // FACIAL REGION SPECIFIC - prevent tattoos in wrong areas
+          "forehead tattoo", "eyebrow tattoo", "above eyebrow tattoo", "temple tattoo",
+          "tattoo on forehead", "tattoo above eye", "tattoo on eyebrow",
+          "new facial markings", "extra face tattoos", "additional facial ink",
+          "cheek tattoo if not in reference", "chin tattoo if not in reference",
+          "neck tattoo if not in reference", "ear tattoo",
+          // Pattern specific prevention
+          "extended tattoo lines", "spread tattoo ink", "bleeding tattoo edges",
+          "smudged tattoos", "blurred tattoo boundaries", "morphed tattoo design",
+          // False positive prevention
+          "shadows that look like tattoos", "dirt marks on face", "smudges on skin",
+          "dark spots on face", "artificial skin marks", "fake tattooed appearance"
+        ];
+
+        unifiedNegativePrompt += ", " + facialTattooNegatives.join(", ");
+
+        console.log(`[FACIAL-LOCKDOWN] Added ${facialTattooNegatives.length} facial tattoo negatives`);
+      }
+
+      // ============ VFX STRENGTH CALCULATION ============
+      // If VFX are active and intense, allow more AI freedom to apply styles
+      let vfxStrengthBonus = 0;
+      if (cinematicSettings?.vfx?.effects && cinematicSettings.vfx.effects.length > 0 && !cinematicSettings.vfx.effects.includes("off")) {
+        const intensity = cinematicSettings.vfx.intensity || 50;
+        vfxStrengthBonus = (intensity / 100) * 0.4;
+      }
+
+      // Calculate strength from bodyFidelity
+      // IMPORTANT: When tattoo preservation is active with high fidelity, use VERY LOW strength
+      // to maximize preservation of original tattoo positions
+      let fidelityStrengthBase = bodyFidelity ? Math.max(0.15, Math.min(0.7, (100 - bodyFidelity) / 100)) : 0.5;
+
+      // TATTOO PRESERVATION PRIORITY: When active with high fidelity, cap strength regardless of VFX
+      let tattooStrengthCap = 1.0; // No cap by default
+      if (needsTattooPreservation && bodyFidelity && bodyFidelity >= 80) {
+        tattooStrengthCap = 0.25; // Strict cap for maximum tattoo preservation
+        fidelityStrengthBase = Math.min(fidelityStrengthBase, 0.20);
+        console.log(`[TATTOO-FIDELITY] High fidelity mode - base capped at 0.20, max at 0.25`);
+      } else if (needsTattooPreservation) {
+        tattooStrengthCap = 0.45; // Moderate cap when tattoo preservation is on but fidelity is lower
+        console.log(`[TATTOO-FIDELITY] Standard mode - max capped at 0.45`);
+      }
+
+      // Apply VFX bonus but respect tattoo cap
+      let calculatedStrength = Math.max(fidelityStrengthBase, 0.4 + vfxStrengthBonus);
+
+      // Apply tattoo preservation cap (this takes priority over VFX)
+      if (needsTattooPreservation) {
+        calculatedStrength = Math.min(calculatedStrength, tattooStrengthCap);
+      }
+
+      const adjustedStrength = Math.min(0.85, calculatedStrength);
+
+      console.log(`[STRENGTH-CALC] Base: ${fidelityStrengthBase.toFixed(2)}, VFX: ${vfxStrengthBonus.toFixed(2)}, TattooCap: ${tattooStrengthCap.toFixed(2)}, Final: ${adjustedStrength.toFixed(2)}`);
+
       if (!images || !Array.isArray(images) || images.length === 0) {
         return res.status(400).json({ error: "At least one image is required" });
       }
-      
+
       // Use custom API key for admins (decrypt if present), otherwise use system key
       let apiKey = process.env.MODELSLAB_API_KEY;
       if (hasCustomKey && encryptedApiKey) {
@@ -1541,23 +1894,23 @@ export async function registerRoutes(
       if (!apiKey) {
         return res.status(500).json({ error: "ModelsLab API key not configured" });
       }
-      
+
       // Nano Banana Pro accepts images as URLs or base64 data URLs directly
       // Keep the full data URL format for base64 images
       const processedImages = images.map((img: string) => {
         if (typeof img !== 'string') return '';
         return img;
       }).filter((img: string) => img.length > 0);
-      
+
       if (processedImages.length === 0) {
         return res.status(400).json({ error: "No valid images provided" });
       }
-      
+
       // Nano Banana Pro v7 API - supports up to 14 images with multi-image fusion
       // Valid aspect ratios: 1:1, 9:16, 2:3, 3:4, 4:5, 5:4, 4:3, 3:2, 16:9, 21:9
       const validRatios = ["1:1", "9:16", "2:3", "3:4", "4:5", "5:4", "4:3", "3:2", "16:9", "21:9"];
       const selectedRatio = validRatios.includes(aspectRatio) ? aspectRatio : "1:1";
-      
+
       // Calculate dimensions respecting ModelsLab's max 1024px limit while maintaining aspect ratio
       const getDimensions = (ratio: string): { width: string; height: string } => {
         switch (ratio) {
@@ -1584,15 +1937,16 @@ export async function registerRoutes(
             return { width: "1024", height: "1024" };
         }
       };
-      
+
       const dimensions = getDimensions(selectedRatio);
-      
+
       // Use only the first image - ModelsLab image-to-image expects a single init_image
       let initImage = processedImages[0];
-      
-      // Truncate prompt to API max length (2000 chars)
-      const truncatedPrompt = prompt.length > 2000 ? prompt.substring(0, 2000) : prompt;
-      
+
+      // Truncate UNIFIED prompt to API max length (2000 chars)
+      // unifiedPrompt already contains: Anti-CGI + Gems + Original Prompt
+      const truncatedPrompt = unifiedPrompt.length > 2000 ? unifiedPrompt.substring(0, 2000) : unifiedPrompt;
+
       // Check if it's a base64 data URL and extract just the base64 content
       const isBase64 = initImage.startsWith("data:");
       if (isBase64) {
@@ -1602,44 +1956,47 @@ export async function registerRoutes(
           initImage = base64Match[1];
         }
       }
-      
+
       // Select model based on quota check (HQ = nano-banana-pro, Standard = realistic-vision-51)
       // IMPORTANT: When precise control mode is needed (gems/tattoo preservation), 
       // we force Realistic Vision v6 even for admins because it accepts control parameters
       let selectedModel: string;
       let isHqModel: boolean;
       let isNanoBananaPro: boolean;
-      
-      if (usePreciseControlMode && isAdmin) {
-        // Force Realistic Vision for precise control when gems/tattoo preservation is active
+
+      // Check if user is Pro from quota
+      const isPro = imageQuota?.isPro === true;
+
+      if (isAdmin || isPro) {
+        // Both Admins AND Pro users get Nano Banana Pro HQ model ALWAYS
+        // We prioritize Model Quality over "Precise Control" mechanisms used for tattoos/gems
+        selectedModel = MODELSLAB_MODELS.HQ;
+        isHqModel = true;
+        isNanoBananaPro = true;
+        console.log(`User is ${isAdmin ? 'Admin' : 'Pro'} - using Nano Banana Pro HQ model (Precise Content Mode: ${usePreciseControlMode})`);
+      } else if (usePreciseControlMode) {
+        // For FREE users, we support the downgrade to Standard for better control if needed
         selectedModel = MODELSLAB_MODELS.STANDARD;
         isHqModel = false;
         isNanoBananaPro = false;
-        console.log(`Precise control mode active - switching to Realistic Vision for better tattoo/body preservation`);
-      } else if (isAdmin) {
-        selectedModel = "nano-banana-pro";
-        isHqModel = true;
-        isNanoBananaPro = true;
+        console.log(`Free user with Precise control mode active - switching to Realistic Vision`);
       } else {
-        selectedModel = imageQuota?.modelId || "nano-banana-pro";
+        // Free users standard logic
+        selectedModel = imageQuota?.modelId || MODELSLAB_MODELS.STANDARD;
         isHqModel = imageQuota?.imageQuality === "hq";
-        isNanoBananaPro = selectedModel === "nano-banana-pro";
+        isNanoBananaPro = selectedModel === MODELSLAB_MODELS.HQ;
+        console.log(`Free user - using ${selectedModel} (${imageQuota?.imageQuality || 'standard'} quality)`);
       }
-      
-      // Build negative prompt with tattoo preservation if needed
-      let finalNegativePrompt = negativePrompt || "bad quality, blurry, distorted, low resolution, watermark, text";
-      if (needsTattooPreservation) {
-        const tattooNegatives = ", extra tattoos, new tattoos, additional body art, tattoo modifications, " +
-          "invented tattoos, tattoos appearing where none exist, different tattoo designs, " +
-          "altered tattoos, extended tattoos, missing tattoos, removed tattoos, faded tattoos";
-        finalNegativePrompt += tattooNegatives;
-      }
-      
+
+      // Use the unified negative prompt (already built above with anti-CGI + gems + tattoo)
+      const finalNegativePrompt = unifiedNegativePrompt;
+
       // Nano Banana Pro uses v7 API with different parameters
       let requestBody: any;
       let apiEndpoint: string;
-      
-      if (isNanoBananaPro && !usePreciseControlMode) {
+
+      // Always use v7 API for Nano Banana Pro
+      if (isNanoBananaPro) {
         // Nano Banana Pro - v7 API with multi-image fusion support
         // Convert aspect ratio to Nano Banana format
         const aspectRatioMap: Record<string, string> = {
@@ -1653,22 +2010,27 @@ export async function registerRoutes(
           "21:9": "16:9",
         };
         const nanoBananaRatio = aspectRatioMap[selectedRatio] || "1:1";
-        
+
         requestBody = {
           key: apiKey,
           model_id: "nano-banana-pro",
           prompt: truncatedPrompt,
+          negative_prompt: finalNegativePrompt, // Pass negative prompt even to v7
           init_image: processedImages, // Array of images for multi-image fusion
           aspect_ratio: nanoBananaRatio,
+          guidance_scale: needsTattooPreservation ? 9.0 : 7.5, // Pass guidance scale
+          prompt_strength: adjustedStrength, // Pass strength to v7 (if supported, otherwise ignored)
         };
         apiEndpoint = "https://modelslab.com/api/v7/images/image-to-image";
+
+        console.log(`Using Nano Banana Pro (v7 API) - Precise Mode: ${usePreciseControlMode}, Strength: ${adjustedStrength}`);
       } else {
         // Realistic Vision 5.1 - v6 API with full control parameters
         // Used when: standard quota, or precise control mode is active (gems/tattoo preservation)
-        const controlStrength = usePreciseControlMode ? fidelityStrength : 0.7;
+        const controlStrength = adjustedStrength; // Use adjusted strength with VFX boost
         const controlCfg = needsTattooPreservation ? 9.0 : 7.5;
         const controlSteps = needsTattooPreservation ? "35" : "30";
-        
+
         requestBody = {
           key: apiKey,
           model_id: selectedModel === "nano-banana-pro" ? MODELSLAB_MODELS.STANDARD : selectedModel,
@@ -1687,32 +2049,51 @@ export async function registerRoutes(
           scheduler: "DPMSolverMultistepScheduler",
         };
         apiEndpoint = "https://modelslab.com/api/v6/images/img2img";
-        
+
         if (usePreciseControlMode) {
           console.log(`Precise control: strength=${controlStrength.toFixed(2)}, cfg=${controlCfg}, steps=${controlSteps}, tattooMode=${needsTattooPreservation}`);
         }
       }
-      
-      console.log(`Sending to ModelsLab ${isNanoBananaPro ? 'v7 Nano Banana Pro' : 'v6 img2img'} (${selectedModel} - ${imageQuota.imageQuality}):`, { 
-        ...requestBody, 
+
+      console.log(`Sending to ModelsLab ${isNanoBananaPro ? 'v7 Nano Banana Pro' : 'v6 img2img'} (${selectedModel} - ${imageQuota.imageQuality}):`, {
+        ...requestBody,
         key: "[REDACTED]",
         init_image: isNanoBananaPro ? `[${processedImages.length} images]` : `[image: ${initImage.substring(0, 50)}...]`,
         prompt: `[${truncatedPrompt.length} chars]`,
       });
-      
-      const response = await fetchWithTimeout(apiEndpoint, {
+
+      let response = await fetchWithTimeout(apiEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       }, 90000); // 90s timeout for Nano Banana Pro (larger model)
-      
-      const data = await response.json();
-      
+
+      let data = await response.json();
+
+      // Retry mechanism: If custom key fails (400 Invalid API Key), try with System Key
+      if (data.status === "error" &&
+        (data.message?.includes("Invalid API Key") || data.message?.includes("auth")) &&
+        hasCustomKey) {
+
+        console.warn("Custom Admin API Key failed. Retrying with System API Key...");
+
+        // Switch to System Key
+        requestBody.key = process.env.MODELSLAB_API_KEY;
+
+        response = await fetchWithTimeout(apiEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        }, 90000);
+
+        data = await response.json();
+      }
+
       if (data.status === "error") {
         console.error("ModelsLab error:", data);
         return res.status(400).json({ error: data.message || "ModelsLab API error" });
       }
-      
+
       // Process base64 URLs if present - convert them to proper data URLs
       if (data.status === "success" && data.output && Array.isArray(data.output)) {
         const processedOutput: string[] = [];
@@ -1725,7 +2106,7 @@ export async function registerRoutes(
               }, 30000);
               const base64Content = await base64Response.text();
               const cleanBase64 = base64Content.trim();
-              
+
               // Detect image type from base64 header
               let mimeType = 'image/png';
               if (cleanBase64.startsWith('/9j/')) {
@@ -1744,12 +2125,12 @@ export async function registerRoutes(
         }
         data.output = processedOutput;
       }
-      
-      await logUsage(userId, "image", { 
-        imageQuality: imageQuota.imageQuality, 
+
+      await logUsage(userId, "image", {
+        imageQuality: imageQuota.imageQuality,
         modelId: selectedModel,
       });
-      
+
       // Include quota info and model used in response
       res.json({
         ...data,
@@ -1764,6 +2145,481 @@ export async function registerRoutes(
     }
   });
 
+  // ============ PROMPT REFINER FOR TEXT-TO-IMAGE ============
+  // Analyzes user intent and generates optimized prompt for Nano Banana Pro
+  app.post("/api/modelslab/refine-prompt", async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      const { prompt, aspectRatio } = req.body;
+
+      if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+        return res.status(400).json({ error: "Prompt is required" });
+      }
+
+      const userPrompt = prompt.trim();
+      console.log(`[REFINE-PROMPT] Input: "${userPrompt.substring(0, 100)}..."`);
+
+      // ============ INTENT ANALYSIS ============
+      // Detect the type of content user wants to create
+      const lowerPrompt = userPrompt.toLowerCase();
+
+      interface PromptIntent {
+        type: "logo" | "portrait" | "landscape" | "product" | "abstract" | "character" | "scene" | "artwork";
+        style: string[];
+        mood: string[];
+        colors: string[];
+        subject: string;
+        details: string[];
+        quality: string[];
+      }
+
+      const intent: PromptIntent = {
+        type: "artwork",
+        style: [],
+        mood: [],
+        colors: [],
+        subject: userPrompt,
+        details: [],
+        quality: ["high quality", "detailed", "professional"]
+      };
+
+      // Detect type
+      if (lowerPrompt.includes("logo") || lowerPrompt.includes("logotipo") || lowerPrompt.includes("marca")) {
+        intent.type = "logo";
+        intent.quality.push("vector-like", "clean lines", "scalable design");
+      } else if (lowerPrompt.includes("retrato") || lowerPrompt.includes("portrait") || lowerPrompt.includes("rosto") || lowerPrompt.includes("face")) {
+        intent.type = "portrait";
+        intent.quality.push("photorealistic", "sharp focus on face", "studio lighting");
+      } else if (lowerPrompt.includes("paisagem") || lowerPrompt.includes("landscape") || lowerPrompt.includes("cenário") || lowerPrompt.includes("ambiente")) {
+        intent.type = "landscape";
+        intent.quality.push("wide angle", "environmental lighting", "atmospheric");
+      } else if (lowerPrompt.includes("produto") || lowerPrompt.includes("product") || lowerPrompt.includes("item")) {
+        intent.type = "product";
+        intent.quality.push("commercial photography", "clean background", "product focus");
+      } else if (lowerPrompt.includes("abstrato") || lowerPrompt.includes("abstract")) {
+        intent.type = "abstract";
+        intent.quality.push("artistic", "creative composition", "unique");
+      } else if (lowerPrompt.includes("personagem") || lowerPrompt.includes("character") || lowerPrompt.includes("herói") || lowerPrompt.includes("hero")) {
+        intent.type = "character";
+        intent.quality.push("character design", "full body", "dynamic pose");
+      } else if (lowerPrompt.includes("cena") || lowerPrompt.includes("scene")) {
+        intent.type = "scene";
+        intent.quality.push("cinematic", "narrative composition", "storytelling");
+      }
+
+      // Detect styles
+      const styleKeywords: Record<string, string[]> = {
+        "minimalista": ["minimalist", "clean", "simple", "modern"],
+        "minimal": ["minimalist", "clean", "simple", "modern"],
+        "gótico": ["gothic", "dark", "ornate", "medieval"],
+        "gotico": ["gothic", "dark", "ornate", "medieval"],
+        "rock": ["rock style", "edgy", "bold", "rebellious"],
+        "corporativo": ["corporate", "professional", "business", "sleek"],
+        "futurista": ["futuristic", "sci-fi", "cyberpunk", "neon"],
+        "vintage": ["vintage", "retro", "classic", "nostalgic"],
+        "neon": ["neon lights", "glowing", "vibrant", "electric"],
+        "3d": ["3D render", "volumetric", "dimensional", "depth"],
+        "flat": ["flat design", "2D", "geometric", "simplified"],
+        "realista": ["photorealistic", "hyperrealistic", "lifelike"],
+        "realistic": ["photorealistic", "hyperrealistic", "lifelike"],
+        "cartoon": ["cartoon style", "animated", "stylized"],
+        "anime": ["anime style", "japanese animation", "manga-inspired"],
+        "aquarela": ["watercolor", "soft edges", "organic flow"],
+        "watercolor": ["watercolor", "soft edges", "organic flow"],
+      };
+
+      for (const [keyword, styles] of Object.entries(styleKeywords)) {
+        if (lowerPrompt.includes(keyword)) {
+          intent.style.push(...styles);
+        }
+      }
+
+      // Detect colors
+      const colorKeywords: Record<string, string[]> = {
+        "preto e branco": ["black and white", "monochrome", "grayscale"],
+        "black and white": ["black and white", "monochrome", "grayscale"],
+        "monocromático": ["monochromatic", "single color palette"],
+        "colorido": ["vibrant colors", "colorful", "rich palette"],
+        "dourado": ["gold accents", "golden", "luxurious"],
+        "neon": ["neon colors", "glowing", "electric colors"],
+        "pastel": ["pastel colors", "soft tones", "muted"],
+        "escuro": ["dark tones", "shadows", "low key"],
+        "claro": ["bright", "light tones", "high key"],
+      };
+
+      for (const [keyword, colors] of Object.entries(colorKeywords)) {
+        if (lowerPrompt.includes(keyword)) {
+          intent.colors.push(...colors);
+        }
+      }
+
+      // Detect mood
+      const moodKeywords: Record<string, string[]> = {
+        "elegante": ["elegant", "sophisticated", "refined"],
+        "agressivo": ["aggressive", "intense", "powerful"],
+        "calmo": ["calm", "peaceful", "serene"],
+        "misterioso": ["mysterious", "enigmatic", "intriguing"],
+        "profissional": ["professional", "polished", "corporate"],
+        "divertido": ["fun", "playful", "cheerful"],
+        "sério": ["serious", "formal", "authoritative"],
+      };
+
+      for (const [keyword, moods] of Object.entries(moodKeywords)) {
+        if (lowerPrompt.includes(keyword)) {
+          intent.mood.push(...moods);
+        }
+      }
+
+      // ============ BUILD OPTIMIZED PROMPT ============
+      // Nano Banana Pro works best with: [SUBJECT] [STYLE] [DETAILS] [QUALITY]
+
+      let optimizedPrompt = "";
+
+      // 1. Subject (the main thing user wants)
+      optimizedPrompt += userPrompt;
+
+      // 2. Add detected styles
+      if (intent.style.length > 0) {
+        const uniqueStyles = Array.from(new Set(intent.style)).slice(0, 4);
+        optimizedPrompt += `, ${uniqueStyles.join(", ")}`;
+      }
+
+      // 3. Add colors
+      if (intent.colors.length > 0) {
+        const uniqueColors = Array.from(new Set(intent.colors)).slice(0, 3);
+        optimizedPrompt += `, ${uniqueColors.join(", ")}`;
+      }
+
+      // 4. Add mood
+      if (intent.mood.length > 0) {
+        const uniqueMoods = Array.from(new Set(intent.mood)).slice(0, 2);
+        optimizedPrompt += `, ${uniqueMoods.join(", ")}`;
+      }
+
+      // 5. Add type-specific enhancements
+      switch (intent.type) {
+        case "logo":
+          optimizedPrompt += ", centered composition, clean background, professional logo design, brand identity, sharp edges";
+          break;
+        case "portrait":
+          optimizedPrompt += ", professional portrait photography, perfect lighting, sharp focus, bokeh background";
+          break;
+        case "landscape":
+          optimizedPrompt += ", stunning landscape, dramatic lighting, high dynamic range, wide angle view";
+          break;
+        case "product":
+          optimizedPrompt += ", product photography, clean white background, professional lighting, commercial quality";
+          break;
+        case "abstract":
+          optimizedPrompt += ", abstract art, creative composition, artistic expression, unique design";
+          break;
+        case "character":
+          optimizedPrompt += ", character concept art, full body design, dynamic pose, detailed illustration";
+          break;
+        case "scene":
+          optimizedPrompt += ", cinematic scene, narrative composition, environmental storytelling, atmospheric lighting";
+          break;
+        default:
+          optimizedPrompt += ", high quality, detailed, professional artwork";
+      }
+
+      // 6. Universal quality boosters
+      optimizedPrompt += ", 4K resolution, masterpiece, best quality";
+
+      // 7. Aspect ratio optimization
+      if (aspectRatio === "16:9" || aspectRatio === "21:9") {
+        optimizedPrompt += ", widescreen composition, cinematic framing";
+      } else if (aspectRatio === "9:16") {
+        optimizedPrompt += ", vertical composition, portrait orientation";
+      } else if (aspectRatio === "1:1") {
+        optimizedPrompt += ", centered balanced composition, square format";
+      }
+
+      // Build response JSON
+      const result = {
+        original: userPrompt,
+        refined: optimizedPrompt,
+        analysis: {
+          type: intent.type,
+          styles: Array.from(new Set(intent.style)),
+          colors: Array.from(new Set(intent.colors)),
+          mood: Array.from(new Set(intent.mood)),
+        },
+        suggestions: [
+          intent.style.length === 0 ? "Considere adicionar um estilo (ex: minimalista, gótico, futurista)" : null,
+          intent.colors.length === 0 ? "Adicione cores específicas para melhor resultado (ex: preto e branco, neon)" : null,
+          intent.type === "logo" && !lowerPrompt.includes("fundo") ? "Para logos, especifique o fundo (ex: fundo transparente, fundo branco)" : null,
+        ].filter(Boolean)
+      };
+
+      console.log(`[REFINE-PROMPT] Output: "${optimizedPrompt.substring(0, 150)}..." | Type: ${intent.type}`);
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error refining prompt:", error);
+      res.status(500).json({ error: "Failed to refine prompt" });
+    }
+  });
+
+  // ============ TEXT-TO-IMAGE GENERATION ============
+  // Uses Nano Banana Pro for HQ text-to-image (no reference image needed)
+  // Perfect for logos, scenarios, creative concepts
+  app.post("/api/modelslab/text2img", async (req, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+
+      // Check if user is admin (all admins bypass quotas)
+      const user = await storage.getAppUser(userId);
+      const isAdmin = user?.isAdmin === 1;
+      const encryptedApiKey = user?.customModelsLabKey;
+      const hasCustomKey = isAdmin && !!encryptedApiKey;
+
+      // All admins bypass quotas, regardless of having a custom key
+      let imageQuota: ImageQuotaResult;
+      if (isAdmin) {
+        // Admins get unlimited HQ access
+        imageQuota = {
+          allowed: true,
+          isPro: true,
+          modelId: MODELSLAB_MODELS.HQ,
+          imageQuality: "hq"
+        };
+      } else {
+        imageQuota = await checkImageQuotaAndModel(userId);
+        if (!imageQuota.allowed) {
+          return res.status(403).json({
+            error: imageQuota.reason,
+            isPremiumRequired: true,
+            quotas: imageQuota.quotas,
+          });
+        }
+      }
+
+      const { prompt, aspectRatio, negativePrompt } = req.body;
+
+      if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+        return res.status(400).json({ error: "Prompt is required for text-to-image generation" });
+      }
+
+      // Use custom API key for admins (decrypt if present), otherwise use system key
+      let apiKey = process.env.MODELSLAB_API_KEY;
+      if (hasCustomKey && encryptedApiKey) {
+        try {
+          const { decryptApiKey } = await import("./lib/encryption");
+          const decryptedKey = decryptApiKey(encryptedApiKey);
+          if (decryptedKey) {
+            apiKey = decryptedKey;
+          }
+        } catch {
+          // If decryption fails, use system key
+        }
+      }
+      if (!apiKey) {
+        return res.status(500).json({ error: "ModelsLab API key not configured" });
+      }
+
+      // Check if user is Pro from quota
+      const isPro = imageQuota?.isPro === true;
+
+      // Select model based on plan
+      let selectedModel: string;
+      let isHqModel: boolean;
+
+      if (isAdmin || isPro) {
+        // Pro/Admin get Nano Banana Pro for text2img
+        selectedModel = MODELSLAB_MODELS.HQ;
+        isHqModel = true;
+        console.log(`[TEXT2IMG] User is ${isAdmin ? 'Admin' : 'Pro'} - using Nano Banana Pro HQ model`);
+      } else {
+        // Free users use standard model or HQ while quota available
+        selectedModel = imageQuota?.modelId || MODELSLAB_MODELS.STANDARD;
+        isHqModel = imageQuota?.imageQuality === "hq";
+        console.log(`[TEXT2IMG] Free user - using ${selectedModel} (${imageQuota?.imageQuality || 'standard'} quality)`);
+      }
+
+      // Build negative prompt
+      let finalNegativePrompt = negativePrompt || "bad quality, blurry, distorted, low resolution, watermark, text, ugly, deformed";
+
+      // Calculate dimensions from aspect ratio
+      const validRatios = ["1:1", "9:16", "2:3", "3:4", "4:5", "5:4", "4:3", "3:2", "16:9", "21:9"];
+      const selectedRatio = validRatios.includes(aspectRatio) ? aspectRatio : "1:1";
+
+      const getDimensions = (ratio: string): { width: string; height: string } => {
+        switch (ratio) {
+          case "16:9":
+            return { width: "1024", height: "576" };
+          case "9:16":
+            return { width: "576", height: "1024" };
+          case "4:3":
+            return { width: "1024", height: "768" };
+          case "3:4":
+            return { width: "768", height: "1024" };
+          case "3:2":
+            return { width: "1024", height: "683" };
+          case "2:3":
+            return { width: "683", height: "1024" };
+          case "5:4":
+            return { width: "1024", height: "819" };
+          case "4:5":
+            return { width: "819", height: "1024" };
+          case "21:9":
+            return { width: "1024", height: "439" };
+          case "1:1":
+          default:
+            return { width: "1024", height: "1024" };
+        }
+      };
+
+      const dimensions = getDimensions(selectedRatio);
+
+      // Truncate prompt to API max length (2000 chars)
+      const truncatedPrompt = prompt.length > 2000 ? prompt.substring(0, 2000) : prompt;
+
+      // Build request for text2img API
+      let requestBody: any;
+      let apiEndpoint: string;
+
+      if (isHqModel && selectedModel === MODELSLAB_MODELS.HQ) {
+        // Nano Banana Pro text2img - use v7 API
+        const aspectRatioMap: Record<string, string> = {
+          "1:1": "1:1",
+          "16:9": "16:9",
+          "9:16": "9:16",
+          "4:3": "4:3",
+          "3:4": "3:4",
+          "5:4": "4:3",
+          "4:5": "3:4",
+          "21:9": "16:9",
+        };
+        const nanoBananaRatio = aspectRatioMap[selectedRatio] || "1:1";
+
+        requestBody = {
+          key: apiKey,
+          model_id: "nano-banana-pro",
+          prompt: truncatedPrompt,
+          negative_prompt: finalNegativePrompt,
+          aspect_ratio: nanoBananaRatio,
+          guidance_scale: 7.5,
+        };
+        apiEndpoint = "https://modelslab.com/api/v7/images/text-to-image";
+
+        console.log(`[TEXT2IMG] Using Nano Banana Pro (v7 API) for text-to-image`);
+      } else {
+        // Standard model - use v6 API text2img
+        requestBody = {
+          key: apiKey,
+          model_id: selectedModel,
+          prompt: truncatedPrompt,
+          negative_prompt: finalNegativePrompt,
+          width: dimensions.width,
+          height: dimensions.height,
+          samples: "1",
+          num_inference_steps: "30",
+          safety_checker: "no",
+          enhance_prompt: "yes",
+          guidance_scale: 7.5,
+          scheduler: "DPMSolverMultistepScheduler",
+        };
+        apiEndpoint = "https://modelslab.com/api/v6/images/text2img";
+
+        console.log(`[TEXT2IMG] Using ${selectedModel} (v6 API) for text-to-image`);
+      }
+
+      console.log(`[TEXT2IMG] Sending to ModelsLab:`, {
+        ...requestBody,
+        key: "[REDACTED]",
+        prompt: `[${truncatedPrompt.length} chars]`,
+      });
+
+      let response = await fetchWithTimeout(apiEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      }, 90000); // 90s timeout
+
+      let data = await response.json();
+
+      // Retry mechanism: If custom key fails, try with System Key
+      if (data.status === "error" &&
+        (data.message?.includes("Invalid API Key") || data.message?.includes("auth")) &&
+        hasCustomKey) {
+
+        console.warn("[TEXT2IMG] Custom Admin API Key failed. Retrying with System API Key...");
+
+        requestBody.key = process.env.MODELSLAB_API_KEY;
+
+        response = await fetchWithTimeout(apiEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(requestBody),
+        }, 90000);
+
+        data = await response.json();
+      }
+
+      if (data.status === "error") {
+        console.error("[TEXT2IMG] ModelsLab error:", data);
+        return res.status(400).json({ error: data.message || "ModelsLab API error" });
+      }
+
+      // Process base64 URLs if present
+      if (data.status === "success" && data.output && Array.isArray(data.output)) {
+        const processedOutput: string[] = [];
+        for (const url of data.output) {
+          if (typeof url === 'string' && url.endsWith('.base64')) {
+            try {
+              const base64Response = await fetchWithTimeout(url, {
+                method: "GET",
+              }, 30000);
+              const base64Content = await base64Response.text();
+              const cleanBase64 = base64Content.trim();
+
+              let mimeType = 'image/png';
+              if (cleanBase64.startsWith('/9j/')) {
+                mimeType = 'image/jpeg';
+              } else if (cleanBase64.startsWith('iVBOR')) {
+                mimeType = 'image/png';
+              }
+              processedOutput.push(`data:${mimeType};base64,${cleanBase64}`);
+            } catch (err) {
+              console.error('[TEXT2IMG] Failed to fetch base64 content:', err);
+              processedOutput.push(url);
+            }
+          } else {
+            processedOutput.push(url);
+          }
+        }
+        data.output = processedOutput;
+      }
+
+      await logUsage(userId, "image", {
+        imageQuality: imageQuota.imageQuality,
+        modelId: selectedModel,
+        generationType: "text2img",
+      });
+
+      // Include quota info and model used in response
+      res.json({
+        ...data,
+        modelUsed: selectedModel,
+        imageQuality: imageQuota.imageQuality,
+        hqExhausted: imageQuota.hqExhausted || false,
+        quotas: imageQuota.quotas,
+        generationType: "text2img",
+      });
+    } catch (error) {
+      console.error("[TEXT2IMG] Error calling ModelsLab API:", error);
+      res.status(500).json({ error: "Failed to generate image" });
+    }
+  });
+
   // Check generation status (for async generation)
   // Security: Only allow fetching from trusted ModelsLab domains
   const ALLOWED_MODELSLAB_HOSTS = [
@@ -1771,15 +2627,15 @@ export async function registerRoutes(
     "api.modelslab.com",
     "stablediffusionapi.com",
   ];
-  
+
   app.post("/api/modelslab/status", async (req, res) => {
     try {
       const { fetchUrl } = req.body;
-      
+
       if (!fetchUrl) {
         return res.status(400).json({ error: "Fetch URL is required" });
       }
-      
+
       // Validate URL is from trusted ModelsLab domain
       let parsedUrl: URL;
       try {
@@ -1787,21 +2643,21 @@ export async function registerRoutes(
       } catch {
         return res.status(400).json({ error: "Invalid URL format" });
       }
-      
+
       const isAllowedHost = ALLOWED_MODELSLAB_HOSTS.some(
         host => parsedUrl.hostname === host || parsedUrl.hostname.endsWith(`.${host}`)
       );
-      
+
       if (!isAllowedHost) {
         console.warn(`Blocked SSRF attempt to: ${parsedUrl.hostname}`);
         return res.status(403).json({ error: "URL not from trusted ModelsLab domain" });
       }
-      
+
       const apiKey = process.env.MODELSLAB_API_KEY;
       if (!apiKey) {
         return res.status(500).json({ error: "ModelsLab API key not configured" });
       }
-      
+
       const response = await fetchWithTimeout(fetchUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1809,9 +2665,9 @@ export async function registerRoutes(
           key: apiKey,
         }),
       }, 30000); // 30s timeout for status check
-      
+
       const data = await response.json();
-      
+
       // Process base64 URLs if present - convert them to proper data URLs
       if (data.status === "success" && data.output && Array.isArray(data.output)) {
         const processedOutput: string[] = [];
@@ -1824,7 +2680,7 @@ export async function registerRoutes(
               }, 30000);
               const base64Content = await base64Response.text();
               const cleanBase64 = base64Content.trim();
-              
+
               // Detect image type from base64 header
               let mimeType = 'image/png';
               if (cleanBase64.startsWith('/9j/')) {
@@ -1843,7 +2699,7 @@ export async function registerRoutes(
         }
         data.output = processedOutput;
       }
-      
+
       res.json(data);
     } catch (error) {
       console.error("Error checking ModelsLab status:", error);
@@ -1862,26 +2718,26 @@ export async function registerRoutes(
 
       const limitCheck = await checkGenerationLimits(userId, "video");
       if (!limitCheck.allowed) {
-        return res.status(403).json({ 
+        return res.status(403).json({
           error: limitCheck.reason,
           isPremiumRequired: true,
         });
       }
 
       const { prompt, imageUrl } = req.body;
-      
+
       if (!imageUrl) {
         return res.status(400).json({ error: "Image URL is required for video generation" });
       }
-      
+
       const apiKey = process.env.MODELSLAB_API_KEY;
       if (!apiKey) {
         return res.status(500).json({ error: "ModelsLab API key not configured" });
       }
-      
+
       console.log("=== Image-to-Video Generation (Wan 2.1) ===");
       console.log("Input image:", imageUrl);
-      
+
       // Use Wan 2.1 I2V model - max height is 512px per API requirement
       const requestBody = {
         key: apiKey,
@@ -1896,21 +2752,21 @@ export async function registerRoutes(
         guidance_scale: 5,
         num_inference_steps: 30,
       };
-      
-      console.log("Wan 2.1 I2V request:", { 
-        ...requestBody, 
+
+      console.log("Wan 2.1 I2V request:", {
+        ...requestBody,
         key: "[REDACTED]"
       });
-      
+
       const response = await fetchWithTimeout("https://modelslab.com/api/v6/video/img2video", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       }, 90000); // 90s timeout for video generation
-      
+
       const data = await response.json();
       console.log("Wan 2.1 I2V response:", data);
-      
+
       res.json(data);
     } catch (error) {
       console.error("Error generating video:", error);
@@ -1921,11 +2777,11 @@ export async function registerRoutes(
   app.post("/api/sora2/status", async (req, res) => {
     try {
       const { fetchUrl } = req.body;
-      
+
       if (!fetchUrl) {
         return res.status(400).json({ error: "Fetch URL is required" });
       }
-      
+
       // Validate URL is from trusted ModelsLab domain
       let parsedUrl: URL;
       try {
@@ -1933,21 +2789,21 @@ export async function registerRoutes(
       } catch {
         return res.status(400).json({ error: "Invalid URL format" });
       }
-      
+
       const isAllowedHost = ALLOWED_MODELSLAB_HOSTS.some(
         host => parsedUrl.hostname === host || parsedUrl.hostname.endsWith(`.${host}`)
       );
-      
+
       if (!isAllowedHost) {
         console.warn(`Blocked SSRF attempt to: ${parsedUrl.hostname}`);
         return res.status(403).json({ error: "URL not from trusted ModelsLab domain" });
       }
-      
+
       const apiKey = process.env.MODELSLAB_API_KEY;
       if (!apiKey) {
         return res.status(500).json({ error: "ModelsLab API key not configured" });
       }
-      
+
       const response = await fetchWithTimeout(fetchUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1955,7 +2811,7 @@ export async function registerRoutes(
           key: apiKey,
         }),
       });
-      
+
       const data = await response.json();
       res.json(data);
     } catch (error) {
@@ -1974,21 +2830,19 @@ export async function registerRoutes(
 
       const limitCheck = await checkGenerationLimits(userId, "video");
       if (!limitCheck.allowed) {
-        return res.status(403).json({ 
+        return res.status(403).json({
           error: limitCheck.reason,
           isPremiumRequired: true,
         });
       }
 
       const validated = createVideoJobRequestSchema.parse(req.body);
-      
       const { createVideoJob } = await import("./videogen/service");
       const result = await createVideoJob(userId, validated);
-      
+
       if (result.success) {
         await logUsage(userId, "video");
-        const job = await storage.getVideoJob(result.jobId!);
-        res.status(201).json(job);
+        res.status(201).json({ id: result.jobId, status: "queued" });
       } else {
         res.status(400).json({ error: result.error });
       }
@@ -2003,11 +2857,13 @@ export async function registerRoutes(
 
   app.get("/api/videogen/jobs", async (_req, res) => {
     try {
-      const jobs = await storage.getVideoJobs(DEV_USER_ID);
+      const userId = requireAuth(_req, res);
+      if (!userId) return;
+      const jobs = await storage.getVideoJobs(userId);
       res.json(jobs);
     } catch (error) {
       console.error("Error fetching video jobs:", error);
-      res.status(500).json({ error: "Failed to fetch video jobs" });
+      res.status(500).json({ error: "Failed to fetch video job" });
     }
   });
 
@@ -2017,14 +2873,14 @@ export async function registerRoutes(
       if (!job) {
         return res.status(404).json({ error: "Job not found" });
       }
-      
+
       if (job.status === "processing" && job.providerJobId) {
         const { pollVideoJob } = await import("./videogen/service");
         await pollVideoJob(job);
         const updatedJob = await storage.getVideoJob(req.params.id);
         return res.json(updatedJob);
       }
-      
+
       res.json(job);
     } catch (error) {
       console.error("Error fetching video job:", error);
@@ -2033,9 +2889,11 @@ export async function registerRoutes(
   });
 
   // ============ SAVED IMAGES (Gallery) ============
-  app.get("/api/gallery", async (_req, res) => {
+  app.get("/api/gallery", async (req: Request, res: Response) => {
     try {
-      const images = await storage.getSavedImages(DEV_USER_ID);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      const images = await storage.getSavedImages(userId);
       res.json(images);
     } catch (error) {
       console.error("Error fetching gallery:", error);
@@ -2056,12 +2914,14 @@ export async function registerRoutes(
     }
   });
 
-  app.post("/api/gallery", async (req, res) => {
+  app.post("/api/gallery", async (req: Request, res: Response) => {
     try {
+      const userId = requireAuth(req, res);
+      if (!userId) return;
       const validated = saveImageRequestSchema.parse(req.body);
       const image = await storage.createSavedImage({
         ...validated,
-        userId: DEV_USER_ID,
+        userId: userId,
         isFavorite: 0,
       });
       res.status(201).json(image);
@@ -2076,7 +2936,9 @@ export async function registerRoutes(
 
   app.patch("/api/gallery/:id/favorite", async (req, res) => {
     try {
-      const updated = await storage.toggleFavorite(req.params.id, DEV_USER_ID);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      const updated = await storage.toggleFavorite(req.params.id, userId);
       if (!updated) {
         return res.status(404).json({ error: "Image not found" });
       }
@@ -2089,7 +2951,9 @@ export async function registerRoutes(
 
   app.delete("/api/gallery/:id", async (req, res) => {
     try {
-      const success = await storage.deleteSavedImage(req.params.id, DEV_USER_ID);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      const success = await storage.deleteSavedImage(req.params.id, userId);
       if (!success) {
         return res.status(404).json({ error: "Image not found" });
       }
@@ -2116,14 +2980,14 @@ export async function registerRoutes(
         "cdn.modelslab.com",
         "cdn2.stablediffusionapi.com",
       ];
-      
+
       const parsedUrl = new URL(url);
       if (!allowedDomains.some(d => parsedUrl.hostname.includes(d))) {
         return res.status(403).json({ error: "Domain not allowed" });
       }
 
       const response = await fetchWithTimeout(url, {}, 60000);
-      
+
       if (!response.ok) {
         return res.status(response.status).json({ error: "Failed to fetch media" });
       }
@@ -2133,15 +2997,15 @@ export async function registerRoutes(
       if (contentType) {
         res.setHeader("Content-Type", contentType);
       }
-      
+
       const contentLength = response.headers.get("content-length");
       if (contentLength) {
         res.setHeader("Content-Length", contentLength);
       }
-      
+
       // Allow caching
       res.setHeader("Cache-Control", "public, max-age=86400");
-      
+
       // Stream the response
       const arrayBuffer = await response.arrayBuffer();
       res.send(Buffer.from(arrayBuffer));
@@ -2152,9 +3016,11 @@ export async function registerRoutes(
   });
 
   // ============ SAVED VIDEOS (Video Gallery) ============
-  app.get("/api/video-gallery", async (_req, res) => {
+  app.get("/api/video-gallery", async (req: Request, res: Response) => {
     try {
-      const videos = await storage.getSavedVideos(DEV_USER_ID);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      const videos = await storage.getSavedVideos(userId);
       res.json(videos);
     } catch (error) {
       console.error("Error fetching video gallery:", error);
@@ -2177,10 +3043,12 @@ export async function registerRoutes(
 
   app.post("/api/video-gallery", async (req, res) => {
     try {
+      const userId = requireAuth(req, res);
+      if (!userId) return;
       const validated = saveVideoRequestSchema.parse(req.body);
       const video = await storage.createSavedVideo({
         ...validated,
-        userId: DEV_USER_ID,
+        userId: userId,
         isFavorite: 0,
       });
       res.status(201).json(video);
@@ -2195,7 +3063,9 @@ export async function registerRoutes(
 
   app.patch("/api/video-gallery/:id/favorite", async (req, res) => {
     try {
-      const updated = await storage.toggleVideoFavorite(req.params.id, DEV_USER_ID);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      const updated = await storage.toggleVideoFavorite(req.params.id, userId);
       if (!updated) {
         return res.status(404).json({ error: "Video not found" });
       }
@@ -2208,7 +3078,9 @@ export async function registerRoutes(
 
   app.delete("/api/video-gallery/:id", async (req, res) => {
     try {
-      const success = await storage.deleteSavedVideo(req.params.id, DEV_USER_ID);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      const success = await storage.deleteSavedVideo(req.params.id, userId);
       if (!success) {
         return res.status(404).json({ error: "Video not found" });
       }
@@ -2220,9 +3092,11 @@ export async function registerRoutes(
   });
 
   // ============ FILTER PRESETS ============
-  app.get("/api/presets", async (_req, res) => {
+  app.get("/api/presets", async (req, res) => {
     try {
-      const presets = await storage.getFilterPresets(DEV_USER_ID);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      const presets = await storage.getFilterPresets(userId);
       res.json(presets);
     } catch (error) {
       console.error("Error fetching presets:", error);
@@ -2245,12 +3119,14 @@ export async function registerRoutes(
 
   app.post("/api/presets", async (req, res) => {
     try {
+      const userId = requireAuth(req, res);
+      if (!userId) return;
       console.log("Creating preset with body:", JSON.stringify(req.body, null, 2));
       const validated = createFilterPresetRequestSchema.parse(req.body);
       console.log("Validated preset:", JSON.stringify(validated, null, 2));
       const preset = await storage.createFilterPreset({
         ...validated,
-        userId: DEV_USER_ID,
+        userId: userId,
         isDefault: validated.isDefault ? 1 : 0,
       });
       console.log("Created preset:", JSON.stringify(preset, null, 2));
@@ -2267,8 +3143,10 @@ export async function registerRoutes(
 
   app.patch("/api/presets/:id", async (req, res) => {
     try {
+      const userId = requireAuth(req, res);
+      if (!userId) return;
       const validated = updateFilterPresetRequestSchema.parse(req.body);
-      const updated = await storage.updateFilterPreset(req.params.id, DEV_USER_ID, {
+      const updated = await storage.updateFilterPreset(req.params.id, userId, {
         ...validated,
         isDefault: validated.isDefault !== undefined ? (validated.isDefault ? 1 : 0) : undefined,
       });
@@ -2287,7 +3165,9 @@ export async function registerRoutes(
 
   app.delete("/api/presets/:id", async (req, res) => {
     try {
-      const success = await storage.deleteFilterPreset(req.params.id, DEV_USER_ID);
+      const userId = requireAuth(req, res);
+      if (!userId) return;
+      const success = await storage.deleteFilterPreset(req.params.id, userId);
       if (!success) {
         return res.status(404).json({ error: "Preset not found" });
       }
@@ -2332,7 +3212,7 @@ export async function registerRoutes(
       }
 
       let appUser = await storage.getAppUser(userId);
-      
+
       if (appUser?.plan === "pro") {
         return res.status(400).json({ error: "Already subscribed to Pro" });
       }
@@ -2348,7 +3228,7 @@ export async function registerRoutes(
           userName
         );
         customerId = customer.id;
-        
+
         if (appUser) {
           await stripeService.updateUserStripeInfo(userId, { stripeCustomerId: customerId });
         } else {
@@ -2379,9 +3259,9 @@ export async function registerRoutes(
     try {
       const userId = requireAuth(req, res);
       if (!userId) return;
-      
+
       const user = req.user as any;
-      
+
       if (!user?.claims?.sub) {
         return res.status(401).json({ error: "Authentication required" });
       }
@@ -2408,9 +3288,9 @@ export async function registerRoutes(
     try {
       const userId = requireAuth(req, res);
       if (!userId) return;
-      
+
       const appUser = await storage.getAppUser(userId);
-      
+
       if (!appUser?.stripeSubscriptionId) {
         return res.json({ subscription: null });
       }

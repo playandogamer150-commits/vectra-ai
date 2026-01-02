@@ -13,6 +13,7 @@ export interface CreateVideoJobInput {
   modelId?: string;
   generateAudio?: boolean;
   generationType?: "text-to-video" | "image-to-video";
+  apiKey?: string;
 }
 
 export interface CreateJobResult {

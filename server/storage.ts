@@ -1,5 +1,5 @@
-import { 
-  appUsers, llmProfiles, promptBlueprints, promptBlocks, filters, 
+import {
+  appUsers, llmProfiles, promptBlueprints, promptBlocks, filters,
   generatedPrompts, promptVersions, rateLimits, adminEmails,
   loraModels, loraDatasets, loraDatasetItems, loraVersions, loraJobs, userLoraActive, baseModels,
   userBlueprints, userBlueprintVersions, savedImages, savedVideos, filterPresets, videoJobs, usageLogs,
@@ -13,10 +13,11 @@ import {
   type UserBlueprint, type InsertUserBlueprint, type UserBlueprintVersion, type InsertUserBlueprintVersion,
   type SavedImage, type InsertSavedImage, type SavedVideo, type InsertSavedVideo,
   type FilterPreset, type InsertFilterPreset,
-  type VideoJob, type InsertVideoJob
+  type VideoJob, type InsertVideoJob,
+  type WaitlistEntry, type InsertWaitlistEntry, waitlist
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, and, sql, lte } from "drizzle-orm";
+import { eq, desc, and, sql, lte, gte } from "drizzle-orm";
 
 export interface IStorage {
   getAppUser(id: string): Promise<AppUser | undefined>;
@@ -24,64 +25,64 @@ export interface IStorage {
   createAppUser(user: InsertAppUser): Promise<AppUser>;
   createAppUserFromReplit(replitId: string, username: string, stripeCustomerId?: string): Promise<AppUser>;
   updateAppUser(id: string, data: Partial<Omit<AppUser, "id" | "username" | "password">>): Promise<AppUser | undefined>;
-  
+
   getProfiles(): Promise<LlmProfile[]>;
   getProfile(id: string): Promise<LlmProfile | undefined>;
   createProfile(profile: InsertLlmProfile): Promise<LlmProfile>;
-  
+
   getBlueprints(): Promise<PromptBlueprint[]>;
   getBlueprint(id: string): Promise<PromptBlueprint | undefined>;
   createBlueprint(blueprint: InsertBlueprint): Promise<PromptBlueprint>;
-  
+
   getBlocks(): Promise<PromptBlock[]>;
   getBlock(key: string): Promise<PromptBlock | undefined>;
   createBlock(block: InsertBlock): Promise<PromptBlock>;
-  
+
   getFilters(): Promise<Filter[]>;
   getFilter(key: string): Promise<Filter | undefined>;
   createFilter(filter: InsertFilter): Promise<Filter>;
   deleteFiltersByKeys(keys: string[]): Promise<number>;
-  
+
   getHistory(userId?: string): Promise<GeneratedPrompt[]>;
   getGeneratedPrompt(id: string): Promise<GeneratedPrompt | undefined>;
   createGeneratedPrompt(prompt: InsertGeneratedPrompt): Promise<GeneratedPrompt>;
-  
+
   createPromptVersion(version: InsertPromptVersion): Promise<PromptVersion>;
   getVersions(promptId: string): Promise<PromptVersion[]>;
-  
+
   checkRateLimit(key: string, limit: number, windowMs: number): Promise<boolean>;
   incrementRateLimit(key: string): Promise<void>;
-  
+
   getLoraModels(userId: string): Promise<LoraModel[]>;
   getLoraModel(id: string): Promise<LoraModel | undefined>;
   createLoraModel(model: InsertLoraModel): Promise<LoraModel>;
-  
+
   getLoraDatasets(loraModelId: string): Promise<LoraDataset[]>;
   getLoraDataset(id: string): Promise<LoraDataset | undefined>;
   createLoraDataset(dataset: InsertLoraDataset): Promise<LoraDataset>;
   updateLoraDataset(id: string, data: Partial<InsertLoraDataset>): Promise<LoraDataset | undefined>;
-  
+
   getLoraVersions(loraModelId: string): Promise<LoraVersion[]>;
   getLoraVersion(id: string): Promise<LoraVersion | undefined>;
   createLoraVersion(version: InsertLoraVersion): Promise<LoraVersion>;
   updateLoraVersion(id: string, data: Partial<InsertLoraVersion>): Promise<LoraVersion | undefined>;
-  
+
   getLoraJobs(loraVersionId: string): Promise<LoraJob[]>;
   getLoraJob(id: string): Promise<LoraJob | undefined>;
   createLoraJob(job: InsertLoraJob): Promise<LoraJob>;
   updateLoraJob(id: string, data: Partial<InsertLoraJob>): Promise<LoraJob | undefined>;
-  
+
   getUserActiveLora(userId: string): Promise<UserLoraActive | undefined>;
   setUserActiveLora(userId: string, loraModelId: string, loraVersionId: string, weight: number, targetPlatform?: string): Promise<UserLoraActive>;
   clearUserActiveLora(userId: string): Promise<void>;
-  
+
   getDatasetItems(datasetId: string): Promise<LoraDatasetItem[]>;
   createDatasetItem(item: { datasetId: string; storageKey: string; sha256: string; width: number; height: number; filename?: string }): Promise<LoraDatasetItem>;
   createDatasetItems(items: Array<{ datasetId: string; storageKey: string; sha256: string; width: number; height: number; filename?: string }>): Promise<LoraDatasetItem[]>;
-  
+
   getBaseModels(): Promise<BaseModel[]>;
   createBaseModel(model: InsertBaseModel): Promise<BaseModel>;
-  
+
   // User Blueprints
   getUserBlueprints(userId: string): Promise<UserBlueprint[]>;
   getUserBlueprint(id: string): Promise<UserBlueprint | undefined>;
@@ -91,28 +92,28 @@ export interface IStorage {
   getUserBlueprintVersions(blueprintId: string): Promise<UserBlueprintVersion[]>;
   getUserBlueprintLatestVersion(blueprintId: string): Promise<UserBlueprintVersion | undefined>;
   countUserBlueprints(userId: string): Promise<number>;
-  
+
   // Saved Images
   getSavedImages(userId: string): Promise<SavedImage[]>;
   getSavedImage(id: string): Promise<SavedImage | undefined>;
   createSavedImage(image: InsertSavedImage): Promise<SavedImage>;
   deleteSavedImage(id: string, userId: string): Promise<boolean>;
   toggleFavorite(id: string, userId: string): Promise<SavedImage | undefined>;
-  
+
   // Saved Videos
   getSavedVideos(userId: string): Promise<SavedVideo[]>;
   getSavedVideo(id: string): Promise<SavedVideo | undefined>;
   createSavedVideo(video: InsertSavedVideo): Promise<SavedVideo>;
   deleteSavedVideo(id: string, userId: string): Promise<boolean>;
   toggleVideoFavorite(id: string, userId: string): Promise<SavedVideo | undefined>;
-  
+
   // Filter Presets
   getFilterPresets(userId: string): Promise<FilterPreset[]>;
   getFilterPreset(id: string): Promise<FilterPreset | undefined>;
   createFilterPreset(preset: InsertFilterPreset): Promise<FilterPreset>;
   updateFilterPreset(id: string, userId: string, data: Partial<InsertFilterPreset>): Promise<FilterPreset | undefined>;
   deleteFilterPreset(id: string, userId: string): Promise<boolean>;
-  
+
   // Video Jobs
   getVideoJobs(userId: string): Promise<VideoJob[]>;
   getVideoJob(id: string): Promise<VideoJob | undefined>;
@@ -120,16 +121,22 @@ export interface IStorage {
   updateVideoJob(id: string, data: Partial<InsertVideoJob>): Promise<VideoJob | undefined>;
   findVideoJobByIdempotency(userId: string, idempotencyKey: string): Promise<VideoJob | undefined>;
   getVideoJobsNeedingPoll(): Promise<VideoJob[]>;
-  
+
   // Usage Tracking
   getUsageToday(userId: string, type: "prompt" | "image" | "video" | "lora_training"): Promise<number>;
-  logUsage(userId: string, type: "prompt" | "image" | "video" | "lora_training"): Promise<void>;
-  
+  getImageUsageTodayByQuality(userId: string): Promise<{ hq: number; standard: number }>;
+  logUsage(userId: string, type: "prompt" | "image" | "video" | "lora_training", metadata?: Record<string, any>): Promise<void>;
+
   // Admin System
   isAdminEmail(email: string): Promise<boolean>;
   addAdminEmail(email: string, grantedBy?: string): Promise<void>;
   removeAdminEmail(email: string): Promise<boolean>;
   getAdminEmails(): Promise<string[]>;
+
+  // Waitlist
+  addToWaitlist(email: string): Promise<WaitlistEntry>;
+  getWaitlistEntry(email: string): Promise<WaitlistEntry | undefined>;
+  getWaitlistCount(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -178,8 +185,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProfile(profile: InsertLlmProfile): Promise<LlmProfile> {
-    const [created] = await db.insert(llmProfiles).values(profile).returning();
-    return created;
+    const [created] = await db.insert(llmProfiles)
+      .values(profile as any)
+      .onConflictDoNothing({ target: llmProfiles.name })
+      .returning();
+    if (created) return created;
+    const [existing] = await db.select().from(llmProfiles).where(eq(llmProfiles.name, profile.name));
+    return existing;
   }
 
   async getBlueprints(): Promise<PromptBlueprint[]> {
@@ -192,8 +204,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBlueprint(blueprint: InsertBlueprint): Promise<PromptBlueprint> {
-    const [created] = await db.insert(promptBlueprints).values(blueprint).returning();
-    return created;
+    const [created] = await db.insert(promptBlueprints)
+      .values(blueprint as any)
+      .onConflictDoNothing({ target: promptBlueprints.name })
+      .returning();
+    if (created) return created;
+    const [existing] = await db.select().from(promptBlueprints).where(eq(promptBlueprints.name, blueprint.name));
+    return existing;
   }
 
   async getBlocks(): Promise<PromptBlock[]> {
@@ -206,8 +223,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBlock(block: InsertBlock): Promise<PromptBlock> {
-    const [created] = await db.insert(promptBlocks).values(block).returning();
-    return created;
+    const [created] = await db.insert(promptBlocks)
+      .values(block)
+      .onConflictDoNothing({ target: promptBlocks.key })
+      .returning();
+    if (created) return created;
+    const [existing] = await db.select().from(promptBlocks).where(eq(promptBlocks.key, block.key));
+    return existing;
   }
 
   async getFilters(): Promise<Filter[]> {
@@ -220,8 +242,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createFilter(filter: InsertFilter): Promise<Filter> {
-    const [created] = await db.insert(filters).values(filter).returning();
-    return created;
+    const [created] = await db.insert(filters)
+      .values(filter as any)
+      .onConflictDoNothing({ target: filters.key })
+      .returning();
+    if (created) return created;
+    const [existing] = await db.select().from(filters).where(eq(filters.key, filter.key));
+    return existing;
   }
 
   async deleteFiltersByKeys(keys: string[]): Promise<number> {
@@ -254,7 +281,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createGeneratedPrompt(prompt: InsertGeneratedPrompt): Promise<GeneratedPrompt> {
-    const [created] = await db.insert(generatedPrompts).values(prompt).returning();
+    const [created] = await db.insert(generatedPrompts).values(prompt as any).returning();
     return created;
   }
 
@@ -271,27 +298,27 @@ export class DatabaseStorage implements IStorage {
 
   async checkRateLimit(key: string, limit: number, windowMs: number): Promise<boolean> {
     const [record] = await db.select().from(rateLimits).where(eq(rateLimits.key, key));
-    
+
     if (!record) {
       return true;
     }
-    
+
     const windowStart = new Date(record.windowStart);
     const now = new Date();
-    
+
     if (now.getTime() - windowStart.getTime() > windowMs) {
       await db.update(rateLimits)
         .set({ windowStart: now, count: 0 })
         .where(eq(rateLimits.key, key));
       return true;
     }
-    
+
     return record.count < limit;
   }
 
   async incrementRateLimit(key: string): Promise<void> {
     const [existing] = await db.select().from(rateLimits).where(eq(rateLimits.key, key));
-    
+
     if (existing) {
       await db.update(rateLimits)
         .set({ count: existing.count + 1 })
@@ -333,13 +360,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createLoraDataset(dataset: InsertLoraDataset): Promise<LoraDataset> {
-    const [created] = await db.insert(loraDatasets).values(dataset).returning();
+    const [created] = await db.insert(loraDatasets).values(dataset as any).returning();
     return created;
   }
 
   async updateLoraDataset(id: string, data: Partial<InsertLoraDataset>): Promise<LoraDataset | undefined> {
     const [updated] = await db.update(loraDatasets)
-      .set(data)
+      .set(data as any)
       .where(eq(loraDatasets.id, id))
       .returning();
     return updated || undefined;
@@ -357,13 +384,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createLoraVersion(version: InsertLoraVersion): Promise<LoraVersion> {
-    const [created] = await db.insert(loraVersions).values(version).returning();
+    const [created] = await db.insert(loraVersions).values(version as any).returning();
     return created;
   }
 
   async updateLoraVersion(id: string, data: Partial<InsertLoraVersion>): Promise<LoraVersion | undefined> {
     const [updated] = await db.update(loraVersions)
-      .set(data)
+      .set(data as any)
       .where(eq(loraVersions.id, id))
       .returning();
     return updated || undefined;
@@ -400,7 +427,7 @@ export class DatabaseStorage implements IStorage {
 
   async setUserActiveLora(userId: string, loraModelId: string, loraVersionId: string, weight: number, targetPlatform?: string): Promise<UserLoraActive> {
     const existing = await this.getUserActiveLora(userId);
-    
+
     if (existing) {
       const [updated] = await db.update(userLoraActive)
         .set({ loraModelId, loraVersionId, weight, targetPlatform: targetPlatform || null, updatedAt: new Date() })
@@ -438,8 +465,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBaseModel(model: InsertBaseModel): Promise<BaseModel> {
-    const [created] = await db.insert(baseModels).values(model).returning();
-    return created;
+    const [created] = await db.insert(baseModels)
+      .values(model)
+      .onConflictDoNothing({ target: baseModels.name })
+      .returning();
+    if (created) return created;
+    const [existing] = await db.select().from(baseModels).where(eq(baseModels.name, model.name));
+    return existing;
   }
 
   // User Blueprints
@@ -455,25 +487,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUserBlueprint(
-    blueprint: InsertUserBlueprint, 
-    blocks: string[], 
+    blueprint: InsertUserBlueprint,
+    blocks: string[],
     constraints: string[]
   ): Promise<{ blueprint: UserBlueprint; version: UserBlueprintVersion }> {
-    const [created] = await db.insert(userBlueprints).values(blueprint).returning();
-    
+    const [created] = await db.insert(userBlueprints).values(blueprint as any).returning();
+
     const [version] = await db.insert(userBlueprintVersions).values({
       blueprintId: created.id,
       version: 1,
       blocks,
       constraints,
     }).returning();
-    
+
     return { blueprint: created, version };
   }
 
   async updateUserBlueprint(
-    id: string, 
-    userId: string, 
+    id: string,
+    userId: string,
     data: Partial<InsertUserBlueprint>,
     blocks?: string[],
     constraints?: string[]
@@ -482,9 +514,9 @@ export class DatabaseStorage implements IStorage {
     if (!existing || existing.userId !== userId) return undefined;
 
     const newVersion = existing.version + 1;
-    
+
     const [updated] = await db.update(userBlueprints)
-      .set({ ...data, version: newVersion, updatedAt: new Date() })
+      .set({ ...data, version: newVersion, updatedAt: new Date() } as any)
       .where(eq(userBlueprints.id, id))
       .returning();
 
@@ -496,7 +528,7 @@ export class DatabaseStorage implements IStorage {
         blocks: blocks || latestVersion?.blocks || [],
         constraints: constraints || latestVersion?.constraints || [],
       }).returning();
-      
+
       return { blueprint: updated, version };
     }
 
@@ -511,7 +543,7 @@ export class DatabaseStorage implements IStorage {
     await db.update(userBlueprints)
       .set({ isActive: 0 })
       .where(eq(userBlueprints.id, id));
-    
+
     return true;
   }
 
@@ -549,7 +581,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSavedImage(image: InsertSavedImage): Promise<SavedImage> {
-    const [created] = await db.insert(savedImages).values(image).returning();
+    const [created] = await db.insert(savedImages).values(image as any).returning();
     return created;
   }
 
@@ -692,50 +724,53 @@ export class DatabaseStorage implements IStorage {
   async getUsageToday(userId: string, type: "prompt" | "image" | "video" | "lora_training"): Promise<number> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    const result = await db.select({ total: sql<number>`COALESCE(SUM(${usageLogs.quantity}), 0)` })
+
+    const hqResult = await db.select({ total: sql<number>`COALESCE(SUM(${usageLogs.quantity}), 0)` })
       .from(usageLogs)
       .where(and(
         eq(usageLogs.userId, userId),
         eq(usageLogs.type, type),
         sql`${usageLogs.createdAt} >= ${today}`
       ));
-    
-    return Number(result[0]?.total || 0);
+
+    return Number(hqResult[0]?.total || 0);
   }
 
   async getImageUsageTodayByQuality(userId: string): Promise<{ hq: number; standard: number }> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    const hqResult = await db.select({ total: sql<number>`COALESCE(SUM(${usageLogs.quantity}), 0)` })
+
+    const logs = await db.select({
+      quantity: usageLogs.quantity,
+      metadata: usageLogs.metadata,
+    })
       .from(usageLogs)
       .where(and(
         eq(usageLogs.userId, userId),
         eq(usageLogs.type, "image"),
-        sql`${usageLogs.createdAt} >= ${today}`,
-        sql`${usageLogs.metadata}->>'imageQuality' = 'hq'`
+        gte(usageLogs.createdAt, today)
       ));
-    
-    const standardResult = await db.select({ total: sql<number>`COALESCE(SUM(${usageLogs.quantity}), 0)` })
-      .from(usageLogs)
-      .where(and(
-        eq(usageLogs.userId, userId),
-        eq(usageLogs.type, "image"),
-        sql`${usageLogs.createdAt} >= ${today}`,
-        sql`${usageLogs.metadata}->>'imageQuality' = 'standard'`
-      ));
-    
-    return {
-      hq: Number(hqResult[0]?.total || 0),
-      standard: Number(standardResult[0]?.total || 0),
-    };
+
+    let hq = 0;
+    let standard = 0;
+
+    for (const log of logs) {
+      const q = log.quantity || 1;
+      const meta = log.metadata as any;
+      if (meta?.modelId === "nano-banana-pro" || meta?.imageQuality === "hq") {
+        hq += q;
+      } else {
+        standard += q;
+      }
+    }
+
+    return { hq, standard };
   }
 
   async logUsage(userId: string, type: "prompt" | "image" | "video" | "lora_training", metadata?: Record<string, any>): Promise<void> {
     const appUser = await this.getAppUser(userId);
     const plan = appUser?.plan || "free";
-    
+
     await db.insert(usageLogs).values({
       userId,
       type,
@@ -744,14 +779,14 @@ export class DatabaseStorage implements IStorage {
       metadata: metadata || null,
     });
   }
-  
+
   // Admin System
   async isAdminEmail(email: string): Promise<boolean> {
     const normalizedEmail = email.toLowerCase().trim();
     const [admin] = await db.select().from(adminEmails).where(eq(adminEmails.email, normalizedEmail));
     return !!admin;
   }
-  
+
   async addAdminEmail(email: string, grantedBy?: string): Promise<void> {
     const normalizedEmail = email.toLowerCase().trim();
     await db.insert(adminEmails).values({
@@ -759,16 +794,32 @@ export class DatabaseStorage implements IStorage {
       grantedBy: grantedBy || "system",
     }).onConflictDoNothing();
   }
-  
+
   async removeAdminEmail(email: string): Promise<boolean> {
     const normalizedEmail = email.toLowerCase().trim();
     const result = await db.delete(adminEmails).where(eq(adminEmails.email, normalizedEmail));
     return (result.rowCount || 0) > 0;
   }
-  
+
   async getAdminEmails(): Promise<string[]> {
     const admins = await db.select({ email: adminEmails.email }).from(adminEmails);
     return admins.map(a => a.email);
+  }
+
+  // Waitlist
+  async addToWaitlist(email: string): Promise<WaitlistEntry> {
+    const [entry] = await db.insert(waitlist).values({ email }).returning();
+    return entry;
+  }
+
+  async getWaitlistEntry(email: string): Promise<WaitlistEntry | undefined> {
+    const [entry] = await db.select().from(waitlist).where(eq(waitlist.email, email));
+    return entry || undefined;
+  }
+
+  async getWaitlistCount(): Promise<number> {
+    const result = await db.select({ count: sql<number>`count(*)` }).from(waitlist);
+    return Number(result[0]?.count || 0);
   }
 }
 

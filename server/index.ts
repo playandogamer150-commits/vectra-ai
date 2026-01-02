@@ -5,6 +5,8 @@ import { createServer } from "http";
 import { runMigrations } from 'stripe-replit-sync';
 import { getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
+import { log } from "./lib/logger";
+import { rateLimiter } from "./middleware/rateLimiter";
 
 const app = express();
 const httpServer = createServer(app);
@@ -26,21 +28,21 @@ app.use((req, res, next) => {
     res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
   // Content Security Policy - stricter in production, relaxed for development
-  const scriptSrc = IS_PRODUCTION 
-    ? "'self' https://js.stripe.com" 
-    : "'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com";
-  const styleSrc = IS_PRODUCTION 
-    ? "'self' https://fonts.googleapis.com" 
+  const scriptSrc = IS_PRODUCTION
+    ? "'self' https://js.stripe.com https://fast.wistia.com https://fast.wistia.net"
+    : "'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://fast.wistia.com https://fast.wistia.net";
+  const styleSrc = IS_PRODUCTION
+    ? "'self' https://fonts.googleapis.com"
     : "'self' 'unsafe-inline' https://fonts.googleapis.com";
-    
+
   res.setHeader("Content-Security-Policy", [
     "default-src 'self'",
     `script-src ${scriptSrc}`,
     `style-src ${styleSrc}`,
     "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://modelslab.com https://*.modelslab.com https://api.stripe.com https://*.stripe.com",
-    "frame-src https://js.stripe.com https://hooks.stripe.com",
+    "img-src 'self' data: https: blob: https://fast.wistia.com",
+    "connect-src 'self' https://modelslab.com https://*.modelslab.com https://api.stripe.com https://*.stripe.com https://fast.wistia.com https://fast.wistia.net",
+    "frame-src https://js.stripe.com https://hooks.stripe.com https://fast.wistia.com https://fast.wistia.net https://*.wistia.com",
     "frame-ancestors 'none'",
   ].join("; "));
   // Permissions policy
@@ -48,22 +50,17 @@ app.use((req, res, next) => {
   next();
 });
 
+// Rate limiting
+app.use(rateLimiter);
+
 declare module "http" {
   interface IncomingMessage {
     rawBody: unknown;
   }
 }
 
-export function log(message: string, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
-
-  console.log(`${formattedTime} [${source}] ${message}`);
-}
+// Re-export log for compatibility
+export { log };
 
 async function initStripe() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -74,11 +71,17 @@ async function initStripe() {
   }
 
   try {
+    log('Checking Stripe credentials...', 'stripe');
+    const stripeSync = await getStripeSync();
+    log(`Stripe sync status: ${stripeSync ? 'ENABLED' : 'DISABLED'}`, 'stripe');
+    if (!stripeSync) {
+      log('Stripe sync disabled (missing keys or dev mode)', 'stripe');
+      return;
+    }
+
     log('Initializing Stripe schema...', 'stripe');
     await runMigrations({ databaseUrl });
     log('Stripe schema ready', 'stripe');
-
-    const stripeSync = await getStripeSync();
 
     const replitDomain = process.env.REPLIT_DOMAINS?.split(',')[0];
     if (replitDomain) {
@@ -149,6 +152,23 @@ async function initStripe() {
     }),
   );
 
+  // Debug middleware to check if body parsing worked
+  app.use((req, res, next) => {
+    if (req.path.includes('/api/profile/banner')) {
+      console.log(`[Middleware Check] ${req.method} ${req.path} - Body Parsed: ${!!req.body}`);
+    }
+    next();
+  });
+
+  // Catch body parser errors
+  app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+    if (err instanceof SyntaxError && 'body' in err) {
+      console.error("JSON Syntax Error:", err);
+      return res.status(400).json({ error: "Invalid JSON payload" });
+    }
+    next(err);
+  });
+
   app.use(express.urlencoded({ extended: false, limit: "50mb" }));
 
   app.use((req, res, next) => {
@@ -179,6 +199,10 @@ async function initStripe() {
 
   await registerRoutes(httpServer, app);
 
+  // Start the background worker for polling video status
+  const { startPollingWorker } = await import("./videogen/service");
+  startPollingWorker();
+
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -195,14 +219,7 @@ async function initStripe() {
   }
 
   const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-    },
-  );
+  httpServer.listen(port, "127.0.0.1", () => {
+    log(`serving on port ${port}`);
+  });
 })();

@@ -24,7 +24,7 @@ export class ModelsLabProvider implements VideoProvider {
 
   async createJob(input: CreateVideoJobInput): Promise<CreateJobResult> {
     const aspectRatio = this.normalizeAspectRatio(input.targetAspect);
-    
+
     if (aspectRatio !== "16:9" && aspectRatio !== "9:16") {
       return {
         success: false,
@@ -34,7 +34,7 @@ export class ModelsLabProvider implements VideoProvider {
     }
 
     const model = getModelForAspectRatio(aspectRatio);
-    
+
     console.log(`[VideoService] Auto-selected model ${model.id} (${model.displayName}) for aspect ratio ${aspectRatio}`);
 
     try {
@@ -48,7 +48,7 @@ export class ModelsLabProvider implements VideoProvider {
       };
     }
   }
-  
+
   private normalizeAspectRatio(aspect: string | undefined): VideoAspectRatio {
     if (aspect === "9:16") return "9:16";
     return "16:9";
@@ -56,9 +56,10 @@ export class ModelsLabProvider implements VideoProvider {
 
   private async createTextToVideoJob(input: CreateVideoJobInput, model: VideoModelConfig): Promise<CreateJobResult> {
     const aspectRatio = input.targetAspect === "auto" ? "16:9" : input.targetAspect;
-    
+
+    const apiKey = input.apiKey || this.apiKey;
     const requestBody = {
-      key: this.apiKey,
+      key: apiKey,
       model_id: model.modelIdParam,
       prompt: input.prompt || "Cinematic video with natural smooth movement, ultra realistic, professional cinematography",
       negative_prompt: input.negativePrompt || "low quality, blurry, distorted, amateur, static, frozen, text overlay",
@@ -69,7 +70,7 @@ export class ModelsLabProvider implements VideoProvider {
     };
 
     const endpoint = `${MODELSLAB_BASE_URL}${model.endpoint}`;
-    
+
     console.log("[ModelsLab] Text-to-Video Request:", {
       endpoint,
       model_id: model.modelIdParam,
@@ -87,7 +88,7 @@ export class ModelsLabProvider implements VideoProvider {
     }, 90000); // 90s timeout for video generation
 
     const data: ModelsLabResponse = await response.json();
-    
+
     console.log("[ModelsLab] Text-to-Video Response:", {
       status: data.status,
       id: data.id,
@@ -113,21 +114,29 @@ export class ModelsLabProvider implements VideoProvider {
 
     // IMPORTANT: Use exact model_id from registry - this determines which model generates the video
     const modelId = model.modelIdParam;
-    
-    const requestBody = {
-      key: this.apiKey,
+
+    const apiKey = input.apiKey || this.apiKey;
+    const requestBody: any = {
+      key: apiKey,
       model_id: modelId,
       init_image: input.sourceImageUrl,
       prompt: safePrompt,
       negative_prompt: input.negativePrompt || "low quality, blurry, distorted, amateur, static, frozen",
-      duration: String(input.durationSeconds || 5),
       aspect_ratio: aspectRatio,
-      resolution: "720p",
       ...(input.seed && { seed: input.seed }),
     };
 
+    // Specific handling for Seedance 1.5 Pro
+    if (modelId === "seedance-1-5-pro") {
+      requestBody.duration = input.durationSeconds || 5; // Pass as number
+    } else {
+      // Default for other models (like Veo)
+      requestBody.duration = String(input.durationSeconds || 5);
+      requestBody.resolution = "720p";
+    }
+
     const endpoint = `${MODELSLAB_BASE_URL}${model.endpoint}`;
-    
+
     console.log("[ModelsLab] ========== VIDEO GENERATION REQUEST ==========");
     console.log("[ModelsLab] Model ID:", modelId);
     console.log("[ModelsLab] Model Display Name:", model.displayName);
@@ -263,7 +272,7 @@ export class ModelsLabProvider implements VideoProvider {
     ];
 
     let cleanPrompt = prompt;
-    
+
     for (const pattern of sensitivePatterns) {
       cleanPrompt = cleanPrompt.replace(pattern, "person");
     }

@@ -26,55 +26,55 @@ export function VectraSlider({
 }: VectraSliderProps) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  
+
   const percentage = ((value - min) / (max - min)) * 100;
-  
+
   const updateValue = useCallback((clientX: number) => {
     if (!trackRef.current) return;
-    
+
     const rect = trackRef.current.getBoundingClientRect();
     const x = clientX - rect.left;
     const percent = Math.max(0, Math.min(1, x / rect.width));
     const rawValue = min + percent * (max - min);
     const steppedValue = Math.round(rawValue / step) * step;
     const clampedValue = Math.max(min, Math.min(max, steppedValue));
-    
+
     if (clampedValue !== value) {
       onChange(clampedValue);
     }
   }, [min, max, step, value, onChange]);
-  
+
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setIsDragging(true);
     updateValue(e.clientX);
   }, [updateValue]);
-  
+
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     setIsDragging(true);
     updateValue(e.touches[0].clientX);
   }, [updateValue]);
-  
+
   useEffect(() => {
     if (!isDragging) return;
-    
+
     const handleMouseMove = (e: MouseEvent) => {
       updateValue(e.clientX);
     };
-    
+
     const handleTouchMove = (e: TouchEvent) => {
       updateValue(e.touches[0].clientX);
     };
-    
+
     const handleEnd = () => {
       setIsDragging(false);
     };
-    
+
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleEnd);
     document.addEventListener("touchmove", handleTouchMove);
     document.addEventListener("touchend", handleEnd);
-    
+
     return () => {
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleEnd);
@@ -82,7 +82,7 @@ export function VectraSlider({
       document.removeEventListener("touchend", handleEnd);
     };
   }, [isDragging, updateValue]);
-  
+
   return (
     <div className={cn("space-y-2", className)} data-testid={testId}>
       {(label || showValue) && (
@@ -97,7 +97,7 @@ export function VectraSlider({
           )}
         </div>
       )}
-      
+
       <div
         ref={trackRef}
         className={cn(
@@ -112,12 +112,12 @@ export function VectraSlider({
         <div
           className={cn(
             "absolute inset-y-0 left-0 rounded-full",
-            "bg-gradient-to-r from-white/50 to-white/70",
+            "bg-white/50",
             "transition-all duration-75 ease-out"
           )}
           style={{ width: `${percentage}%` }}
         />
-        
+
         {/* Thumb */}
         <div
           className={cn(
@@ -126,13 +126,13 @@ export function VectraSlider({
             "bg-white shadow-lg",
             "border-2 border-black/20",
             "transition-transform duration-100 ease-out",
-            isDragging 
-              ? "scale-110 shadow-[0_0_12px_rgba(255,255,255,0.3)]" 
+            isDragging
+              ? "scale-110 shadow-[0_0_12px_rgba(255,255,255,0.3)]"
               : "hover:scale-105"
           )}
           style={{ left: `${percentage}%` }}
         />
-        
+
       </div>
     </div>
   );

@@ -26,8 +26,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { BlueprintBuilder } from "@/components/blueprint-builder";
 import type { PromptBlueprint } from "@shared/schema";
-import { 
-  Search, ArrowRight, Layers, Grid3X3, Camera, Tv, Palette, Gamepad2, 
+import {
+  Search, ArrowRight, Layers, Grid3X3, Camera, Tv, Palette, Gamepad2,
   Frame, Monitor, Plus, MoreHorizontal, Pencil, Copy, Trash2, User,
   Sparkles, Box, Image, Cpu
 } from "lucide-react";
@@ -149,72 +149,87 @@ export default function LibraryPage() {
   };
 
   return (
-    <div className="min-h-screen pt-14 bg-background">
-      <div className="max-w-6xl mx-auto px-6 lg:px-8 py-12">
-        <div className="mb-10">
-          <h1 className="text-3xl font-medium tracking-tight mb-2" data-testid="text-library-title">
-            {t.library.title}
-          </h1>
-          <p className="text-muted-foreground text-base">{t.library.subtitle}</p>
+    <div className="min-h-screen bg-black text-white selection:bg-white/20">
+      {/* Minimal Grid Background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-[0.02]">
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `
+              linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)
+            `,
+            backgroundSize: "60px 60px"
+          }}
+        />
+      </div>
+
+      <div className="relative z-10 max-w-6xl mx-auto px-6 pt-24 pb-8">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white tracking-tight">{t.library.title}</h1>
+          <p className="text-white/40 text-sm mt-1">{t.library.subtitle}</p>
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          {/* Tabs Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <TabsList className="bg-secondary border border-border p-1 rounded-lg">
-              <TabsTrigger 
-                value="system" 
-                className="rounded-md px-4 py-2 text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background" 
+            <TabsList className="bg-white/5 border border-white/10 p-1 rounded-lg">
+              <TabsTrigger
+                value="system"
+                className="rounded-md px-4 py-2 text-xs font-medium text-white/60 data-[state=active]:bg-white data-[state=active]:text-black"
                 data-testid="tab-system-blueprints"
               >
                 {t.blueprintBuilder?.systemBlueprints || "System Blueprints"}
               </TabsTrigger>
-              <TabsTrigger 
-                value="my" 
-                className="rounded-md px-4 py-2 text-sm font-medium data-[state=active]:bg-foreground data-[state=active]:text-background" 
+              <TabsTrigger
+                value="my"
+                className="rounded-md px-4 py-2 text-xs font-medium text-white/60 data-[state=active]:bg-white data-[state=active]:text-black"
                 data-testid="tab-my-blueprints"
               >
                 {t.blueprintBuilder?.myBlueprints || "My Blueprints"}
                 {userBlueprints && userBlueprints.length > 0 && (
-                  <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-foreground/10">
+                  <span className="ml-2 px-1.5 py-0.5 text-[10px] rounded bg-white/10 text-white/60">
                     {userBlueprints.length}
                   </span>
                 )}
               </TabsTrigger>
             </TabsList>
-            
+
             {activeTab === "my" && (
-              <Button 
-                onClick={handleCreate} 
-                className="gap-2"
+              <Button
+                onClick={handleCreate}
+                className="gap-2 bg-white text-black hover:bg-white/90 h-9 text-xs font-medium"
                 data-testid="button-create-blueprint"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5" />
                 {t.blueprintBuilder?.createNew || "Create New"}
               </Button>
             )}
           </div>
 
+          {/* Search and Filters */}
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
               <Input
                 placeholder={t.library.searchPlaceholder}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-11 h-11 rounded-lg"
+                className="pl-10 h-9 text-sm rounded-lg bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-white/30"
                 data-testid="input-search"
               />
             </div>
-            <div className="flex gap-2 flex-wrap overflow-x-auto pb-1">
+            <div className="flex gap-2 flex-wrap">
               {categories.map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
                   className={`
-                    px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-150
-                    ${activeCategory === cat 
-                      ? "bg-foreground text-background" 
-                      : "bg-secondary text-muted-foreground hover:text-foreground border border-border"
+                    px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-150
+                    ${activeCategory === cat
+                      ? "bg-white text-black"
+                      : "bg-white/5 text-white/40 hover:text-white hover:bg-white/10 border border-white/10"
                     }
                   `}
                   data-testid={`button-category-${cat}`}
@@ -225,76 +240,72 @@ export default function LibraryPage() {
             </div>
           </div>
 
+          {/* System Blueprints Tab */}
           <TabsContent value="system" className="mt-0">
             {isLoading ? (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[...Array(6)].map((_, i) => (
-                  <div key={i} className="bg-card rounded-xl border border-border p-6">
-                    <Skeleton className="w-14 h-14 rounded-xl mb-5" />
-                    <Skeleton className="h-6 w-3/4 mb-3" />
-                    <Skeleton className="h-4 w-full mb-2" />
-                    <Skeleton className="h-4 w-2/3 mb-4" />
-                    <div className="flex gap-2">
-                      <Skeleton className="h-6 w-16 rounded-full" />
-                      <Skeleton className="h-6 w-20 rounded-full" />
-                    </div>
+                  <div key={i} className="p-5 rounded-xl border border-white/10 bg-white/[0.02]">
+                    <Skeleton className="w-10 h-10 rounded-lg mb-4 bg-white/10" />
+                    <Skeleton className="h-5 w-3/4 mb-2 bg-white/10" />
+                    <Skeleton className="h-3 w-full mb-1 bg-white/5" />
+                    <Skeleton className="h-3 w-2/3 bg-white/5" />
                   </div>
                 ))}
               </div>
             ) : filteredBlueprints?.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-16 h-16 rounded-xl bg-secondary flex items-center justify-center mx-auto mb-5">
-                  <Layers className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">{t.library.noResults}</h3>
-                <p className="text-muted-foreground mb-5">Try adjusting your search or filters</p>
-                <Button 
-                  variant="outline" 
-                  className="rounded-lg"
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Layers className="w-12 h-12 text-white/10 mb-4" />
+                <h3 className="text-lg font-medium text-white/60 mb-2">{t.library.noResults}</h3>
+                <p className="text-sm text-white/30 mb-4">Try adjusting your search or filters</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs border-white/10 text-white/60 hover:text-white hover:bg-white/5"
                   onClick={() => { setSearch(""); setActiveCategory("all"); }}
                 >
                   Clear filters
                 </Button>
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredBlueprints?.map((blueprint) => {
                   const IconComponent = categoryIcons[blueprint.category] || Sparkles;
                   return (
-                    <div 
-                      key={blueprint.id} 
-                      className="group bg-card rounded-xl border border-border p-6 hover:border-foreground/20 transition-all duration-200"
-                      data-testid={`card-blueprint-${blueprint.id}`}
+                    <div
+                      key={blueprint.id}
+                      className="group p-5 rounded-xl border border-white/10 bg-white/[0.02] hover:border-white/20 transition-all duration-300"
                     >
-                      <div className="w-14 h-14 rounded-xl bg-secondary flex items-center justify-center mb-5 group-hover:scale-105 transition-transform duration-200">
-                        <IconComponent className="w-7 h-7 text-foreground" />
+                      <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center mb-4 group-hover:bg-white/10 transition-all">
+                        <IconComponent className="w-5 h-5 text-white/30 group-hover:text-white/60" />
                       </div>
-                      
-                      <h3 className="text-lg font-medium mb-2 leading-snug">
+
+                      <h3 className="text-sm font-semibold mb-1 text-white group-hover:text-white transition-colors">
                         {blueprint.name}
                       </h3>
-                      
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-4 leading-relaxed">
+
+                      <p className="text-xs text-white/40 line-clamp-2 mb-4 leading-relaxed">
                         {blueprint.description}
                       </p>
-                      
-                      <div className="flex flex-wrap gap-2 mb-5">
-                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-secondary text-muted-foreground">
+
+                      <div className="flex flex-wrap gap-1.5 mb-4">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/5 text-white/40 border border-white/10">
                           {blueprint.category}
                         </span>
-                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-secondary text-muted-foreground">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/5 text-white/40 border border-white/10">
                           {(blueprint.blocks as string[])?.length || 0} blocks
                         </span>
                       </div>
-                      
+
                       <Link href={`/image-studio?blueprint=${blueprint.id}`} className="block">
-                        <Button 
-                          variant="ghost" 
-                          className="w-full justify-between rounded-lg group/btn"
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-between h-8 text-xs text-white/60 hover:text-white hover:bg-white/5"
                           data-testid={`button-use-blueprint-${blueprint.id}`}
                         >
-                          <span className="font-medium">{t.library.useBlueprint}</span>
-                          <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                          <span>{t.library.useBlueprint}</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
                         </Button>
                       </Link>
                     </div>
@@ -304,115 +315,125 @@ export default function LibraryPage() {
             )}
           </TabsContent>
 
+          {/* User Blueprints Tab */}
           <TabsContent value="my" className="mt-0">
             {loadingUserBlueprints ? (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {[...Array(3)].map((_, i) => (
-                  <div key={i} className="bg-card rounded-xl border border-border p-6">
-                    <Skeleton className="w-14 h-14 rounded-xl mb-5" />
-                    <Skeleton className="h-6 w-3/4 mb-3" />
-                    <Skeleton className="h-4 w-full mb-2" />
-                    <Skeleton className="h-4 w-2/3" />
+                  <div key={i} className="p-5 rounded-xl border border-white/10 bg-white/[0.02]">
+                    <Skeleton className="w-10 h-10 rounded-lg mb-4 bg-white/10" />
+                    <Skeleton className="h-5 w-3/4 mb-2 bg-white/10" />
+                    <Skeleton className="h-3 w-full bg-white/5" />
                   </div>
                 ))}
               </div>
             ) : filteredUserBlueprints?.length === 0 ? (
-              <div className="text-center py-20">
-                <div className="w-16 h-16 rounded-xl bg-secondary flex items-center justify-center mx-auto mb-5">
-                  <Sparkles className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">
-                  {search || activeCategory !== "all" 
-                    ? t.library.noResults 
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <Sparkles className="w-12 h-12 text-white/10 mb-4" />
+                <h3 className="text-lg font-medium text-white/60 mb-2">
+                  {search || activeCategory !== "all"
+                    ? t.library.noResults
                     : (t.blueprintBuilder?.noUserBlueprints || "No custom blueprints yet")}
                 </h3>
-                {!search && activeCategory === "all" && (
-                  <p className="text-muted-foreground mb-5">
-                    {t.blueprintBuilder?.createFirstHint || "Create your first custom blueprint"}
-                  </p>
-                )}
-                <Button 
-                  onClick={search || activeCategory !== "all" ? () => { setSearch(""); setActiveCategory("all"); } : handleCreate}
+                <p className="text-sm text-white/30 mb-4">
+                  {!search && activeCategory === "all"
+                    ? (t.blueprintBuilder?.createFirstHint || "Create your first custom blueprint")
+                    : "Try adjusting filters"}
+                </p>
+                <Button
+                  size="sm"
+                  className="text-xs bg-white text-black hover:bg-white/90"
+                  onClick={search || activeCategory !== "all"
+                    ? () => { setSearch(""); setActiveCategory("all"); }
+                    : handleCreate}
                 >
                   {search || activeCategory !== "all" ? "Clear filters" : (t.blueprintBuilder?.createNew || "Create New")}
                 </Button>
               </div>
             ) : (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredUserBlueprints?.map((blueprint) => {
                   const IconComponent = categoryIcons[blueprint.category] || User;
                   return (
-                    <div 
-                      key={blueprint.id} 
-                      className="group bg-card rounded-xl border border-border p-6 hover:border-foreground/20 transition-all duration-200"
-                      data-testid={`card-user-blueprint-${blueprint.id}`}
+                    <div
+                      key={blueprint.id}
+                      className="group p-5 rounded-xl border border-white/10 bg-white/[0.02] hover:border-white/20 transition-all duration-300"
                     >
-                      <div className="flex items-start justify-between mb-5">
-                        <div className="w-14 h-14 rounded-xl bg-secondary flex items-center justify-center group-hover:scale-105 transition-transform duration-200">
-                          <IconComponent className="w-7 h-7 text-foreground" />
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-all">
+                          <IconComponent className="w-5 h-5 text-white/30 group-hover:text-white/60" />
                         </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="h-8 w-8 rounded-lg"
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 rounded-lg text-white/30 hover:text-white hover:bg-white/10"
                               data-testid={`button-menu-${blueprint.id}`}
                             >
                               <MoreHorizontal className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="rounded-lg">
-                            <DropdownMenuItem onClick={() => handleEdit(blueprint)} className="rounded-md" data-testid={`button-edit-${blueprint.id}`}>
-                              <Pencil className="w-4 h-4 mr-2" />
+                          <DropdownMenuContent align="end" className="rounded-lg bg-black border-white/10">
+                            <DropdownMenuItem
+                              onClick={() => handleEdit(blueprint)}
+                              className="text-xs text-white/60 hover:text-white focus:bg-white/10"
+                              data-testid={`button-edit-${blueprint.id}`}
+                            >
+                              <Pencil className="w-3.5 h-3.5 mr-2" />
                               {t.blueprintBuilder?.edit || "Edit"}
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => duplicateMutation.mutate(blueprint.id)} className="rounded-md" data-testid={`button-duplicate-${blueprint.id}`}>
-                              <Copy className="w-4 h-4 mr-2" />
+                            <DropdownMenuItem
+                              onClick={() => duplicateMutation.mutate(blueprint.id)}
+                              className="text-xs text-white/60 hover:text-white focus:bg-white/10"
+                              data-testid={`button-duplicate-${blueprint.id}`}
+                            >
+                              <Copy className="w-3.5 h-3.5 mr-2" />
                               {t.blueprintBuilder?.duplicate || "Duplicate"}
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleDelete(blueprint)} 
-                              className="rounded-md text-destructive focus:text-destructive"
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(blueprint)}
+                              className="text-xs text-red-400 focus:text-red-400 focus:bg-red-500/10"
                               data-testid={`button-delete-${blueprint.id}`}
                             >
-                              <Trash2 className="w-4 h-4 mr-2" />
+                              <Trash2 className="w-3.5 h-3.5 mr-2" />
                               {t.blueprintBuilder?.delete || "Delete"}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
-                      
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-lg font-medium leading-snug">
+
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="text-sm font-semibold text-white group-hover:text-white transition-colors">
                           {blueprint.name}
                         </h3>
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-secondary text-muted-foreground">
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-white/5 text-white/30 border border-white/10">
                           v{blueprint.version}
                         </span>
                       </div>
-                      
-                      <p className="text-sm text-muted-foreground line-clamp-2 mb-4 leading-relaxed">
+
+                      <p className="text-xs text-white/40 line-clamp-2 mb-4 leading-relaxed">
                         {blueprint.description || "No description"}
                       </p>
-                      
-                      <div className="flex flex-wrap gap-2 mb-5">
-                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-secondary text-muted-foreground">
+
+                      <div className="flex flex-wrap gap-1.5 mb-4">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/5 text-white/40 border border-white/10">
                           {blueprint.category}
                         </span>
-                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-secondary text-muted-foreground">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-white/5 text-white/40 border border-white/10">
                           {blueprint.blocks?.length || 0} blocks
                         </span>
                       </div>
-                      
+
                       <Link href={`/image-studio?userBlueprint=${blueprint.id}`} className="block">
-                        <Button 
-                          variant="ghost" 
-                          className="w-full justify-between rounded-lg group/btn"
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-between h-8 text-xs text-white/60 hover:text-white hover:bg-white/5"
                           data-testid={`button-use-user-blueprint-${blueprint.id}`}
                         >
-                          <span className="font-medium">{t.library.useBlueprint}</span>
-                          <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                          <span>{t.library.useBlueprint}</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
                         </Button>
                       </Link>
                     </div>
@@ -422,10 +443,18 @@ export default function LibraryPage() {
             )}
           </TabsContent>
         </Tabs>
+
+        {/* Footer */}
+        <footer className="mt-16 pt-8 border-t border-white/5 text-center">
+          <p className="text-[10px] text-white/20 uppercase tracking-[0.2em]">
+            © 2025 VECTRA AI
+          </p>
+        </footer>
       </div>
 
-      <BlueprintBuilder 
-        open={builderOpen} 
+      {/* Blueprint Builder Modal */}
+      <BlueprintBuilder
+        open={builderOpen}
         onOpenChange={(open) => {
           setBuilderOpen(open);
           if (!open) setEditingBlueprint(null);
@@ -433,21 +462,27 @@ export default function LibraryPage() {
         editData={editingBlueprint}
       />
 
+      {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-xl">
+        <AlertDialogContent className="rounded-xl bg-black border-white/10">
           <AlertDialogHeader>
-            <AlertDialogTitle>{t.blueprintBuilder?.delete || "Delete"}</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-white text-sm font-semibold">
+              {t.blueprintBuilder?.delete || "Delete"}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-white/40 text-xs">
               {t.blueprintBuilder?.confirmDelete || "Are you sure you want to delete this blueprint?"}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-lg" data-testid="button-cancel-delete">
+            <AlertDialogCancel
+              className="h-8 text-xs rounded-lg bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
+              data-testid="button-cancel-delete"
+            >
               {t.common?.cancel || "Cancel"}
             </AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={confirmDelete}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-lg"
+              className="h-8 text-xs bg-red-500 hover:bg-red-600 text-white rounded-lg"
               data-testid="button-confirm-delete"
             >
               {t.blueprintBuilder?.delete || "Delete"}

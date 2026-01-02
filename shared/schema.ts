@@ -31,6 +31,7 @@ export const appUsers = pgTable("app_users", {
   lastGenerationDate: text("last_generation_date"),
   displayName: text("display_name"),
   avatarUrl: text("avatar_url"),
+  bannerUrl: text("banner_url"),
   tagline: text("tagline"),
   timezone: text("timezone").default("America/Sao_Paulo"),
   defaultLanguage: varchar("default_language", { length: 5 }).default("pt-BR"),
@@ -780,3 +781,18 @@ export const createVideoJobRequestSchema = z.object({
 export type VideoJob = typeof videoJobs.$inferSelect;
 export type InsertVideoJob = z.infer<typeof insertVideoJobSchema>;
 export type CreateVideoJobRequest = z.infer<typeof createVideoJobRequestSchema>;
+
+// Waitlist Table
+export const waitlist = pgTable("waitlist", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull().unique(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertWaitlistSchema = createInsertSchema(waitlist).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type WaitlistEntry = typeof waitlist.$inferSelect;
+export type InsertWaitlistEntry = z.infer<typeof insertWaitlistSchema>;

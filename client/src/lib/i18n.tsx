@@ -413,6 +413,23 @@ const translations = {
       apiKeyDesc: "Your custom ModelsLab API key has been saved and encrypted.",
       apiKeyRemoved: "API Key Removed",
       apiKeyRemovedDesc: "Your custom API key has been removed. Using default configuration.",
+      imageDetails: "Image Details",
+      imageDetailsDescription: "Generation settings and metadata for this image",
+      createdAt: "Created At",
+      cinematicSettings: "Cinematic Settings",
+      appliedFilters: "Applied Filters",
+      // Text-to-Image mode
+      generationMode: "Generation Mode",
+      img2imgMode: "Image to Image",
+      text2imgMode: "Text to Image",
+      img2imgDescription: "Transform reference images using prompts. Ideal for character consistency and style transfer.",
+      text2imgDescription: "Generate images from text prompts only. Perfect for logos, scenarios, and creative concepts.",
+      generateText2Img: "Generate from Prompt",
+      promptRequired: "Prompt is required for text-to-image generation",
+      disablePromptEngineWarning: "Disable Prompt Engine if using Text to Image mode",
+      refinePrompt: "Refine Prompt with AI",
+      refiningPrompt: "Refining...",
+      promptRefined: "Prompt Refined!",
     },
     profile: {
       title: "My Profile",
@@ -873,6 +890,23 @@ const translations = {
       apiKeyDesc: "Sua chave de API ModelsLab personalizada foi salva e criptografada.",
       apiKeyRemoved: "Chave de API Removida",
       apiKeyRemovedDesc: "Sua chave de API personalizada foi removida. Usando configuração padrão.",
+      imageDetails: "Detalhes da Imagem",
+      imageDetailsDescription: "Configurações de geração e metadados desta imagem",
+      createdAt: "Criado em",
+      cinematicSettings: "Configurações Cinemáticas",
+      appliedFilters: "Filtros Aplicados",
+      // Text-to-Image mode
+      generationMode: "Modo de Geração",
+      img2imgMode: "Imagem para Imagem",
+      text2imgMode: "Texto para Imagem",
+      img2imgDescription: "Transforme imagens de referência usando prompts. Ideal para consistência de personagem e transferência de estilo.",
+      text2imgDescription: "Gere imagens apenas com prompts de texto. Perfeito para logotipos, cenários e conceitos criativos.",
+      generateText2Img: "Gerar do Prompt",
+      promptRequired: "Prompt é obrigatório para geração texto-para-imagem",
+      disablePromptEngineWarning: "Desative o Motor de Prompts se for usar Texto para Imagem",
+      refinePrompt: "Refinar Prompt com IA",
+      refiningPrompt: "Refinando...",
+      promptRefined: "Prompt Refinado!",
     },
     profile: {
       title: "Meu Perfil",
@@ -968,7 +1002,7 @@ export function useI18n() {
 
 export function LanguageToggle() {
   const { language, setLanguage } = useI18n();
-  
+
   return (
     <button
       onClick={() => setLanguage(language === "en" ? "pt-BR" : "en")}
