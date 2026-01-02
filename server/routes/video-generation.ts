@@ -127,7 +127,7 @@ router.post("/sora2/status", async (req, res) => {
 });
 
 // ============ VIDEO GENERATION (Job System) ============
-router.post("/jobs", async (req, res) => {
+router.post("/videogen/jobs", async (req, res) => {
     try {
         const userId = getUserId(req);
         if (!userId) {
@@ -161,7 +161,7 @@ router.post("/jobs", async (req, res) => {
     }
 });
 
-router.get("/jobs", async (req, res) => {
+router.get("/videogen/jobs", async (req, res) => {
     try {
         const userId = requireAuth(req, res);
         if (!userId) return;
@@ -173,7 +173,7 @@ router.get("/jobs", async (req, res) => {
     }
 });
 
-router.get("/jobs/:id", async (req, res) => {
+router.get("/videogen/jobs/:id", async (req, res) => {
     try {
         const job = await storage.getVideoJob(req.params.id);
         if (!job) {

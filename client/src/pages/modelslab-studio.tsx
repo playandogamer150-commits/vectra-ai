@@ -1504,7 +1504,11 @@ export default function ModelsLabStudioPage() {
         prompt: subject,
         aspectRatio: cinematicSettings?.optics?.aspectRatio || aspectRatio,
       });
-      return res.json();
+      try {
+        return await res.json();
+      } catch (e) {
+        throw new Error("Servidor desatualizado. Por favor, REINICIE o terminal (pare e rode 'npm run dev' novamente) para aplicar as atualizações.");
+      }
     },
     onSuccess: (data) => {
       setRefinedPromptData(data);

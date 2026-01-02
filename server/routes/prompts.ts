@@ -8,7 +8,7 @@ import { applyGeminiGemsOptimization } from "../prompt-engine/gemini-gems";
 
 const router = Router();
 
-router.post("/", async (req, res) => {
+router.post("/generate", async (req, res) => {
     try {
         const rateLimitKey = req.ip || "anonymous";
         const isEnvAdminOverride = process.env.ADMIN_OVERRIDE === "true";
