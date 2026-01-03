@@ -103,6 +103,14 @@ export default function ProfilePage() {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
+  const [filters, setFilters] = useState({
+    brightness: 100,
+    contrast: 100,
+    saturation: 100,
+    grayscale: 0,
+    sepia: 0,
+    blur: 0,
+  });
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
@@ -260,6 +268,14 @@ export default function ProfilePage() {
       setBannerEditorOpen(true);
       setZoom(1);
       setRotation(0);
+      setFilters({
+        brightness: 100,
+        contrast: 100,
+        saturation: 100,
+        grayscale: 0,
+        sepia: 0,
+        blur: 0,
+      });
       setCrop({ x: 0, y: 0 });
     };
     reader.readAsDataURL(file);
@@ -275,7 +291,13 @@ export default function ProfilePage() {
 
     setBannerUploading(true);
     try {
-      const croppedImage = await getCroppedImg(bannerToCrop, croppedAreaPixels, rotation);
+      const croppedImage = await getCroppedImg(
+        bannerToCrop,
+        croppedAreaPixels,
+        rotation,
+        { horizontal: false, vertical: false },
+        filters
+      );
       if (!croppedImage) throw new Error("Cropping failed");
 
       const response = await apiRequest("POST", "/api/profile/banner", { imageData: croppedImage });
@@ -825,146 +847,271 @@ export default function ProfilePage() {
 
       {/* Banner Editor Modal */}
       <Dialog open={bannerEditorOpen} onOpenChange={setBannerEditorOpen}>
-        <DialogContent className="max-w-3xl bg-black border-white/10 text-white p-0 overflow-hidden">
-          <DialogHeader className="p-6 border-b border-white/5 bg-black">
-            <DialogTitle className="text-lg font-bold flex items-center gap-2">
-              <SlidersHorizontal className="w-5 h-5" />
-              {language === "pt-BR" ? "Ajustar Banner" : "Adjust Banner"}
-            </DialogTitle>
+        <DialogContent className="max-w-4xl bg-[#0a0a0b] border-white/10 text-white p-0 overflow-hidden shadow-2xl">
+          <DialogHeader className="p-4 md:p-6 border-b border-white/5 bg-black/40 backdrop-blur-md sticky top-0 z-50">
+            <div className="flex items-center justify-between w-full pr-8">
+              <DialogTitle className="text-lg font-bold flex items-center gap-2">
+                <SlidersHorizontal className="w-5 h-5 text-white/60" />
+                <span>{language === "pt-BR" ? "Ajustar Banner" : "Adjust Banner"}</span>
+              </DialogTitle>
+              {croppedAreaPixels && (
+                <div className="hidden md:flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/5">
+                  <Maximize className="w-3 h-3 text-white/40" />
+                  <span className="text-[10px] font-mono text-white/60">
+                    {croppedAreaPixels.width} × {croppedAreaPixels.height}
+                  </span>
+                </div>
+              )}
+            </div>
           </DialogHeader>
 
-          <div className="relative h-[400px] w-full bg-neutral-900">
-            {bannerToCrop && (
-              <Cropper
-                image={bannerToCrop}
-                crop={crop}
-                zoom={zoom}
-                rotation={rotation}
-                aspect={21 / 5} // Panoramic aspect ratio for banner
-                onCropChange={setCrop}
-                onCropComplete={onCropComplete}
-                onZoomChange={setZoom}
-                showGrid={true}
-                style={{
-                  containerStyle: { backgroundColor: "#000" },
-                  cropAreaStyle: {
-                    border: "2px solid #3b82f6", // Blue border
-                    boxShadow: "0 0 0 9999em rgba(0, 0, 0, 0.85)" // Darker overlay
-                  },
-                }}
-              />
-            )}
-          </div>
-
-          <div className="p-6 space-y-6 bg-black/50">
-            {/* Controls Grid */}
-            <div className="grid gap-6">
-              {/* Zoom Control */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs text-white/50">
-                  <div className="flex items-center gap-2">
-                    <ZoomIn className="w-3.5 h-3.5" />
-                    <span className="font-medium text-white/80">{language === "pt-BR" ? "Zoom" : "Zoom"}</span>
-                  </div>
-                  <span className="font-mono">{Math.round(zoom * 100)}%</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 rounded-full border-white/10 bg-white/5 hover:bg-white/10"
-                    onClick={() => setZoom(Math.max(1, zoom - 0.1))}
-                  >
-                    <Minus className="w-3 h-3" />
-                  </Button>
-                  <Slider
-                    value={[zoom]}
-                    min={1}
-                    max={3}
-                    step={0.1}
-                    onValueChange={(vals) => setZoom(vals[0])}
-                    className="flex-1"
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 rounded-full border-white/10 bg-white/5 hover:bg-white/10"
-                    onClick={() => setZoom(Math.min(3, zoom + 0.1))}
-                  >
-                    <Plus className="w-3 h-3" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Rotation Control */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs text-white/50">
-                  <div className="flex items-center gap-2">
-                    <RotateCw className="w-3.5 h-3.5" />
-                    <span className="font-medium text-white/80">{language === "pt-BR" ? "Rotação" : "Rotation"}</span>
-                  </div>
-                  <span className="font-mono">{rotation}°</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Slider
-                    value={[rotation]}
-                    min={0}
-                    max={360}
-                    step={1}
-                    onValueChange={(vals) => setRotation(vals[0])}
-                    className="flex-1"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-2 text-xs text-white/40 hover:text-white"
-                    onClick={() => setRotation(0)}
-                    title="Reset Rotation"
-                  >
-                    <RefreshCcw className="w-3 h-3 mr-1" />
-                    Reset
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-center gap-2 text-[10px] text-white/30 uppercase tracking-widest bg-white/5 p-2 rounded-lg border border-white/5">
-              <Maximize className="w-3 h-3" />
-              {language === "pt-BR" ? "Arraste e ajuste a imagem" : "Drag and adjust the image"}
-            </div>
-          </div>
-
-          <DialogFooter className="p-6 border-t border-white/5 flex flex-row gap-3">
-            <Button
-              variant="secondary"
-              className="flex-1 bg-white/5 hover:bg-white/10 border-white/10 text-white h-10"
-              onClick={() => {
-                setBannerEditorOpen(false);
-                setBannerToCrop(null);
-              }}
-            >
-              {language === "pt-BR" ? "Cancelar" : "Cancel"}
-            </Button>
-            <Button
-              className="flex-1 bg-white text-black hover:bg-white/90 h-10 font-bold"
-              onClick={handleApplyBanner}
-              disabled={bannerUploading}
-            >
-              {bannerUploading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {language === "pt-BR" ? "Salvando..." : "Saving..."}
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4 mr-2" />
-                  {language === "pt-BR" ? "Aplicar Banner" : "Apply Banner"}
-                </>
+          <div className="flex flex-col md:flex-row h-[calc(100vh-200px)] max-h-[700px]">
+            {/* Main Editor Area */}
+            <div className="flex-1 relative bg-black flex items-center justify-center overflow-hidden border-b md:border-b-0 md:border-r border-white/5 min-h-[300px]">
+              {bannerToCrop && (
+                <Cropper
+                  image={bannerToCrop}
+                  crop={crop}
+                  zoom={zoom}
+                  rotation={rotation}
+                  aspect={21 / 5}
+                  onCropChange={setCrop}
+                  onCropComplete={onCropComplete}
+                  onZoomChange={setZoom}
+                  showGrid={true}
+                  style={{
+                    containerStyle: { backgroundColor: "#000" },
+                    cropAreaStyle: {
+                      border: "2px solid #3b82f6",
+                      boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.75)"
+                    },
+                    mediaStyle: {
+                      filter: `
+                        brightness(${filters.brightness}%) 
+                        contrast(${filters.contrast}%) 
+                        saturate(${filters.saturation}%) 
+                        grayscale(${filters.grayscale}%) 
+                        sepia(${filters.sepia}%) 
+                        blur(${filters.blur}px)
+                      `
+                    }
+                  }}
+                />
               )}
-            </Button>
-          </DialogFooter>
+
+              {/* Overlay Instructions (Desktop only) */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 hidden md:flex items-center gap-2 px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-full border border-white/10 text-[10px] uppercase tracking-widest text-white/50">
+                <Maximize className="w-3 h-3" />
+                {language === "pt-BR" ? "Arraste para ajustar" : "Drag to adjust"}
+              </div>
+            </div>
+
+            {/* Controls Sidebar */}
+            <div className="w-full md:w-80 flex flex-col bg-[#0f0f11]">
+              <div className="flex-1 overflow-y-auto p-5 space-y-8 custom-scrollbar">
+                {/* Transform Section */}
+                <div className="space-y-4">
+                  <h4 className="text-[10px] uppercase tracking-[0.2em] text-white/30 font-bold mb-6">
+                    {language === "pt-BR" ? "Transformação" : "Transform"}
+                  </h4>
+
+                  {/* Zoom */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 text-white/60">
+                        <ZoomIn className="w-3.5 h-3.5" />
+                        <span>Zoom</span>
+                      </div>
+                      <span className="font-mono text-white/40">{Math.round(zoom * 100)}%</span>
+                    </div>
+                    <Slider
+                      value={[zoom]}
+                      min={1}
+                      max={3}
+                      step={0.01}
+                      onValueChange={(vals) => setZoom(vals[0])}
+                    />
+                  </div>
+
+                  {/* Rotation */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 text-white/60">
+                        <RotateCw className="w-3.5 h-3.5" />
+                        <span>{language === "pt-BR" ? "Rotação" : "Rotation"}</span>
+                      </div>
+                      <span className="font-mono text-white/40">{rotation}°</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Slider
+                        value={[rotation]}
+                        min={0}
+                        max={360}
+                        step={1}
+                        onValueChange={(vals) => setRotation(vals[0])}
+                        className="flex-1"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 hover:bg-white/5 text-white/40"
+                        onClick={() => setRotation(0)}
+                      >
+                        <RefreshCcw className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filters Section */}
+                <div className="space-y-6 pt-6 border-t border-white/5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-[10px] uppercase tracking-[0.2em] text-white/30 font-bold">
+                      {language === "pt-BR" ? "Filtros e Ajustes" : "Filters & Adjustments"}
+                    </h4>
+                    <Button
+                      variant="ghost"
+                      className="h-6 px-1.5 text-[10px] text-white/20 hover:text-white/60"
+                      onClick={() => setFilters({
+                        brightness: 100,
+                        contrast: 100,
+                        saturation: 100,
+                        grayscale: 0,
+                        sepia: 0,
+                        blur: 0,
+                      })}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+
+                  {/* Brightness */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-white/60">{language === "pt-BR" ? "Brilho" : "Brightness"}</span>
+                      <span className="font-mono text-white/40">{filters.brightness}%</span>
+                    </div>
+                    <Slider
+                      value={[filters.brightness]}
+                      min={0}
+                      max={200}
+                      step={1}
+                      onValueChange={([v]) => setFilters(f => ({ ...f, brightness: v }))}
+                    />
+                  </div>
+
+                  {/* Contrast */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-white/60">{language === "pt-BR" ? "Contraste" : "Contrast"}</span>
+                      <span className="font-mono text-white/40">{filters.contrast}%</span>
+                    </div>
+                    <Slider
+                      value={[filters.contrast]}
+                      min={0}
+                      max={200}
+                      step={1}
+                      onValueChange={([v]) => setFilters(f => ({ ...f, contrast: v }))}
+                    />
+                  </div>
+
+                  {/* Saturation */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-white/60">{language === "pt-BR" ? "Saturação" : "Saturation"}</span>
+                      <span className="font-mono text-white/40">{filters.saturation}%</span>
+                    </div>
+                    <Slider
+                      value={[filters.saturation]}
+                      min={0}
+                      max={200}
+                      step={1}
+                      onValueChange={([v]) => setFilters(f => ({ ...f, saturation: v }))}
+                    />
+                  </div>
+
+                  {/* Grayscale */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-white/60">{language === "pt-BR" ? "Preto e Branco" : "Grayscale"}</span>
+                      <span className="font-mono text-white/40">{filters.grayscale}%</span>
+                    </div>
+                    <Slider
+                      value={[filters.grayscale]}
+                      min={0}
+                      max={100}
+                      step={1}
+                      onValueChange={([v]) => setFilters(f => ({ ...f, grayscale: v }))}
+                    />
+                  </div>
+
+                  {/* Sepia */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-white/60">{language === "pt-BR" ? "Sépia" : "Sepia"}</span>
+                      <span className="font-mono text-white/40">{filters.sepia}%</span>
+                    </div>
+                    <Slider
+                      value={[filters.sepia]}
+                      min={0}
+                      max={100}
+                      step={1}
+                      onValueChange={([v]) => setFilters(f => ({ ...f, sepia: v }))}
+                    />
+                  </div>
+
+                  {/* Blur */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-white/60">{language === "pt-BR" ? "Desfoque" : "Blur"}</span>
+                      <span className="font-mono text-white/40">{filters.blur}px</span>
+                    </div>
+                    <Slider
+                      value={[filters.blur]}
+                      min={0}
+                      max={20}
+                      step={0.5}
+                      onValueChange={([v]) => setFilters(f => ({ ...f, blur: v }))}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Sidebar Footer/Actions */}
+              <div className="p-5 border-t border-white/5 bg-black/20 flex flex-col gap-3">
+                <Button
+                  className="w-full bg-white text-black hover:bg-white/90 h-11 font-bold shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                  onClick={handleApplyBanner}
+                  disabled={bannerUploading}
+                >
+                  {bannerUploading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      {language === "pt-BR" ? "Salvando..." : "Saving..."}
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 mr-2" />
+                      {language === "pt-BR" ? "Aplicar Banner" : "Apply Banner"}
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="w-full text-white/40 hover:text-white hover:bg-white/5 h-10"
+                  onClick={() => {
+                    setBannerEditorOpen(false);
+                    setBannerToCrop(null);
+                  }}
+                >
+                  {language === "pt-BR" ? "Cancelar" : "Cancel"}
+                </Button>
+              </div>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }

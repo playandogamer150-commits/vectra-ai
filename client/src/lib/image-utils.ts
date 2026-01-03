@@ -25,6 +25,15 @@ export function rotateSize(width: number, height: number, rotation: number) {
     };
 }
 
+export interface ImageFilters {
+    brightness: number;
+    contrast: number;
+    saturation: number;
+    grayscale: number;
+    sepia: number;
+    blur: number;
+}
+
 /**
  * This function was adapted from the one in the react-easy-crop's README.
  */
@@ -32,7 +41,8 @@ export default async function getCroppedImg(
     imageSrc: string,
     pixelCrop: { x: number; y: number; width: number; height: number },
     rotation = 0,
-    flip = { horizontal: false, vertical: false }
+    flip = { horizontal: false, vertical: false },
+    filters?: ImageFilters
 ): Promise<string | null> {
     const image = await createImage(imageSrc);
     const canvas = document.createElement('canvas');
@@ -61,6 +71,18 @@ export default async function getCroppedImg(
     ctx.scale(flip.horizontal ? -1 : 1, flip.vertical ? -1 : 1);
     ctx.translate(-image.width / 2, -image.height / 2);
 
+    // Apply filters if provided
+    if (filters) {
+        ctx.filter = `
+            brightness(${filters.brightness}%) 
+            contrast(${filters.contrast}%) 
+            saturate(${filters.saturation}%) 
+            grayscale(${filters.grayscale}%) 
+            sepia(${filters.sepia}%) 
+            blur(${filters.blur}px)
+        `;
+    }
+
     // draw rotated image
     ctx.drawImage(image, 0, 0);
 
@@ -77,11 +99,12 @@ export default async function getCroppedImg(
     canvas.width = pixelCrop.width;
     canvas.height = pixelCrop.height;
 
-    // paste generated rotate image with correct offsets for x,y crop values.
+    // Paste data and clear filter for the final output
+    ctx.filter = 'none';
     ctx.putImageData(data, 0, 0);
 
     // As a blob
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
         canvas.toBlob((file) => {
             if (file) {
                 const reader = new FileReader();
@@ -92,6 +115,6 @@ export default async function getCroppedImg(
             } else {
                 resolve(null);
             }
-        }, 'image/jpeg', 0.7);
+        }, 'image/jpeg', 0.85); // Increased quality slightly
     });
 }
