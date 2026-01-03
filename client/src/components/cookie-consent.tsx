@@ -50,8 +50,8 @@ export function CookieConsent() {
   const content = t[language];
 
   return (
-    <div 
-      className="fixed bottom-0 left-0 right-0 z-[100] p-4 bg-card border-t border-border shadow-lg animate-in slide-in-from-bottom duration-300"
+    <div
+      className="fixed bottom-0 left-0 right-0 z-[9999] p-4 bg-card border-t border-border shadow-lg animate-in slide-in-from-bottom duration-300 pointer-events-auto"
       role="dialog"
       aria-labelledby="cookie-consent-title"
       data-testid="cookie-consent-banner"
