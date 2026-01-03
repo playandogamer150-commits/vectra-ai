@@ -43,13 +43,18 @@ export default function LoginPage() {
                 });
                 setLocation("/image-studio");
             } else {
-                // Fallback for Replit Auth or if local auth isn't fully set up yet
-                // We might just redirect to /api/login which handles Replit auth
-                window.location.href = "/api/login";
+                toast({
+                    variant: "destructive",
+                    title: language === "pt-BR" ? "Erro" : "Error",
+                    description: language === "pt-BR" ? "Credenciais inválidas." : "Invalid credentials.",
+                });
             }
         } catch (error) {
-            // Logic for fallback
-            window.location.href = "/api/login";
+            toast({
+                variant: "destructive",
+                title: language === "pt-BR" ? "Erro" : "Error",
+                description: language === "pt-BR" ? "Falha ao conectar." : "Failed to connect.",
+            });
         } finally {
             setIsLoading(false);
         }
