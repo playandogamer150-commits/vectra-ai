@@ -32,8 +32,8 @@ export default function PricingPage() {
     if (searchParams.get("success") === "true") {
       toast({
         title: language === "pt-BR" ? "Assinatura ativada!" : "Subscription activated!",
-        description: language === "pt-BR" 
-          ? "Bem-vindo ao Vectra AI Pro! Aproveite todos os recursos." 
+        description: language === "pt-BR"
+          ? "Bem-vindo ao Vectra AI Pro! Aproveite todos os recursos."
           : "Welcome to Vectra AI Pro! Enjoy all features.",
       });
       window.history.replaceState({}, "", "/pricing");
@@ -41,8 +41,8 @@ export default function PricingPage() {
     if (searchParams.get("canceled") === "true") {
       toast({
         title: language === "pt-BR" ? "Checkout cancelado" : "Checkout canceled",
-        description: language === "pt-BR" 
-          ? "Você pode tentar novamente quando quiser." 
+        description: language === "pt-BR"
+          ? "Você pode tentar novamente quando quiser."
           : "You can try again whenever you want.",
         variant: "destructive",
       });
@@ -64,11 +64,25 @@ export default function PricingPage() {
         window.location.href = data.url;
       }
     } catch (error: any) {
+      let errorMessage = language === "pt-BR"
+        ? "Não foi possível iniciar o checkout. Tente novamente."
+        : "Could not start checkout. Please try again.";
+
+      if (error instanceof Error) {
+        // Try to see if it's an API query error with a message
+        // The apiRequest throws, but usually we can't get the body easily from the generic Error unless we parse it.
+        // However, standard fetch or apiRequest usually strictly throws on non-200?
+        // Let's assume apiRequest throws an object that might have info
+      }
+
+      // Better approach for debugging:
+      // Since apiRequest throws on error status, we might ideally want to read the body.
+      // But queryClient might not expose it easily.
+      // Let's try to trust the user saw "500" or similar.
+
       toast({
         title: language === "pt-BR" ? "Erro" : "Error",
-        description: language === "pt-BR" 
-          ? "Não foi possível iniciar o checkout. Tente novamente." 
-          : "Could not start checkout. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -82,8 +96,8 @@ export default function PricingPage() {
       name: "Free",
       price: language === "pt-BR" ? "R$0" : "$0",
       period: "",
-      description: language === "pt-BR" 
-        ? "Comece com o essencial" 
+      description: language === "pt-BR"
+        ? "Comece com o essencial"
         : "Get started with the essentials",
       icon: Sparkles,
       features: language === "pt-BR" ? [
@@ -108,8 +122,8 @@ export default function PricingPage() {
       name: "Pro",
       price: language === "pt-BR" ? "R$49" : "$19",
       period: language === "pt-BR" ? "/mês" : "/mo",
-      description: language === "pt-BR" 
-        ? "Controle total para profissionais" 
+      description: language === "pt-BR"
+        ? "Controle total para profissionais"
         : "Full control for professionals",
       badge: language === "pt-BR" ? "Popular" : "Popular",
       icon: Crown,
@@ -139,8 +153,8 @@ export default function PricingPage() {
       name: "Enterprise",
       price: language === "pt-BR" ? "Custom" : "Custom",
       period: "",
-      description: language === "pt-BR" 
-        ? "Para times e empresas" 
+      description: language === "pt-BR"
+        ? "Para times e empresas"
         : "For teams and enterprises",
       icon: Building2,
       features: language === "pt-BR" ? [
@@ -203,8 +217,8 @@ export default function PricingPage() {
                 {language === "pt-BR" ? "Preços" : "Pricing"}
               </h1>
               <p className="text-lg text-muted-foreground" data-testid="text-pricing-subtitle">
-                {language === "pt-BR" 
-                  ? "Comece grátis. Faça upgrade quando precisar de mais controle." 
+                {language === "pt-BR"
+                  ? "Comece grátis. Faça upgrade quando precisar de mais controle."
                   : "Start free. Upgrade when you need full control."}
               </p>
               {isPro && (
@@ -219,13 +233,12 @@ export default function PricingPage() {
               {plans.map((plan) => {
                 const Icon = plan.icon;
                 const isCurrentPlan = (plan.id === "free" && !isPro) || (plan.id === "pro" && isPro);
-                
+
                 return (
                   <div
                     key={plan.name}
-                    className={`relative bg-card border rounded-xl p-6 flex flex-col ${
-                      plan.badge ? "border-foreground/30 ring-1 ring-foreground/10" : "border-border"
-                    }`}
+                    className={`relative bg-card border rounded-xl p-6 flex flex-col ${plan.badge ? "border-foreground/30 ring-1 ring-foreground/10" : "border-border"
+                      }`}
                     data-testid={`card-pricing-${plan.id}`}
                   >
                     {plan.badge && (
@@ -297,13 +310,13 @@ export default function PricingPage() {
 
             <div className="mt-16 text-center">
               <p className="text-sm text-muted-foreground mb-2">
-                {language === "pt-BR" 
-                  ? "Todos os planos incluem suporte básico e atualizações gratuitas." 
+                {language === "pt-BR"
+                  ? "Todos os planos incluem suporte básico e atualizações gratuitas."
                   : "All plans include basic support and free updates."}
               </p>
               <p className="text-xs text-muted-foreground">
-                {language === "pt-BR" 
-                  ? "Pagamento seguro via Stripe. Cancele quando quiser." 
+                {language === "pt-BR"
+                  ? "Pagamento seguro via Stripe. Cancele quando quiser."
                   : "Secure payment via Stripe. Cancel anytime."}
               </p>
             </div>

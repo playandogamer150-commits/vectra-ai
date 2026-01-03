@@ -66,7 +66,7 @@ export async function getUncachableStripeClient() {
   if (!creds || !creds.secretKey) return null;
 
   return new Stripe(creds.secretKey, {
-    apiVersion: '2025-11-17.clover' as any,
+    apiVersion: '2024-06-20' as any,
   });
 }
 
