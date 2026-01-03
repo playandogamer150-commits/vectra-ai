@@ -68,7 +68,7 @@ router.post("/sora2/generate", async (req, res) => {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(requestBody),
-        }, 90000); // 90s timeout for video generation
+        }, 300000); // 300s timeout for video generation
 
         const data = await response.json();
         console.log("Wan 2.1 I2V response:", data);

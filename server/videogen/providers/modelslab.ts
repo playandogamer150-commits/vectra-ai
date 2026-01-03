@@ -85,7 +85,7 @@ export class ModelsLabProvider implements VideoProvider {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
-    }, 90000); // 90s timeout for video generation
+    }, 300000); // 300s timeout for video generation
 
     const data: ModelsLabResponse = await response.json();
 
@@ -150,7 +150,7 @@ export class ModelsLabProvider implements VideoProvider {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
-    }, 90000); // 90s timeout for video generation
+    }, 300000); // 300s timeout for video generation
 
     const data: ModelsLabResponse = await response.json();
     console.log("[ModelsLab] ========== VIDEO GENERATION RESPONSE ==========");
