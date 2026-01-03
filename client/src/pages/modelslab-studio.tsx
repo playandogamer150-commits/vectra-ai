@@ -193,7 +193,12 @@ function InfoGuide({ title, children }: { title?: string, children: React.ReactN
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-4 w-4 rounded-full ml-1 hover:bg-muted text-muted-foreground p-0">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-4 w-4 rounded-full ml-1 hover:bg-muted text-muted-foreground p-0"
+          onClick={(e) => e.stopPropagation()}
+        >
           <Info className="h-3 w-3" />
         </Button>
       </PopoverTrigger>
