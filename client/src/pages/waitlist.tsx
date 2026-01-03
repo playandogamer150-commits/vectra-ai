@@ -131,7 +131,7 @@ function Animated3DCube() {
     return (
         <canvas
             ref={canvasRef}
-            className="w-64 h-64 md:w-80 md:h-80 cursor-pointer"
+            className="w-56 h-56 sm:w-64 sm:h-64 md:w-80 md:h-80 cursor-pointer"
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
             style={{ touchAction: "none" }}
@@ -289,7 +289,7 @@ export default function WaitlistPage() {
             <GridBackground />
 
             {/* Navigation */}
-            <nav className="relative z-20 flex items-center justify-between px-6 md:px-16 py-6">
+            <nav className="relative z-20 flex items-center justify-between px-4 md:px-16 py-6">
                 <div className="flex items-center gap-3">
                     <MonoIcon name="logo" className="w-7 h-7 text-white" />
                     <span className="text-base font-semibold tracking-tight text-white">
@@ -304,7 +304,7 @@ export default function WaitlistPage() {
             </nav>
 
             {/* Main content */}
-            <main className="relative z-10 flex flex-col items-center pt-8 md:pt-16 pb-20 px-6">
+            <main className="relative z-10 flex flex-col items-center pt-8 md:pt-16 pb-20 px-4 md:px-6">
 
                 {/* Hero Section */}
                 <div className="max-w-4xl mx-auto text-center">
@@ -335,7 +335,7 @@ export default function WaitlistPage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.4, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                        className="text-5xl md:text-7xl lg:text-8xl font-bold mb-6 leading-[0.95] tracking-tight"
+                        className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold mb-6 leading-[0.95] tracking-tight"
                     >
                         <span className="text-white">Imagine.</span>
                         <br />
@@ -358,7 +358,7 @@ export default function WaitlistPage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.6, duration: 1 }}
-                        className="mb-16 -mx-6 md:-mx-20"
+                        className="mb-16 -mx-4 md:-mx-20"
                     >
                         <PlaceholderMarquee />
                     </motion.div>
