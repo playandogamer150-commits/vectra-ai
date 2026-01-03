@@ -14,7 +14,7 @@ import { Link } from "wouter";
 import {
   User, Settings, BarChart3, ArrowRight, Image, History, FolderOpen,
   Crown, Loader2, Check, CreditCard, ExternalLink, Camera, X, ImagePlus,
-  Trash2, SlidersHorizontal, Maximize, ZoomIn
+  Trash2, SlidersHorizontal, Maximize, ZoomIn, RotateCw, RefreshCcw, Minus, Plus
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import Cropper from 'react-easy-crop';
@@ -102,6 +102,7 @@ export default function ProfilePage() {
   const [bannerToCrop, setBannerToCrop] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  const [rotation, setRotation] = useState(0);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
@@ -256,6 +257,7 @@ export default function ProfilePage() {
       setBannerToCrop(reader.result as string);
       setBannerEditorOpen(true);
       setZoom(1);
+      setRotation(0);
       setCrop({ x: 0, y: 0 });
     };
     reader.readAsDataURL(file);
@@ -271,7 +273,7 @@ export default function ProfilePage() {
 
     setBannerUploading(true);
     try {
-      const croppedImage = await getCroppedImg(bannerToCrop, croppedAreaPixels);
+      const croppedImage = await getCroppedImg(bannerToCrop, croppedAreaPixels, rotation);
       if (!croppedImage) throw new Error("Cropping failed");
 
       const response = await apiRequest("POST", "/api/profile/banner", { imageData: croppedImage });
@@ -832,6 +834,7 @@ export default function ProfilePage() {
                 image={bannerToCrop}
                 crop={crop}
                 zoom={zoom}
+                rotation={rotation}
                 aspect={21 / 5} // Panoramic aspect ratio for banner
                 onCropChange={setCrop}
                 onCropComplete={onCropComplete}
@@ -844,28 +847,81 @@ export default function ProfilePage() {
             )}
           </div>
 
-          <div className="p-6 space-y-6">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs text-white/60">
-                <div className="flex items-center gap-2">
-                  <ZoomIn className="w-3.5 h-3.5" />
-                  <span>{language === "pt-BR" ? "Zoom" : "Zoom"}</span>
+          <div className="p-6 space-y-6 bg-black/50">
+            {/* Controls Grid */}
+            <div className="grid gap-6">
+              {/* Zoom Control */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs text-white/50">
+                  <div className="flex items-center gap-2">
+                    <ZoomIn className="w-3.5 h-3.5" />
+                    <span className="font-medium text-white/80">{language === "pt-BR" ? "Zoom" : "Zoom"}</span>
+                  </div>
+                  <span className="font-mono">{Math.round(zoom * 100)}%</span>
                 </div>
-                <span>{Math.round(zoom * 100)}%</span>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 rounded-full border-white/10 bg-white/5 hover:bg-white/10"
+                    onClick={() => setZoom(Math.max(1, zoom - 0.1))}
+                  >
+                    <Minus className="w-3 h-3" />
+                  </Button>
+                  <Slider
+                    value={[zoom]}
+                    min={1}
+                    max={3}
+                    step={0.1}
+                    onValueChange={(vals) => setZoom(vals[0])}
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8 rounded-full border-white/10 bg-white/5 hover:bg-white/10"
+                    onClick={() => setZoom(Math.min(3, zoom + 0.1))}
+                  >
+                    <Plus className="w-3 h-3" />
+                  </Button>
+                </div>
               </div>
-              <Slider
-                value={[zoom]}
-                min={1}
-                max={3}
-                step={0.1}
-                onValueChange={(vals) => setZoom(vals[0])}
-                className="py-4"
-              />
+
+              {/* Rotation Control */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs text-white/50">
+                  <div className="flex items-center gap-2">
+                    <RotateCw className="w-3.5 h-3.5" />
+                    <span className="font-medium text-white/80">{language === "pt-BR" ? "Rotação" : "Rotation"}</span>
+                  </div>
+                  <span className="font-mono">{rotation}°</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Slider
+                    value={[rotation]}
+                    min={0}
+                    max={360}
+                    step={1}
+                    onValueChange={(vals) => setRotation(vals[0])}
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-xs text-white/40 hover:text-white"
+                    onClick={() => setRotation(0)}
+                    title="Reset Rotation"
+                  >
+                    <RefreshCcw className="w-3 h-3 mr-1" />
+                    Reset
+                  </Button>
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 text-[10px] text-white/40 uppercase tracking-widest bg-white/5 p-3 rounded-lg">
+            <div className="flex items-center justify-center gap-2 text-[10px] text-white/30 uppercase tracking-widest bg-white/5 p-2 rounded-lg border border-white/5">
               <Maximize className="w-3 h-3" />
-              {language === "pt-BR" ? "Arraste a imagem para posicionar" : "Drag the image to position"}
+              {language === "pt-BR" ? "Arraste e ajuste a imagem" : "Drag and adjust the image"}
             </div>
           </div>
 
