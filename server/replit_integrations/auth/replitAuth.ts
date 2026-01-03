@@ -234,8 +234,8 @@ export async function setupAuth(app: Express) {
   app.get("/api/auth/github/callback",
     passport.authenticate('github', { failureRedirect: '/api/login' }),
     function (req, res) {
-      // Successful authentication, redirect home.
-      res.redirect('/');
+      // Successful authentication, redirect to app.
+      res.redirect('/image-studio');
     }
   );
 
