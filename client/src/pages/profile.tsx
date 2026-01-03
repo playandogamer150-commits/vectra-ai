@@ -844,9 +844,13 @@ export default function ProfilePage() {
                 onCropChange={setCrop}
                 onCropComplete={onCropComplete}
                 onZoomChange={setZoom}
-                classes={{
-                  containerClassName: "bg-neutral-900",
-                  mediaClassName: "opacity-80"
+                showGrid={true}
+                style={{
+                  containerStyle: { backgroundColor: "#000" },
+                  cropAreaStyle: {
+                    border: "2px solid rgba(255, 255, 255, 0.5)",
+                    boxShadow: "0 0 0 9999em rgba(0, 0, 0, 0.8)" // Stronger overlay
+                  },
                 }}
               />
             )}
