@@ -72,7 +72,7 @@ export default function LandingPage() {
         <div className="max-w-[1400px] mx-auto h-full px-6 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
             <MonoIcon name="logo" className="w-8 h-8" />
-            <span className="text-lg font-medium tracking-tight text-white">{BRAND.name}</span>
+            <span className="hidden sm:block text-lg font-medium tracking-tight text-white">{BRAND.name}</span>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/pricing">

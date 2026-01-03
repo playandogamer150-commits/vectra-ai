@@ -9,8 +9,8 @@ import { Sparkles, ArrowRight } from "lucide-react";
  */
 export function StudioPage({ children, className }: { children: React.ReactNode; className?: string }) {
     return (
-        <div className={cn("vectra-studio-bg min-h-screen w-full text-foreground pt-20", className)}>
-            <div className="vectra-studio-content max-w-[1400px] mx-auto p-6">
+        <div className={cn("vectra-studio-bg min-h-screen w-full text-foreground pt-16 md:pt-20", className)}>
+            <div className="vectra-studio-content max-w-[1400px] mx-auto p-4 md:p-6">
                 {children}
             </div>
         </div>

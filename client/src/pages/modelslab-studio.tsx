@@ -1776,15 +1776,15 @@ export default function ModelsLabStudioPage() {
 
               <Tabs value={generationMode} onValueChange={(v) => setGenerationMode(v as "img2img" | "text2img" | "product-avatar")}>
                 <TabsList className="w-full grid grid-cols-3">
-                  <TabsTrigger value="img2img" className="text-xs" data-testid="tab-img2img">
+                  <TabsTrigger value="img2img" className="text-[10px] sm:text-xs" data-testid="tab-img2img">
                     <ImagePlus className="w-3 h-3 mr-1" />
                     {t.modelslab.img2imgMode || "Image to Image"}
                   </TabsTrigger>
-                  <TabsTrigger value="product-avatar" className="text-xs" data-testid="tab-product-avatar">
+                  <TabsTrigger value="product-avatar" className="text-[10px] sm:text-xs" data-testid="tab-product-avatar">
                     <PackageCheck className="w-3 h-3 mr-1" />
                     Ad Generator
                   </TabsTrigger>
-                  <TabsTrigger value="text2img" className="text-xs" data-testid="tab-text2img">
+                  <TabsTrigger value="text2img" className="text-[10px] sm:text-xs" data-testid="tab-text2img">
                     <Wand2 className="w-3 h-3 mr-1" />
                     {t.modelslab.text2imgMode || "Text to Image"}
                   </TabsTrigger>
@@ -1958,7 +1958,7 @@ export default function ModelsLabStudioPage() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      <div className="grid grid-cols-4 gap-2">
+                      <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
                         {images.map((img) => (
                           <div
                             key={img.id}
