@@ -30,8 +30,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useI18n } from "@/lib/i18n";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { LoraModel, LoraVersion, LoraDataset } from "@shared/schema";
-import { 
-  Cpu, Plus, Upload, Play, Layers, Settings, Zap, Lock, ChevronRight, 
+import {
+  Cpu, Plus, Upload, Play, Layers, Settings, Zap, Lock, ChevronRight,
   Image, X, CheckCircle, AlertCircle, FileImage
 } from "lucide-react";
 
@@ -112,7 +112,7 @@ export default function LoraStudioPage() {
   const [newModelName, setNewModelName] = useState("");
   const [newModelDesc, setNewModelDesc] = useState("");
   const [consentGiven, setConsentGiven] = useState(false);
-  
+
   const [targetPlatform, setTargetPlatform] = useState("");
   const [trainableBaseModel, setTrainableBaseModel] = useState("");
   const [trainingSteps, setTrainingSteps] = useState(1000);
@@ -120,7 +120,7 @@ export default function LoraStudioPage() {
   const [resolution, setResolution] = useState(1024);
   const [rank, setRank] = useState(32);
   const [activationWeight, setActivationWeight] = useState([0.8]);
-  
+
   const [files, setFiles] = useState<FileWithPreview[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -262,10 +262,10 @@ export default function LoraStudioPage() {
 
   const uploadDataset = async () => {
     if (!selectedModel || files.length < 15) {
-      toast({ 
-        title: "Invalid dataset", 
-        description: "Minimum 15 images required", 
-        variant: "destructive" 
+      toast({
+        title: "Invalid dataset",
+        description: "Minimum 15 images required",
+        variant: "destructive"
       });
       return;
     }
@@ -326,7 +326,7 @@ export default function LoraStudioPage() {
       }
 
       const successfulUploads = updatedFiles.filter(f => f.status === "done" && f.sha256 && f.storageKey);
-      
+
       if (successfulUploads.length >= 15) {
         await apiRequest("POST", "/api/lora/dataset/commit", {
           datasetId: initData.datasetId,
@@ -344,17 +344,17 @@ export default function LoraStudioPage() {
         setFiles([]);
         setCurrentDatasetId(null);
       } else {
-        toast({ 
-          title: "Upload incomplete", 
+        toast({
+          title: "Upload incomplete",
           description: `Only ${successfulUploads.length} of ${files.length} files uploaded successfully. Minimum 15 required.`,
-          variant: "destructive" 
+          variant: "destructive"
         });
       }
     } catch (error) {
-      toast({ 
-        title: "Upload failed", 
+      toast({
+        title: "Upload failed",
         description: error instanceof Error ? error.message : "Unknown error",
-        variant: "destructive" 
+        variant: "destructive"
       });
     } finally {
       setIsUploading(false);
@@ -433,8 +433,8 @@ export default function LoraStudioPage() {
                     {activeLora.targetPlatform && ` | Platform: ${activeLora.targetPlatform}`}
                   </p>
                 </div>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => deactivateLoraMutation.mutate()}
                   data-testid="button-deactivate-lora"
                 >
@@ -467,9 +467,8 @@ export default function LoraStudioPage() {
                         <button
                           key={model.id}
                           onClick={() => setSelectedModel(model.id)}
-                          className={`w-full text-left p-3 rounded-md mb-1 transition-colors hover-elevate ${
-                            selectedModel === model.id ? "bg-accent" : ""
-                          }`}
+                          className={`w-full text-left p-3 rounded-md mb-1 transition-colors hover-elevate ${selectedModel === model.id ? "bg-accent" : ""
+                            }`}
                           data-testid={`button-select-model-${model.id}`}
                         >
                           <div className="flex items-center justify-between gap-2">
@@ -626,7 +625,7 @@ export default function LoraStudioPage() {
                           <Progress value={uploadProgress} className="h-2" />
                         )}
 
-                        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                        <div className="grid grid-cols-3 sm:grid-cols-6 md:grid-cols-8 gap-2">
                           {files.map((fileObj, index) => (
                             <div key={index} className="relative group aspect-square">
                               <img
@@ -664,8 +663,8 @@ export default function LoraStudioPage() {
                         <h4 className="text-sm font-medium mb-3">Existing Datasets</h4>
                         <div className="space-y-3">
                           {modelDetails.datasets.map((dataset) => (
-                            <div 
-                              key={dataset.id} 
+                            <div
+                              key={dataset.id}
                               className="flex flex-wrap items-center justify-between gap-4 p-3 rounded-md bg-muted/50"
                             >
                               <div className="flex items-center gap-3">
@@ -679,8 +678,8 @@ export default function LoraStudioPage() {
                               </div>
                               <div className="flex gap-2">
                                 {dataset.status === "uploaded" && (
-                                  <Button 
-                                    size="sm" 
+                                  <Button
+                                    size="sm"
                                     variant="outline"
                                     onClick={() => validateDatasetMutation.mutate(dataset.id)}
                                     disabled={validateDatasetMutation.isPending}
@@ -690,8 +689,8 @@ export default function LoraStudioPage() {
                                   </Button>
                                 )}
                                 {dataset.status === "validated" && (
-                                  <Button 
-                                    size="sm" 
+                                  <Button
+                                    size="sm"
                                     onClick={() => startTrainingMutation.mutate(dataset.id)}
                                     disabled={!trainableBaseModel || startTrainingMutation.isPending}
                                     data-testid={`button-train-dataset-${dataset.id}`}
@@ -779,8 +778,8 @@ export default function LoraStudioPage() {
                     {modelDetails.versions && modelDetails.versions.length > 0 ? (
                       <div className="space-y-3">
                         {modelDetails.versions.map((version) => (
-                          <div 
-                            key={version.id} 
+                          <div
+                            key={version.id}
                             className="flex flex-wrap items-center justify-between gap-4 p-3 rounded-md bg-muted/50"
                           >
                             <div className="flex items-center gap-3">
@@ -806,7 +805,7 @@ export default function LoraStudioPage() {
                                     data-testid={`slider-weight-${version.id}`}
                                   />
                                 </div>
-                                <Button 
+                                <Button
                                   size="sm"
                                   onClick={() => activateLoraMutation.mutate(version.id)}
                                   disabled={activateLoraMutation.isPending}
