@@ -14,7 +14,7 @@ import { Link } from "wouter";
 import {
   User, Settings, BarChart3, ArrowRight, Image, History, FolderOpen,
   Crown, Loader2, Check, CreditCard, ExternalLink, Camera, X, ImagePlus,
-  Trash2, SlidersHorizontal, Maximize, ZoomIn, RotateCw, RefreshCcw, Minus, Plus
+  Trash2, SlidersHorizontal, Maximize, ZoomIn, RotateCw, RefreshCcw, Minus, Plus, ArrowLeft
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import Cropper from 'react-easy-crop';
@@ -826,11 +826,29 @@ export default function ProfilePage() {
       {/* Banner Editor Modal */}
       <Dialog open={bannerEditorOpen} onOpenChange={setBannerEditorOpen}>
         <DialogContent className="max-w-3xl bg-black border-white/10 text-white p-0 overflow-hidden">
-          <DialogHeader className="p-6 border-b border-white/5">
-            <DialogTitle className="text-lg font-bold flex items-center gap-2">
-              <SlidersHorizontal className="w-5 h-5" />
-              {language === "pt-BR" ? "Ajustar Banner" : "Adjust Banner"}
-            </DialogTitle>
+          <DialogHeader className="p-4 border-b border-white/5 bg-black flex flex-row items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-white/10 rounded-full w-8 h-8"
+                onClick={() => {
+                  setBannerEditorOpen(false);
+                  setBannerToCrop(null);
+                }}
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+              <DialogTitle className="text-lg font-bold text-white">
+                Edit media
+              </DialogTitle>
+            </div>
+            <Button
+              className="bg-white text-black hover:bg-white/90 h-8 px-4 rounded-full font-semibold text-sm"
+              onClick={handleApplyBanner}
+            >
+              Apply
+            </Button>
           </DialogHeader>
 
           <div className="relative h-[400px] w-full bg-neutral-900">
@@ -848,121 +866,26 @@ export default function ProfilePage() {
                 style={{
                   containerStyle: { backgroundColor: "#000" },
                   cropAreaStyle: {
-                    border: "2px solid rgba(255, 255, 255, 0.5)",
-                    boxShadow: "0 0 0 9999em rgba(0, 0, 0, 0.8)" // Stronger overlay
+                    border: "2px solid #3b82f6", // Blue border
+                    boxShadow: "0 0 0 9999em rgba(0, 0, 0, 0.85)" // Darker overlay
                   },
                 }}
               />
             )}
           </div>
 
-          <div className="p-6 space-y-6 bg-black/50">
-            {/* Controls Grid */}
-            <div className="grid gap-6">
-              {/* Zoom Control */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs text-white/50">
-                  <div className="flex items-center gap-2">
-                    <ZoomIn className="w-3.5 h-3.5" />
-                    <span className="font-medium text-white/80">{language === "pt-BR" ? "Zoom" : "Zoom"}</span>
-                  </div>
-                  <span className="font-mono">{Math.round(zoom * 100)}%</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 rounded-full border-white/10 bg-white/5 hover:bg-white/10"
-                    onClick={() => setZoom(Math.max(1, zoom - 0.1))}
-                  >
-                    <Minus className="w-3 h-3" />
-                  </Button>
-                  <Slider
-                    value={[zoom]}
-                    min={1}
-                    max={3}
-                    step={0.1}
-                    onValueChange={(vals) => setZoom(vals[0])}
-                    className="flex-1"
-                  />
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 rounded-full border-white/10 bg-white/5 hover:bg-white/10"
-                    onClick={() => setZoom(Math.min(3, zoom + 0.1))}
-                  >
-                    <Plus className="w-3 h-3" />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Rotation Control */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs text-white/50">
-                  <div className="flex items-center gap-2">
-                    <RotateCw className="w-3.5 h-3.5" />
-                    <span className="font-medium text-white/80">{language === "pt-BR" ? "Rotação" : "Rotation"}</span>
-                  </div>
-                  <span className="font-mono">{rotation}°</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Slider
-                    value={[rotation]}
-                    min={0}
-                    max={360}
-                    step={1}
-                    onValueChange={(vals) => setRotation(vals[0])}
-                    className="flex-1"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-2 text-xs text-white/40 hover:text-white"
-                    onClick={() => setRotation(0)}
-                    title="Reset Rotation"
-                  >
-                    <RefreshCcw className="w-3 h-3 mr-1" />
-                    Reset
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-center gap-2 text-[10px] text-white/30 uppercase tracking-widest bg-white/5 p-2 rounded-lg border border-white/5">
-              <Maximize className="w-3 h-3" />
-              {language === "pt-BR" ? "Arraste e ajuste a imagem" : "Drag and adjust the image"}
-            </div>
+          <div className="h-16 px-6 bg-black flex items-center justify-center gap-4 border-t border-white/5">
+            <Minus className="w-4 h-4 text-white/50" />
+            <Slider
+              value={[zoom]}
+              min={1}
+              max={3}
+              step={0.1}
+              onValueChange={(vals) => setZoom(vals[0])}
+              className="w-full max-w-sm"
+            />
+            <Plus className="w-5 h-5 text-white/50" />
           </div>
-
-          <DialogFooter className="p-6 border-t border-white/5 flex flex-row gap-3">
-            <Button
-              variant="secondary"
-              className="flex-1 bg-white/5 hover:bg-white/10 border-white/10 text-white h-10"
-              onClick={() => {
-                setBannerEditorOpen(false);
-                setBannerToCrop(null);
-              }}
-            >
-              {language === "pt-BR" ? "Cancelar" : "Cancel"}
-            </Button>
-            <Button
-              className="flex-1 bg-white text-black hover:bg-white/90 h-10 font-bold"
-              onClick={handleApplyBanner}
-              disabled={bannerUploading}
-            >
-              {bannerUploading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  {language === "pt-BR" ? "Salvando..." : "Saving..."}
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4 mr-2" />
-                  {language === "pt-BR" ? "Aplicar Banner" : "Apply Banner"}
-                </>
-              )}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
