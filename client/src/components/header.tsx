@@ -47,7 +47,7 @@ export function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-black/50 backdrop-blur-xl border-b border-white/10 supports-[backdrop-filter]:bg-black/20">
       <div className="max-w-[1400px] mx-auto h-full px-6 flex items-center justify-between gap-6">
-        <Link href="/" className="flex items-center gap-2.5 shrink-0 group" data-testid="link-home-logo">
+        <Link href={profile ? "/image-studio" : "/"} className="flex items-center gap-2.5 shrink-0 group" data-testid="link-home-logo">
           <MonoIcon name="logo" className="w-7 h-7 transition-transform group-hover:scale-105" />
           <span className="text-base font-medium tracking-tight" data-testid="text-logo">{BRAND.name}</span>
         </Link>

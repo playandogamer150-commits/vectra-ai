@@ -113,6 +113,7 @@ export default function ProfilePage() {
     defaultLanguage: string;
     defaultLlmProfileId: string | null;
     theme: string;
+    email: string;
   }>({
     displayName: "",
     tagline: "",
@@ -120,6 +121,7 @@ export default function ProfilePage() {
     defaultLanguage: language,
     defaultLlmProfileId: null,
     theme: "system",
+    email: "",
   });
 
   const { data: profile, isLoading: profileLoading } = useQuery<ProfileData>({
@@ -355,6 +357,7 @@ export default function ProfilePage() {
         defaultLanguage: profile.defaultLanguage || language,
         defaultLlmProfileId: profile.defaultLlmProfileId,
         theme: profile.theme || "system",
+        email: profile.email || "",
       });
     }
   }, [profile, language]);
@@ -367,6 +370,7 @@ export default function ProfilePage() {
       defaultLanguage: formData.defaultLanguage,
       defaultLlmProfileId: formData.defaultLlmProfileId,
       theme: formData.theme,
+      email: formData.email !== profile?.email ? formData.email : undefined,
     });
 
     if (formData.defaultLanguage !== language) {
@@ -575,9 +579,10 @@ export default function ProfilePage() {
                 <Label htmlFor="email" className="text-xs text-white/60">{t.profile.email}</Label>
                 <Input
                   id="email"
-                  value={profile?.email || ""}
-                  disabled
-                  className="h-9 bg-white/5 border-white/10 text-white/50"
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="seu@email.com"
+                  className="h-9 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-white/30"
                 />
               </div>
 

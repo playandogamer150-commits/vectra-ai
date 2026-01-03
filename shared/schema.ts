@@ -505,6 +505,7 @@ export const updateProfileSchema = z.object({
   defaultLlmProfileId: z.string().optional().nullable(),
   theme: z.enum(["light", "dark", "system"]).optional(),
   tutorialCompleted: z.number().min(0).max(1).optional(),
+  email: z.string().email().optional(),
 });
 
 export type UpdateProfileRequest = z.infer<typeof updateProfileSchema>;
