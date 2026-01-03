@@ -148,9 +148,10 @@ export default function LoginPage() {
                         <Button
                             variant="outline"
                             className="w-full border-white/10 bg-transparent text-white hover:bg-white/5 hover:text-white"
-                            onClick={() => window.location.href = "/api/login"}
+                            onClick={() => window.location.href = "/api/auth/github"}
                         >
-                            Replit / Google
+                            <MonoIcon name="github" className="w-4 h-4 mr-2" />
+                            GitHub
                         </Button>
                     </CardContent>
                     <CardFooter className="justify-center">

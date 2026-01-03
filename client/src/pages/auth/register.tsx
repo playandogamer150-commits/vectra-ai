@@ -50,21 +50,21 @@ export default function RegisterPage() {
                     title: language === "pt-BR" ? "Conta criada" : "Account created",
                     description: language === "pt-BR" ? "Sua conta foi criada com sucesso." : "Your account has been created successfully.",
                 });
-                setLocation("/login");
+                setLocation("/image-studio"); // Redirect to app directly as backend logs in
             } else {
-                // Fallback: If no dedicated register endpoint, maybe just redirect to login
+                const data = await res.json();
                 toast({
-                    title: "Info",
-                    description: "Registration simulated. Redirecting to login...",
+                    variant: "destructive",
+                    title: language === "pt-BR" ? "Erro no cadastro" : "Registration Error",
+                    description: data.message || (language === "pt-BR" ? "Falha ao criar conta." : "Failed to create account."),
                 });
-                setTimeout(() => setLocation("/login"), 1000);
             }
         } catch (error) {
             toast({
-                title: "Info",
-                description: "Regisration simulated. Redirecting to login...",
+                variant: "destructive",
+                title: language === "pt-BR" ? "Erro" : "Error",
+                description: language === "pt-BR" ? "Erro ao comunicar com o servidor." : "Error communicating with server.",
             });
-            setTimeout(() => setLocation("/login"), 1000);
         } finally {
             setIsLoading(false);
         }
@@ -163,6 +163,26 @@ export default function RegisterPage() {
                                 {language === "pt-BR" ? "Criar Conta" : "Create Account"}
                             </Button>
                         </form>
+
+                        <div className="relative my-6">
+                            <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t border-white/10" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-black px-2 text-white/30">
+                                    {language === "pt-BR" ? "Ou continue com" : "Or continue with"}
+                                </span>
+                            </div>
+                        </div>
+
+                        <Button
+                            variant="outline"
+                            className="w-full border-white/10 bg-transparent text-white hover:bg-white/5 hover:text-white"
+                            onClick={() => window.location.href = "/api/auth/github"}
+                        >
+                            <MonoIcon name="github" className="w-4 h-4 mr-2" />
+                            GitHub
+                        </Button>
                     </CardContent>
                     <CardFooter className="justify-center">
                         <div className="text-sm text-white/50">
