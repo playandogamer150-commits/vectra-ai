@@ -131,7 +131,7 @@ function Animated3DCube() {
     return (
         <canvas
             ref={canvasRef}
-            className="w-56 h-56 sm:w-64 sm:h-64 md:w-80 md:h-80 cursor-pointer"
+            className="w-56 h-56 sm:w-64 sm:h-64 md:w-80 md:h-80 cursor-pointer max-w-full"
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
             style={{ touchAction: "none" }}
@@ -307,7 +307,7 @@ export default function WaitlistPage() {
             <main className="relative z-10 flex flex-col items-center pt-8 md:pt-16 pb-20 px-4 md:px-6">
 
                 {/* Hero Section */}
-                <div className="max-w-4xl mx-auto text-center">
+                <div className="w-full max-w-4xl mx-auto text-center">
 
                     {/* 3D Cube */}
                     <motion.div
