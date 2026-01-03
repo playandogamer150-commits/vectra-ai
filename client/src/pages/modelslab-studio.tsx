@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { exportToJSON, exportToYAML, exportToPDF } from "@/lib/export-utils";
 import { UpgradeModal } from "@/components/upgrade-modal";
 import { OnboardingTutorial } from "@/components/onboarding-tutorial";
@@ -185,6 +186,24 @@ function VideoThumbnail({
         </div>
       )}
     </>
+  );
+}
+
+function InfoGuide({ title, children }: { title?: string, children: React.ReactNode }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-4 w-4 rounded-full ml-1 hover:bg-muted text-muted-foreground p-0">
+          <Info className="h-3 w-3" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 md:w-80 p-4 border-white/10 bg-black/90 backdrop-blur-xl text-white" side="right" align="start">
+        {title && <h4 className="font-medium text-sm mb-2 flex items-center gap-2 text-primary"><Info className="w-4 h-4" /> {title}</h4>}
+        <div className="text-xs text-white/80 space-y-2 leading-relaxed">
+          {children}
+        </div>
+      </PopoverContent>
+    </Popover >
   );
 }
 
@@ -1725,6 +1744,10 @@ export default function ModelsLabStudioPage() {
               <CardTitle className="text-base flex items-center gap-2 text-white">
                 <Sparkles className="w-4 h-4 text-white/60" />
                 Gemini Gems - Otimizadores de IA
+                <InfoGuide title="Gemini Gems & UGC Realism">
+                  <p><strong>UGC Realism:</strong> (User Generated Content) Simula imperfeições de câmeras reais e iluminação natural para criar imagens que parecem fotos reais de redes sociais, evitando o visual "plástico" de IA.</p>
+                  <p>Ative os Gems para instruir o Motor de Prompts a priorizar ultra-realismo.</p>
+                </InfoGuide>
               </CardTitle>
               <CardDescription className="text-xs">
                 Ative gems especializados para ultra-realismo UGC e lockdown biométrico facial
@@ -1992,7 +2015,13 @@ export default function ModelsLabStudioPage() {
             <Collapsible open={usePromptEngine} onOpenChange={setUsePromptEngine}>
               <div className="vectra-studio-card-header cursor-pointer" onClick={() => setUsePromptEngine(!usePromptEngine)}>
                 <Wand2 className="w-4 h-4 vectra-studio-card-icon" />
-                <span className="vectra-studio-card-title flex-1">{t.modelslab.promptEngine || "Prompt Engine"}</span>
+                <span className="vectra-studio-card-title flex-1 flex items-center">
+                  {t.modelslab.promptEngine || "Prompt Engine"}
+                  <InfoGuide title="Motor de Prompts (Prompt Engine)">
+                    <p>O <strong>Motor de Prompts</strong> é o cérebro do VECTRA AI. Ele pega sua ideia simples (ex: "gato no espaço") e a reescreve usando técnicas avançadas de engenharia de prompt.</p>
+                    <p>Ele adiciona automaticamente detalhes de iluminação, composição, estilo de câmera e texturas baseados no Perfil e Blueprint escolhidos.</p>
+                  </InfoGuide>
+                </span>
                 <div className="flex items-center gap-2">
                   <span className={`vectra-pill text-[10px] ${usePromptEngine ? 'vectra-pill--active' : ''}`} data-testid="badge-prompt-engine-status">
                     {usePromptEngine ? t.modelslab.enabled || "Enabled" : t.modelslab.disabled || "Disabled"}
@@ -2008,6 +2037,14 @@ export default function ModelsLabStudioPage() {
                     <Label className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
                       <Sparkles className="w-3 h-3" />
                       {t.studio?.llmProfile || "LLM Profile"}
+                      <InfoGuide title="Perfil de IA (LLM Profile)">
+                        <p>Define a <strong>"personalidade"</strong> da IA que vai escrever seu prompt.</p>
+                        <ul className="list-disc pl-3 space-y-1 mt-1">
+                          <li><strong>Fotógrafo:</strong> Foca em lentes, ISO, abertura e iluminação técnica.</li>
+                          <li><strong>Artista Digital:</strong> Foca em composição, cores vibrantes e renderização 3D.</li>
+                          <li><strong>Cinematográfico:</strong> Foca em storytelling, ângulos de câmera e drama.</li>
+                        </ul>
+                      </InfoGuide>
                     </Label>
                     {loadingProfiles ? (
                       <Skeleton className="h-10 w-full" />
@@ -2032,6 +2069,10 @@ export default function ModelsLabStudioPage() {
                     <Label className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
                       <Layers className="w-3 h-3" />
                       {t.studio?.blueprint || "Blueprint"}
+                      <InfoGuide title="Blueprint (Modelo Estrutural)">
+                        <p>O <strong>Blueprint</strong> é o esqueleto do prompt. Ele diz à IA como organizar as informações.</p>
+                        <p>Use Blueprints específicos para melhores resultados (ex: use "Portrait" para rostos, "Landscape" para cenários). Isso garante que o Motor de Prompts use as palavras-chave corretas para aquele tipo de imagem.</p>
+                      </InfoGuide>
                     </Label>
                     <Tabs value={blueprintTab} onValueChange={(v) => setBlueprintTab(v as "system" | "custom")}>
                       <TabsList className="w-full grid grid-cols-2">
@@ -2099,6 +2140,11 @@ export default function ModelsLabStudioPage() {
                       <Label className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
                         <SlidersHorizontal className="w-3 h-3" />
                         {t.studio?.filters || "Filters"}
+                        <InfoGuide title="Filtros & Aesthetic Intensity">
+                          <p><strong>Tags de Filtro:</strong> Adicionam palavras-chave de estilo forçado ao prompt (ex: "Cyberpunk", "Noir", "Watercolor").</p>
+                          <p><strong>Aesthetic Intensity:</strong> É determinada pela combinação destas tags + os controles de VFX (no painel avançado).</p>
+                          <p>Para uma estética forte, selecione múltiplos filtros do mesmo estilo (ex: Cyberpunk + Neon + Night).</p>
+                        </InfoGuide>
                       </Label>
                       <div className="space-y-3">
                         {filters.map((filter) => (
@@ -2131,7 +2177,13 @@ export default function ModelsLabStudioPage() {
 
                   {/* Subject Input */}
                   <div className="space-y-2">
-                    <Label className="text-xs">{t.studio?.subject || "Subject"}</Label>
+                    <Label className="text-xs flex items-center">
+                      {t.studio?.subject || "Subject"}
+                      <InfoGuide title="Sujeito (Subject)">
+                        <p>O foco principal da sua imagem. Quem ou o que você quer ver?</p>
+                        <p>Seja direto: "Uma mulher guerreira futurista" ou "Um carro esportivo vermelho". O Motor de Prompts vai preencher o resto.</p>
+                      </InfoGuide>
+                    </Label>
                     <Textarea
                       value={subject}
                       onChange={(e) => setSubject(e.target.value)}
@@ -2189,7 +2241,14 @@ export default function ModelsLabStudioPage() {
                   {/* Seed */}
                   <div className="flex items-center gap-2">
                     <div className="flex-1">
-                      <Label className="text-xs">{t.studio?.seed || "Seed"}</Label>
+                      <Label className="text-xs flex items-center">
+                        {t.studio?.seed || "Seed"}
+                        <InfoGuide title="Seed (Semente)">
+                          <p>Um número que define a aleatoriedade da geração.</p>
+                          <p><strong>Mesmo Seed + Mesmo Prompt = Mesma Imagem.</strong></p>
+                          <p>Use para reproduzir um resultado que você gostou ou deixe em branco para variações aleatórias.</p>
+                        </InfoGuide>
+                      </Label>
                       <input
                         type="text"
                         value={seed}
