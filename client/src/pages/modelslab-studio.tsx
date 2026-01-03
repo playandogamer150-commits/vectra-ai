@@ -245,6 +245,18 @@ export default function ModelsLabStudioPage() {
     "pencil": "Lápis"
   };
 
+  const FILTER_DESCRIPTIONS: Record<string, string> = {
+    "aesthetic_intensity": "Define a intensidade do estilo artístico. 'Low' mantém mais natural, 'Extreme' força um visual muito processado.",
+    "ugc_realism": "Simula a qualidade da foto. 'UGC/Phone' parece foto de amador/celular. 'Pro' parece câmera profissional.",
+    "layout_entropy": "Controla a bagunça da cena. 'Strict' mantém tudo organizado e limpo. 'Loose' adiciona mais elementos aleatórios.",
+    "camera_bias": "Imita o 'olhar' de dispositivos específicos. CCTV (câmera de segurança), Drone, DSLR profissional, etc.",
+    "temporal_style": "Define a estética de uma época (ex: Y2K anos 2000, VHS anos 90, Retrofuturismo).",
+    "prompt_length": "Define o tamanho do prompt gerado. 'Long' permite que a IA alucine mais detalhes ricos e criativos.",
+    "camera_angle": "Define o ângulo da tomada (de cima, de baixo, close-up, etc).",
+    "lighting_style": "Define a atmosfera de iluminação da cena.",
+    "aspect_ratio": "Proporção da imagem (Quadrada, Retrato, Paisagem)."
+  };
+
   const { user } = useAuth();
 
   const { data: profile } = useQuery<AppUser>({
@@ -2147,9 +2159,17 @@ export default function ModelsLabStudioPage() {
                         </InfoGuide>
                       </Label>
                       <div className="space-y-3">
+
                         {filters.map((filter) => (
                           <div key={filter.key} className="space-y-1.5">
-                            <span className="text-xs text-muted-foreground">{filter.label}</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs text-muted-foreground">{filter.label}</span>
+                              {FILTER_DESCRIPTIONS[filter.key] && (
+                                <InfoGuide title={filter.label}>
+                                  <p>{FILTER_DESCRIPTIONS[filter.key]}</p>
+                                </InfoGuide>
+                              )}
+                            </div>
                             <div className="flex flex-wrap gap-1.5">
                               {filter.schema.options?.map((option: string) => {
                                 const isSelected = activeFilters[filter.key] === option;
