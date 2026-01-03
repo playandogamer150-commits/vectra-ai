@@ -30,8 +30,8 @@ export default function SupportPage() {
 
     toast({
       title: language === "pt-BR" ? "Mensagem enviada!" : "Message sent!",
-      description: language === "pt-BR" 
-        ? "Responderemos em até 24 horas." 
+      description: language === "pt-BR"
+        ? "Responderemos em até 24 horas."
         : "We'll respond within 24 hours.",
     });
 
@@ -96,13 +96,13 @@ export default function SupportPage() {
 
   const t = {
     title: language === "pt-BR" ? "Central de Suporte" : "Support Center",
-    subtitle: language === "pt-BR" 
-      ? "Como podemos ajudar você hoje?" 
+    subtitle: language === "pt-BR"
+      ? "Como podemos ajudar você hoje?"
       : "How can we help you today?",
     faqTitle: language === "pt-BR" ? "Perguntas Frequentes" : "Frequently Asked Questions",
     contactTitle: language === "pt-BR" ? "Fale Conosco" : "Contact Us",
-    contactSubtitle: language === "pt-BR" 
-      ? "Não encontrou o que procura? Envie uma mensagem." 
+    contactSubtitle: language === "pt-BR"
+      ? "Não encontrou o que procura? Envie uma mensagem."
       : "Didn't find what you're looking for? Send us a message.",
     name: language === "pt-BR" ? "Nome" : "Name",
     email: "Email",
@@ -115,7 +115,7 @@ export default function SupportPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-background/80 backdrop-blur-sm border-b border-border">
-        <div className="max-w-4xl mx-auto h-full px-6 flex items-center justify-between gap-4">
+        <div className="max-w-4xl mx-auto h-full px-4 md:px-6 flex items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2.5">
             <MonoIcon name="logo" className="w-7 h-7" />
             <span className="text-base font-medium tracking-tight">{BRAND.name}</span>
@@ -139,7 +139,7 @@ export default function SupportPage() {
       </header>
 
       <main className="pt-14">
-        <section className="py-16 px-6">
+        <section className="py-12 md:py-16 px-4 md:px-6">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-12">
               <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mx-auto mb-4">
@@ -208,7 +208,7 @@ export default function SupportPage() {
             <div>
               <h2 className="text-xl font-medium mb-2">{t.contactTitle}</h2>
               <p className="text-muted-foreground mb-6">{t.contactSubtitle}</p>
-              
+
               <Card>
                 <CardContent className="pt-6">
                   <form onSubmit={handleSubmit} className="space-y-4">

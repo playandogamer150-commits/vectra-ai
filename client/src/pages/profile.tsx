@@ -417,7 +417,7 @@ export default function ProfilePage() {
         />
       </div>
 
-      <div className="relative z-10 max-w-4xl mx-auto px-6 pt-24 pb-8">
+      <div className="relative z-10 max-w-4xl mx-auto px-4 md:px-6 pt-16 md:pt-24 pb-8">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white tracking-tight">{t.profile.title}</h1>
@@ -478,7 +478,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Profile Info overlapping banner */}
-          <div className="relative px-6 pb-6">
+          <div className="relative px-4 md:px-6 pb-6">
             <div className="flex items-end gap-4 -mt-12">
               {/* Avatar */}
               <div className="relative group">

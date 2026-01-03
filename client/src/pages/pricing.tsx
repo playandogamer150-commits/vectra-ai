@@ -185,7 +185,7 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="fixed top-0 left-0 right-0 z-50 h-14 bg-background/80 backdrop-blur-sm border-b border-border">
-        <div className="max-w-6xl mx-auto h-full px-6 flex items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto h-full px-4 md:px-6 flex items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2.5">
             <MonoIcon name="logo" className="w-7 h-7" />
             <span className="text-base font-medium tracking-tight">{BRAND.name}</span>
@@ -210,7 +210,7 @@ export default function PricingPage() {
       </header>
 
       <main className="pt-14">
-        <section className="py-20 px-6">
+        <section className="py-12 md:py-20 px-4 md:px-6">
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-16">
               <h1 className="text-3xl md:text-4xl font-medium tracking-tight mb-4" data-testid="text-pricing-title">
