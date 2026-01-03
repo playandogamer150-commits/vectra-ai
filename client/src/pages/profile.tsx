@@ -865,51 +865,55 @@ export default function ProfilePage() {
             </div>
           </DialogHeader>
 
-          <div className="flex flex-col md:flex-row h-[calc(100vh-240px)] max-h-[650px]">
-            {/* Main Editor Area */}
-            <div className="flex-1 relative bg-[#050505] overflow-hidden border-b md:border-b-0 md:border-r border-white/5 min-h-[350px] md:min-h-0">
+          <div className="flex flex-col md:flex-row" style={{ height: 'min(calc(100vh - 180px), 600px)' }}>
+            {/* Main Editor Area - Cropper needs a positioned parent with explicit dimensions */}
+            <div className="flex-1 relative min-h-[300px]" style={{ backgroundColor: '#0a0a0a' }}>
               {bannerToCrop && (
-                <div className="absolute inset-0">
-                  <Cropper
-                    image={bannerToCrop}
-                    crop={crop}
-                    zoom={zoom}
-                    rotation={rotation}
-                    aspect={21 / 5}
-                    onCropChange={setCrop}
-                    onCropComplete={onCropComplete}
-                    onZoomChange={setZoom}
-                    showGrid={true}
-                    classes={{
-                      containerClassName: "cropper-container",
-                    }}
-                    style={{
-                      containerStyle: { width: '100%', height: '100%', position: 'relative' },
-                      cropAreaStyle: {
-                        border: "2px solid #3b82f6",
-                        boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.7)"
-                      },
-                      mediaStyle: {
-                        filter: `
-                          brightness(${filters.brightness}%) 
-                          contrast(${filters.contrast}%) 
-                          saturate(${filters.saturation}%) 
-                          grayscale(${filters.grayscale}%) 
-                          sepia(${filters.sepia}%) 
-                          blur(${filters.blur}px)
-                        `
-                      }
-                    }}
-                  />
-                </div>
+                <Cropper
+                  image={bannerToCrop}
+                  crop={crop}
+                  zoom={zoom}
+                  rotation={rotation}
+                  aspect={21 / 5}
+                  onCropChange={setCrop}
+                  onCropComplete={onCropComplete}
+                  onZoomChange={setZoom}
+                  showGrid={true}
+                  objectFit="contain"
+                  style={{
+                    containerStyle: {
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: '#0a0a0a'
+                    },
+                    cropAreaStyle: {
+                      border: '3px solid #3b82f6',
+                      borderRadius: '4px'
+                    },
+                    mediaStyle: {
+                      filter: `
+                        brightness(${filters.brightness}%) 
+                        contrast(${filters.contrast}%) 
+                        saturate(${filters.saturation}%) 
+                        grayscale(${filters.grayscale}%) 
+                        sepia(${filters.sepia}%) 
+                        blur(${filters.blur}px)
+                      `
+                    }
+                  }}
+                />
               )}
 
-              {/* Overlay Instructions (Desktop only) */}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 hidden md:flex items-center gap-2 px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-full border border-white/10 text-[10px] uppercase tracking-widest text-white/50">
+              {/* Overlay Instructions */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2 px-3 py-1.5 bg-black/70 backdrop-blur-md rounded-full border border-white/10 text-[10px] uppercase tracking-widest text-white/50 pointer-events-none">
                 <Maximize className="w-3 h-3" />
                 {language === "pt-BR" ? "Arraste para ajustar" : "Drag to adjust"}
               </div>
             </div>
+
 
             {/* Controls Sidebar */}
             <div className="w-full md:w-80 flex flex-col bg-[#0f0f11]">
