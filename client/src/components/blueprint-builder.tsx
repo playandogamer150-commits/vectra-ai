@@ -25,6 +25,7 @@ import { useI18n } from "@/lib/i18n";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { PromptBlock, LlmProfile } from "@shared/schema";
 import { Plus, X, GripVertical, Save, Loader2 } from "lucide-react";
+import { InfoGuide } from "@/components/info-guide";
 
 interface UserBlueprintData {
   id?: string;
@@ -93,11 +94,11 @@ export function BlueprintBuilder({ open, onOpenChange, editData, onSuccess }: Bl
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const endpoint = editData?.id 
-        ? `/api/user-blueprints/${editData.id}` 
+      const endpoint = editData?.id
+        ? `/api/user-blueprints/${editData.id}`
         : "/api/user-blueprints";
       const method = editData?.id ? "PATCH" : "POST";
-      
+
       const res = await apiRequest(method, endpoint, {
         name,
         description,
@@ -110,20 +111,20 @@ export function BlueprintBuilder({ open, onOpenChange, editData, onSuccess }: Bl
       return res.json();
     },
     onSuccess: () => {
-      toast({ 
-        title: editData?.id 
-          ? (t.blueprintBuilder?.updated || "Blueprint updated") 
-          : (t.blueprintBuilder?.created || "Blueprint created") 
+      toast({
+        title: editData?.id
+          ? (t.blueprintBuilder?.updated || "Blueprint updated")
+          : (t.blueprintBuilder?.created || "Blueprint created")
       });
       queryClient.invalidateQueries({ queryKey: ["/api/user-blueprints"] });
       onOpenChange(false);
       onSuccess?.();
     },
     onError: (error: Error) => {
-      toast({ 
-        title: t.blueprintBuilder?.error || "Error", 
-        description: error.message, 
-        variant: "destructive" 
+      toast({
+        title: t.blueprintBuilder?.error || "Error",
+        description: error.message,
+        variant: "destructive"
       });
     },
   });
@@ -175,8 +176,8 @@ export function BlueprintBuilder({ open, onOpenChange, editData, onSuccess }: Bl
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle data-testid="text-builder-title">
-            {editData?.id 
-              ? (t.blueprintBuilder?.editTitle || "Edit Blueprint") 
+            {editData?.id
+              ? (t.blueprintBuilder?.editTitle || "Edit Blueprint")
               : (t.blueprintBuilder?.createTitle || "Create Blueprint")}
           </DialogTitle>
         </DialogHeader>
@@ -232,10 +233,10 @@ export function BlueprintBuilder({ open, onOpenChange, editData, onSuccess }: Bl
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddTag())}
                   data-testid="input-blueprint-tag"
                 />
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="icon" 
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
                   onClick={handleAddTag}
                   data-testid="button-add-tag"
                 >
@@ -247,7 +248,7 @@ export function BlueprintBuilder({ open, onOpenChange, editData, onSuccess }: Bl
                   {tags.map(tag => (
                     <Badge key={tag} variant="secondary" className="gap-1">
                       {tag}
-                      <button 
+                      <button
                         onClick={() => handleRemoveTag(tag)}
                         className="hover:text-destructive"
                         data-testid={`button-remove-tag-${tag}`}
@@ -287,7 +288,7 @@ export function BlueprintBuilder({ open, onOpenChange, editData, onSuccess }: Bl
           <div className="space-y-4 overflow-hidden flex flex-col">
             <div className="flex-1 space-y-3 overflow-hidden">
               <Label>{t.blueprintBuilder?.selectedBlocks || "Selected Blocks"} ({selectedBlocks.length})</Label>
-              
+
               {selectedBlocks.length === 0 ? (
                 <div className="p-4 rounded-lg border border-dashed text-center text-muted-foreground text-sm">
                   {t.blueprintBuilder?.noBlocksHint || "Add blocks from below to define your blueprint structure"}
@@ -303,8 +304,16 @@ export function BlueprintBuilder({ open, onOpenChange, editData, onSuccess }: Bl
                           className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 border"
                         >
                           <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
-                          <div className="flex-1 min-w-0">
+                          <div className="flex-1 min-w-0 flex items-center gap-2">
                             <div className="font-medium text-sm truncate">{block?.key || blockKey}</div>
+                            {block && (
+                              <InfoGuide title={block.label}>
+                                <p className="font-medium">{block.label}</p>
+                                <p className="opacity-80 mt-1 font-mono text-[10px] bg-black/50 p-1 rounded break-all">
+                                  {block.template}
+                                </p>
+                              </InfoGuide>
+                            )}
                           </div>
                           <div className="flex gap-1">
                             <Button
@@ -356,20 +365,29 @@ export function BlueprintBuilder({ open, onOpenChange, editData, onSuccess }: Bl
                 <ScrollArea className="h-[200px] border rounded-lg p-2">
                   <div className="grid grid-cols-2 gap-1">
                     {blocks?.filter(b => !selectedBlocks.includes(b.key)).map(block => (
-                      <button
-                        key={block.id}
-                        type="button"
-                        onClick={() => handleAddBlock(block.key)}
-                        className="text-left p-2 rounded-lg border hover-elevate active-elevate-2 transition-colors"
-                        data-testid={`button-add-block-${block.key}`}
-                      >
-                        <div className="font-medium text-sm truncate">{block.key}</div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {typeof block.template === 'string' 
-                            ? block.template.slice(0, 50) 
-                            : JSON.stringify(block.template).slice(0, 50)}...
+                      <div key={block.id} className="relative group">
+                        <button
+                          type="button"
+                          onClick={() => handleAddBlock(block.key)}
+                          className="w-full text-left p-2 rounded-lg border hover-elevate active-elevate-2 transition-colors pr-8"
+                          data-testid={`button-add-block-${block.key}`}
+                        >
+                          <div className="font-medium text-sm truncate">{block.key}</div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {typeof block.template === 'string'
+                              ? block.template.slice(0, 50)
+                              : JSON.stringify(block.template).slice(0, 50)}...
+                          </div>
+                        </button>
+                        <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <InfoGuide title={block.label}>
+                            <p className="font-medium">{block.label}</p>
+                            <p className="opacity-80 mt-1 font-mono text-[10px] bg-black/50 p-1 rounded break-all">
+                              {block.template}
+                            </p>
+                          </InfoGuide>
                         </div>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 </ScrollArea>
@@ -379,8 +397,8 @@ export function BlueprintBuilder({ open, onOpenChange, editData, onSuccess }: Bl
         </div>
 
         <DialogFooter className="mt-4 pt-4 border-t">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => onOpenChange(false)}
             data-testid="button-cancel-blueprint"
           >
@@ -396,8 +414,8 @@ export function BlueprintBuilder({ open, onOpenChange, editData, onSuccess }: Bl
             ) : (
               <Save className="w-4 h-4 mr-2" />
             )}
-            {editData?.id 
-              ? (t.blueprintBuilder?.update || "Update") 
+            {editData?.id
+              ? (t.blueprintBuilder?.update || "Update")
               : (t.blueprintBuilder?.save || "Save Blueprint")}
           </Button>
         </DialogFooter>
