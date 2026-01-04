@@ -847,15 +847,19 @@ export default function ProfilePage() {
 
       {/* Banner Editor Modal */}
       <Dialog open={bannerEditorOpen} onOpenChange={setBannerEditorOpen}>
-        <DialogContent className="max-w-4xl bg-[#0a0a0b] border-white/10 text-white p-0 overflow-hidden shadow-2xl">
-          <DialogHeader className="p-4 md:p-6 border-b border-white/5 bg-black/40 backdrop-blur-md sticky top-0 z-50">
+        <DialogContent
+          className="max-w-4xl w-[95vw] bg-[#0a0a0b] border-white/10 text-white p-0 overflow-hidden shadow-2xl"
+          style={{ maxHeight: '90vh' }}
+        >
+          {/* Header */}
+          <DialogHeader className="p-4 border-b border-white/10 bg-[#0a0a0b] shrink-0">
             <div className="flex items-center justify-between w-full pr-8">
-              <DialogTitle className="text-lg font-bold flex items-center gap-2">
-                <SlidersHorizontal className="w-5 h-5 text-white/60" />
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-white/60" />
                 <span>{language === "pt-BR" ? "Ajustar Banner" : "Adjust Banner"}</span>
               </DialogTitle>
               {croppedAreaPixels && (
-                <div className="hidden md:flex items-center gap-2 bg-white/5 px-3 py-1 rounded-full border border-white/5">
+                <div className="hidden md:flex items-center gap-2 bg-white/5 px-2 py-1 rounded border border-white/10">
                   <Maximize className="w-3 h-3 text-white/40" />
                   <span className="text-[10px] font-mono text-white/60">
                     {croppedAreaPixels.width} × {croppedAreaPixels.height}
@@ -865,9 +869,20 @@ export default function ProfilePage() {
             </div>
           </DialogHeader>
 
-          <div className="flex flex-col md:flex-row" style={{ height: 'min(calc(100vh - 180px), 600px)' }}>
-            {/* Main Editor Area - Cropper needs a positioned parent with explicit dimensions */}
-            <div className="flex-1 relative min-h-[300px]" style={{ backgroundColor: '#0a0a0a' }}>
+          {/* Main Content */}
+          <div className="flex flex-col md:flex-row overflow-hidden" style={{ height: 'calc(90vh - 140px)', maxHeight: '550px' }}>
+
+            {/* Cropper Area - MUST have explicit height and position:relative */}
+            <div
+              className="flex-1 md:flex-[2] shrink-0"
+              style={{
+                position: 'relative',
+                minHeight: '250px',
+                height: '100%',
+                backgroundColor: '#0a0a0a',
+                overflow: 'hidden'
+              }}
+            >
               {bannerToCrop && (
                 <Cropper
                   image={bannerToCrop}
@@ -879,19 +894,15 @@ export default function ProfilePage() {
                   onCropComplete={onCropComplete}
                   onZoomChange={setZoom}
                   showGrid={true}
-                  objectFit="contain"
                   style={{
                     containerStyle: {
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
+                      width: '100%',
+                      height: '100%',
                       backgroundColor: '#0a0a0a'
                     },
                     cropAreaStyle: {
-                      border: '3px solid #3b82f6',
-                      borderRadius: '4px'
+                      border: '2px solid #3b82f6',
+                      color: 'rgba(0, 0, 0, 0.6)'
                     },
                     mediaStyle: {
                       filter: `
@@ -907,31 +918,32 @@ export default function ProfilePage() {
                 />
               )}
 
-              {/* Overlay Instructions */}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2 px-3 py-1.5 bg-black/70 backdrop-blur-md rounded-full border border-white/10 text-[10px] uppercase tracking-widest text-white/50 pointer-events-none">
-                <Maximize className="w-3 h-3" />
-                {language === "pt-BR" ? "Arraste para ajustar" : "Drag to adjust"}
+              {/* Drag instruction overlay */}
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[100] pointer-events-none">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-black/80 backdrop-blur rounded-full border border-white/20 text-[10px] uppercase tracking-wider text-white/70">
+                  <Maximize className="w-3 h-3" />
+                  {language === "pt-BR" ? "Arraste para ajustar" : "Drag to adjust"}
+                </div>
               </div>
             </div>
 
-
             {/* Controls Sidebar */}
-            <div className="w-full md:w-80 flex flex-col bg-[#0f0f11]">
-              <div className="flex-1 overflow-y-auto p-5 space-y-8 custom-scrollbar">
+            <div className="w-full md:w-72 flex flex-col bg-[#0f0f10] border-l border-white/5 overflow-hidden shrink-0">
+              <div className="flex-1 overflow-y-auto p-4 space-y-6">
                 {/* Transform Section */}
                 <div className="space-y-4">
-                  <h4 className="text-[10px] uppercase tracking-[0.2em] text-white/30 font-bold mb-6">
+                  <h4 className="text-[10px] uppercase tracking-[0.15em] text-white/40 font-semibold">
                     {language === "pt-BR" ? "Transformação" : "Transform"}
                   </h4>
 
                   {/* Zoom */}
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2 text-white/60">
                         <ZoomIn className="w-3.5 h-3.5" />
                         <span>Zoom</span>
                       </div>
-                      <span className="font-mono text-white/40">{Math.round(zoom * 100)}%</span>
+                      <span className="font-mono text-white/40 text-[11px]">{Math.round(zoom * 100)}%</span>
                     </div>
                     <Slider
                       value={[zoom]}
@@ -943,15 +955,15 @@ export default function ProfilePage() {
                   </div>
 
                   {/* Rotation */}
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-2 text-white/60">
                         <RotateCw className="w-3.5 h-3.5" />
                         <span>{language === "pt-BR" ? "Rotação" : "Rotation"}</span>
                       </div>
-                      <span className="font-mono text-white/40">{rotation}°</span>
+                      <span className="font-mono text-white/40 text-[11px]">{rotation}°</span>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <Slider
                         value={[rotation]}
                         min={0}
@@ -963,7 +975,7 @@ export default function ProfilePage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 hover:bg-white/5 text-white/40"
+                        className="h-7 w-7 hover:bg-white/10 text-white/40"
                         onClick={() => setRotation(0)}
                       >
                         <RefreshCcw className="w-3 h-3" />
@@ -973,14 +985,14 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Filters Section */}
-                <div className="space-y-6 pt-6 border-t border-white/5">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-[10px] uppercase tracking-[0.2em] text-white/30 font-bold">
-                      {language === "pt-BR" ? "Filtros e Ajustes" : "Filters & Adjustments"}
+                <div className="space-y-4 pt-4 border-t border-white/10">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[10px] uppercase tracking-[0.15em] text-white/40 font-semibold">
+                      {language === "pt-BR" ? "Filtros" : "Filters"}
                     </h4>
                     <Button
                       variant="ghost"
-                      className="h-6 px-1.5 text-[10px] text-white/20 hover:text-white/60"
+                      className="h-5 px-1.5 text-[9px] text-white/30 hover:text-white/60"
                       onClick={() => setFilters({
                         brightness: 100,
                         contrast: 100,
@@ -995,10 +1007,10 @@ export default function ProfilePage() {
                   </div>
 
                   {/* Brightness */}
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-white/60">{language === "pt-BR" ? "Brilho" : "Brightness"}</span>
-                      <span className="font-mono text-white/40">{filters.brightness}%</span>
+                      <span className="font-mono text-white/40 text-[11px]">{filters.brightness}%</span>
                     </div>
                     <Slider
                       value={[filters.brightness]}
@@ -1010,10 +1022,10 @@ export default function ProfilePage() {
                   </div>
 
                   {/* Contrast */}
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-white/60">{language === "pt-BR" ? "Contraste" : "Contrast"}</span>
-                      <span className="font-mono text-white/40">{filters.contrast}%</span>
+                      <span className="font-mono text-white/40 text-[11px]">{filters.contrast}%</span>
                     </div>
                     <Slider
                       value={[filters.contrast]}
@@ -1025,10 +1037,10 @@ export default function ProfilePage() {
                   </div>
 
                   {/* Saturation */}
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-white/60">{language === "pt-BR" ? "Saturação" : "Saturation"}</span>
-                      <span className="font-mono text-white/40">{filters.saturation}%</span>
+                      <span className="font-mono text-white/40 text-[11px]">{filters.saturation}%</span>
                     </div>
                     <Slider
                       value={[filters.saturation]}
@@ -1038,58 +1050,13 @@ export default function ProfilePage() {
                       onValueChange={([v]) => setFilters(f => ({ ...f, saturation: v }))}
                     />
                   </div>
-
-                  {/* Grayscale */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-white/60">{language === "pt-BR" ? "Preto e Branco" : "Grayscale"}</span>
-                      <span className="font-mono text-white/40">{filters.grayscale}%</span>
-                    </div>
-                    <Slider
-                      value={[filters.grayscale]}
-                      min={0}
-                      max={100}
-                      step={1}
-                      onValueChange={([v]) => setFilters(f => ({ ...f, grayscale: v }))}
-                    />
-                  </div>
-
-                  {/* Sepia */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-white/60">{language === "pt-BR" ? "Sépia" : "Sepia"}</span>
-                      <span className="font-mono text-white/40">{filters.sepia}%</span>
-                    </div>
-                    <Slider
-                      value={[filters.sepia]}
-                      min={0}
-                      max={100}
-                      step={1}
-                      onValueChange={([v]) => setFilters(f => ({ ...f, sepia: v }))}
-                    />
-                  </div>
-
-                  {/* Blur */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-white/60">{language === "pt-BR" ? "Desfoque" : "Blur"}</span>
-                      <span className="font-mono text-white/40">{filters.blur}px</span>
-                    </div>
-                    <Slider
-                      value={[filters.blur]}
-                      min={0}
-                      max={20}
-                      step={0.5}
-                      onValueChange={([v]) => setFilters(f => ({ ...f, blur: v }))}
-                    />
-                  </div>
                 </div>
               </div>
 
-              {/* Sidebar Footer/Actions */}
-              <div className="p-5 border-t border-white/5 bg-black/20 flex flex-col gap-3">
+              {/* Footer Actions */}
+              <div className="p-4 border-t border-white/10 bg-black/30 flex flex-col gap-2 shrink-0">
                 <Button
-                  className="w-full bg-white text-black hover:bg-white/90 h-11 font-bold shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                  className="w-full bg-white text-black hover:bg-white/90 h-10 font-bold"
                   onClick={handleApplyBanner}
                   disabled={bannerUploading}
                 >
@@ -1107,7 +1074,7 @@ export default function ProfilePage() {
                 </Button>
                 <Button
                   variant="ghost"
-                  className="w-full text-white/40 hover:text-white hover:bg-white/5 h-10"
+                  className="w-full text-white/40 hover:text-white hover:bg-white/5 h-9"
                   onClick={() => {
                     setBannerEditorOpen(false);
                     setBannerToCrop(null);
