@@ -49,9 +49,31 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     app.use("/api/presets", presetsRouter);
     app.use("/api/stripe", stripeRouter);
 
-    // Health check
-    app.get("/api/health", (_req, res) => {
-        res.json({ status: "ok" });
+    // Health check with detailed status
+    const startTime = Date.now();
+    app.get("/api/health", async (_req, res) => {
+        const uptime = process.uptime();
+        try {
+            // Quick DB check
+            await storage.getProfiles();
+            res.json({
+                status: "ok",
+                timestamp: new Date().toISOString(),
+                uptime: `${Math.floor(uptime / 60)}m ${Math.floor(uptime % 60)}s`,
+                version: "1.2.0",
+                database: "connected",
+                environment: process.env.NODE_ENV || "development",
+            });
+        } catch (error) {
+            res.status(503).json({
+                status: "degraded",
+                timestamp: new Date().toISOString(),
+                uptime: `${Math.floor(uptime / 60)}m ${Math.floor(uptime % 60)}s`,
+                version: "1.2.0",
+                database: "disconnected",
+                error: "Database connection failed",
+            });
+        }
     });
 
     return httpServer;

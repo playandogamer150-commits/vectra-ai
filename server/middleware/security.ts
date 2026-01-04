@@ -362,34 +362,28 @@ export function contentSecurityPolicy(req: Request, res: Response, next: NextFun
 }
 
 // =============================================================================
-// INPUT SANITIZATION (ALTA #1)
+// INPUT SANITIZATION (Simplified - CRITICAL FIX)
 // =============================================================================
 
+// Only remove actual dangerous patterns - DO NOT escape normal characters
+// Escaping characters like & < > " ' breaks prompts, URLs, and normal user input
 const DANGEROUS_PATTERNS = [
-    /<script\b[^>]*>[\s\S]*?<\/script>/gi,
-    /javascript:/gi,
-    /on\w+\s*=/gi,
-    /data:text\/html/gi,
-    /<iframe/gi,
-    /<object/gi,
-    /<embed/gi,
-    /<form/gi,
-    /<!--/gi,
+    /\<script\b[^\>]*\>[\s\S]*?\<\/script\>/gi,  // Remove script tags
+    /javascript\s*:/gi,                           // Remove javascript: protocol
+    /\<iframe[^>]*\>/gi,                          // Remove iframe tags
+    /\<object[^>]*\>/gi,                          // Remove object tags
+    /\<embed[^>]*\>/gi,                           // Remove embed tags
 ];
 
 function sanitizeValue(value: any): any {
     if (typeof value === "string") {
         let sanitized = value;
+        // Only remove truly dangerous patterns
         for (const pattern of DANGEROUS_PATTERNS) {
             sanitized = sanitized.replace(pattern, "");
         }
-        // Escape HTML entities for common XSS vectors
-        sanitized = sanitized
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#x27;");
+        // DO NOT escape HTML entities - this breaks prompts!
+        // Escaping should happen at OUTPUT time, not INPUT time
         return sanitized;
     }
     if (Array.isArray(value)) {
@@ -406,17 +400,28 @@ function sanitizeValue(value: any): any {
 }
 
 export function inputSanitizer(req: Request, res: Response, next: NextFunction): void {
-    // Skip sanitization for file uploads and binary data
+    // Skip sanitization for file uploads, webhooks, and image generation
     if (req.is("multipart/form-data") || req.path.includes("/webhook")) {
+        return next();
+    }
+
+    // Skip sanitization for image generation endpoints - prompts need all characters
+    if (req.path.includes("/modelslab") || req.path.includes("/generate")) {
         return next();
     }
 
     // Skip for base64 image data (would break it)
     if (req.body?.imageData && typeof req.body.imageData === "string" &&
         req.body.imageData.startsWith("data:image/")) {
-        // Only sanitize non-image fields
         const { imageData, ...rest } = req.body;
         req.body = { ...sanitizeValue(rest), imageData };
+        return next();
+    }
+
+    // Also preserve images array for image generation
+    if (req.body?.images && Array.isArray(req.body.images)) {
+        const { images, ...rest } = req.body;
+        req.body = { ...sanitizeValue(rest), images };
         return next();
     }
 
@@ -430,6 +435,7 @@ export function inputSanitizer(req: Request, res: Response, next: NextFunction):
 
     next();
 }
+
 
 // =============================================================================
 // SECURE COOKIE CONFIGURATION (ALTA #2)
