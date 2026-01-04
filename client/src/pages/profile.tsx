@@ -872,46 +872,33 @@ export default function ProfilePage() {
           {/* Main Content */}
           <div className="flex flex-col md:flex-row overflow-hidden" style={{ height: 'calc(90vh - 140px)', maxHeight: '550px' }}>
 
-            {/* Cropper Area - MUST have explicit height and position:relative */}
-            <div
-              className="flex-1 md:flex-[2] shrink-0"
-              style={{
-                position: 'relative',
-                minHeight: '250px',
-                height: '100%',
-                backgroundColor: '#0a0a0a',
-                overflow: 'hidden'
-              }}
-            >
+            {/* Cropper Area */}
+            <div className="flex-1 md:flex-[2] relative overflow-hidden bg-black min-h-[350px]">
+              <style dangerouslySetInnerHTML={{
+                __html: `
+                .react-easy-crop_Container { background: #000 !important; }
+                .react-easy-crop_CropArea {
+                  border: 2px solid #3b82f6 !important;
+                  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.75) !important;
+                  color: #3b82f6 !important;
+                }
+                .react-easy-crop_CropAreaGrid::before, .react-easy-crop_CropAreaGrid::after {
+                  border-color: rgba(59, 130, 246, 0.2) !important;
+                }
+              `}} />
               {bannerToCrop && (
                 <Cropper
                   image={bannerToCrop}
                   crop={crop}
                   zoom={zoom}
                   rotation={rotation}
-                  aspect={21 / 5}
+                  aspect={4.2}
                   onCropChange={setCrop}
                   onCropComplete={onCropComplete}
                   onZoomChange={setZoom}
                   showGrid={true}
-                  cropShape="rect"
-                  classes={{
-                    containerClassName: "!bg-black",
-                    cropAreaClassName: "!border-2 !border-blue-500",
-                  }}
                   style={{
-                    containerStyle: {
-                      width: '100%',
-                      height: '100%',
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      backgroundColor: '#000'
-                    },
-                    cropAreaStyle: {
-                      border: '3px solid #3b82f6',
-                      boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.7)'
-                    },
+                    containerStyle: { width: '100%', height: '100%' },
                     mediaStyle: {
                       filter: `
                         brightness(${filters.brightness}%) 
@@ -925,13 +912,10 @@ export default function ProfilePage() {
                   }}
                 />
               )}
-
-              {/* Drag instruction overlay */}
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-[100] pointer-events-none">
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-black/80 backdrop-blur rounded-full border border-white/20 text-[10px] uppercase tracking-wider text-white/70">
-                  <Maximize className="w-3 h-3" />
-                  {language === "pt-BR" ? "Arraste para ajustar" : "Drag to adjust"}
-                </div>
+              {/* Overlay Instructions */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 px-3 py-1.5 bg-black/70 backdrop-blur rounded-full border border-white/10 text-[10px] uppercase tracking-widest text-white/50 pointer-events-none">
+                <Maximize className="w-3 h-3" />
+                {language === "pt-BR" ? "Arraste para ajustar" : "Drag to adjust"}
               </div>
             </div>
 
