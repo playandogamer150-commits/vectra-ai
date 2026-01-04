@@ -7,50 +7,47 @@ import { getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import { log } from "./lib/logger";
 import { rateLimiter } from "./middleware/rateLimiter";
+import cookieParser from "cookie-parser";
+import {
+  securityHeaders,
+  contentSecurityPolicy,
+  secureCookies,
+  inputSanitizer,
+  advancedRateLimiter,
+  logSecurityEvent
+} from "./middleware/security";
 
 const app = express();
 const httpServer = createServer(app);
 
-// Security headers middleware
-const IS_PRODUCTION = process.env.NODE_ENV === "production" || process.env.REPLIT_DEPLOYMENT === "1";
+// Environment detection
+const IS_PRODUCTION = process.env.NODE_ENV === "production" ||
+  process.env.RAILWAY_ENVIRONMENT === "production" ||
+  process.env.REPLIT_DEPLOYMENT === "1";
 
-app.use((req, res, next) => {
-  // Prevent clickjacking
-  res.setHeader("X-Frame-Options", "DENY");
-  // Prevent MIME type sniffing
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  // Enable XSS filter
-  res.setHeader("X-XSS-Protection", "1; mode=block");
-  // Referrer policy
-  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  // HSTS - enforce HTTPS in production
-  if (IS_PRODUCTION) {
-    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
-  }
-  // Content Security Policy - stricter in production, relaxed for development
-  const scriptSrc = IS_PRODUCTION
-    ? "'self' https://js.stripe.com https://fast.wistia.com https://fast.wistia.net"
-    : "'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://fast.wistia.com https://fast.wistia.net";
-  const styleSrc = IS_PRODUCTION
-    ? "'self' https://fonts.googleapis.com"
-    : "'self' 'unsafe-inline' https://fonts.googleapis.com";
+// =============================================================================
+// SECURITY MIDDLEWARE STACK (Enterprise-grade)
+// =============================================================================
 
-  res.setHeader("Content-Security-Policy", [
-    "default-src 'self'",
-    `script-src ${scriptSrc}`,
-    `style-src ${styleSrc}`,
-    "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: https: blob: https://fast.wistia.com",
-    "connect-src 'self' https://modelslab.com https://*.modelslab.com https://api.stripe.com https://*.stripe.com https://fast.wistia.com https://fast.wistia.net",
-    "frame-src https://js.stripe.com https://hooks.stripe.com https://fast.wistia.com https://fast.wistia.net https://*.wistia.com",
-    "frame-ancestors 'none'",
-  ].join("; "));
-  // Permissions policy
-  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  next();
-});
+// 1. Cookie parser (needed for CSRF and session handling)
+app.use(cookieParser());
 
-// Rate limiting
+// 2. Security headers (removes X-Powered-By, adds security headers)
+app.use(securityHeaders);
+
+// 3. Content Security Policy (dynamic nonce-based)
+app.use(contentSecurityPolicy);
+
+// 4. Secure cookie defaults
+app.use(secureCookies);
+
+// 5. Input sanitization (XSS protection) - before body parsing
+app.use(inputSanitizer);
+
+// 6. Advanced rate limiting (per-endpoint with blocking)
+app.use(advancedRateLimiter);
+
+// 7. Global rate limiting fallback
 app.use(rateLimiter);
 
 declare module "http" {

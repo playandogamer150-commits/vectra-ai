@@ -20,15 +20,23 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
+
+  const IS_PRODUCTION = process.env.NODE_ENV === "production" ||
+    process.env.RAILWAY_ENVIRONMENT === "production" ||
+    process.env.REPLIT_DEPLOYMENT === "1";
+
   return session({
-    secret: process.env.SESSION_SECRET || "vectra-secret-key",
+    secret: process.env.SESSION_SECRET || "vectra-secret-key-change-in-production",
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
+    name: "__Host-sid", // Secure cookie name prefix
     cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,     // CRÍTICO: Previne XSS de ler cookies
+      secure: IS_PRODUCTION, // HTTPS only em produção
+      sameSite: "strict", // CSRF protection
       maxAge: sessionTtl,
+      path: "/",
     },
   });
 }
@@ -64,19 +72,18 @@ export async function setupAuth(app: Express) {
       const users = await db.select().from(appUsers).where(eq(appUsers.username, username)).limit(1);
       const user = users[0];
 
-      if (!user) {
-        return done(null, false, { message: 'Incorrect username.' });
-      }
-
-      // If user exists but has no password (e.g. valid existing OAuth user without password set), check context
-      if (!user.password) {
-        return done(null, false, { message: 'Please use GitHub login for this account.' });
+      // SECURITY: Anti-enumeration - use generic message
+      if (!user || !user.password) {
+        // Log for monitoring but don't reveal if user exists
+        console.log(`[auth] Login attempt failed for username: ${username.substring(0, 3)}***`);
+        return done(null, false, { message: 'Invalid credentials' });
       }
 
       // Verify password
       const isValid = await comparePassword(user.password, password);
       if (!isValid) {
-        return done(null, false, { message: 'Incorrect password.' });
+        console.log(`[auth] Invalid password for user: ${user.id}`);
+        return done(null, false, { message: 'Invalid credentials' });
       }
 
       // Create session user object
@@ -182,7 +189,10 @@ export async function setupAuth(app: Express) {
       // Check if user exists
       const existingUser = await db.select().from(appUsers).where(eq(appUsers.username, username)).limit(1);
       if (existingUser.length > 0) {
-        return res.status(409).json({ message: "User already exists" });
+        // SECURITY: Anti-enumeration - don't reveal that user exists
+        // Add slight delay to prevent timing attacks
+        await new Promise(resolve => setTimeout(resolve, Math.random() * 500 + 200));
+        return res.status(400).json({ message: "Registration could not be completed" });
       }
 
       const hashedPassword = await hashPassword(password);

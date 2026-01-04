@@ -5,6 +5,7 @@ import { updateProfileSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { FREE_LIMITS, MODELSLAB_MODELS } from "../lib/quotas";
 import { log } from "../lib/logger";
+import { validateImageDataUrl } from "../middleware/fileValidation";
 
 const router = Router();
 
@@ -174,7 +175,7 @@ router.patch("/", async (req, res) => {
     }
 });
 
-// Avatar upload endpoint
+// Avatar upload endpoint - with enterprise-grade file validation
 router.post("/avatar", async (req, res) => {
     try {
         const userId = requireAuth(req, res);
@@ -186,16 +187,11 @@ router.post("/avatar", async (req, res) => {
             return res.status(400).json({ error: "Image data is required" });
         }
 
-        // Validate base64 data URL format
-        const dataUrlMatch = imageData.match(/^data:image\/(jpeg|jpg|png|webp|gif);base64,/);
-        if (!dataUrlMatch) {
-            return res.status(400).json({ error: "Invalid image format. Use JPEG, PNG, WebP or GIF." });
-        }
-
-        // Check size (limit to ~10MB of base64 data)
-        const MAX_SIZE = 10 * 1024 * 1024 * 1.37; // ~10MB accounting for base64 overhead
-        if (imageData.length > MAX_SIZE) {
-            return res.status(400).json({ error: "Image too large. Maximum size is 10MB." });
+        // Enterprise-grade file validation (magic numbers, MIME, size, malicious content)
+        const validation = validateImageDataUrl(imageData, "avatar");
+        if (!validation.valid) {
+            log(`Avatar upload rejected for user ${userId}: ${validation.error}`, "security", "warn");
+            return res.status(400).json({ error: validation.error });
         }
 
         // Update user avatar
@@ -205,6 +201,7 @@ router.post("/avatar", async (req, res) => {
             return res.status(500).json({ error: "Failed to update avatar" });
         }
 
+        log(`Avatar updated for user ${userId}`, "profile", "info");
         res.json({ success: true, avatarUrl: imageData });
     } catch (error) {
         console.error("Error uploading avatar:", error);
@@ -231,45 +228,33 @@ router.delete("/avatar", async (req, res) => {
     }
 });
 
-// Banner upload endpoint
+// Banner upload endpoint - with enterprise-grade file validation
 router.post("/banner", async (req, res) => {
     try {
         const userId = requireAuth(req, res);
         if (!userId) return;
 
-        console.log(`[Banner Upload] Start - User: ${userId}`);
         const { imageData } = req.body;
 
         if (!imageData || typeof imageData !== "string") {
-            console.log("[Banner Upload] Error: No image data");
             return res.status(400).json({ error: "Image data is required" });
         }
 
-        const sizeInMB = imageData.length / (1024 * 1024);
-        console.log(`[Banner Upload] Image Size: ${sizeInMB.toFixed(2)} MB`);
-
-        // Validate base64 data URL format
-        const dataUrlMatch = imageData.match(/^data:image\/(jpeg|jpg|png|webp);base64,/);
-        if (!dataUrlMatch) {
-            console.log("[Banner Upload] Error: Invalid format");
-            return res.status(400).json({ error: "Invalid image format. Use JPEG, PNG or WebP." });
-        }
-
-        // Check size (limit to ~15MB of original file size)
-        const MAX_SIZE = 15 * 1024 * 1024 * 1.37; // ~15MB accounting for base64 overhead
-        if (imageData.length > MAX_SIZE) {
-            console.log("[Banner Upload] Error: Size exceeded");
-            return res.status(400).json({ error: "Image too large. Maximum size is 15MB." });
+        // Enterprise-grade file validation (magic numbers, MIME, size, malicious content)
+        const validation = validateImageDataUrl(imageData, "banner");
+        if (!validation.valid) {
+            log(`Banner upload rejected for user ${userId}: ${validation.error}`, "security", "warn");
+            return res.status(400).json({ error: validation.error });
         }
 
         // Update user banner
-        console.log("[Banner Upload] Updating DB...");
         const updated = await storage.updateAppUser(userId, { bannerUrl: imageData });
 
         if (!updated) {
             return res.status(500).json({ error: "Failed to update banner" });
         }
 
+        log(`Banner updated for user ${userId}`, "profile", "info");
         res.json({ success: true, bannerUrl: imageData });
     } catch (error) {
         console.error("Error uploading banner:", error);
