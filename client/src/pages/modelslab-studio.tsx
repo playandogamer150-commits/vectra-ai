@@ -2425,6 +2425,19 @@ export default function ModelsLabStudioPage() {
                       alt={`Generated ${index + 1}`}
                       className="w-full max-h-[70vh] object-contain rounded-lg border bg-black/20"
                       data-testid={`img-result-${index}`}
+                      onError={(e) => {
+                        // Replace broken image with error placeholder
+                        const target = e.currentTarget;
+                        target.onerror = null;
+                        target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 24 24' fill='none' stroke='%23ef4444' stroke-width='1'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'/%3E%3Cline x1='3' y1='3' x2='21' y2='21'/%3E%3Cline x1='21' y1='3' x2='3' y2='21'/%3E%3C/svg%3E";
+                        target.classList.add("opacity-50");
+                        // Notify user
+                        toast({
+                          title: t.common?.error || "Error",
+                          description: "Failed to load generated image. The image URL may have expired.",
+                          variant: "destructive"
+                        });
+                      }}
                     />
                     <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Button

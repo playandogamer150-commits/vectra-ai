@@ -321,11 +321,12 @@ export function contentSecurityPolicy(req: Request, res: Response, next: NextFun
         // Fonts
         "font-src 'self' https://fonts.gstatic.com data:",
 
-        // Images - more restricted (removed blob: for security)
-        "img-src 'self' data: https://fast.wistia.com https://*.modelslab.com https://*.cloudflare.com",
+        // Images - allow necessary sources for image generation API
+        // blob: needed for download URLs, r2.dev for Cloudflare R2, stablediffusionapi for ModelsLab CDN
+        "img-src 'self' data: blob: https://fast.wistia.com https://*.modelslab.com https://*.cloudflare.com https://*.r2.dev https://*.stablediffusionapi.com https://cdn.modelslab.com https://cdn2.stablediffusionapi.com",
 
         // Connections
-        "connect-src 'self' https://modelslab.com https://*.modelslab.com https://api.stripe.com https://*.stripe.com https://fast.wistia.com https://fast.wistia.net",
+        "connect-src 'self' https://modelslab.com https://*.modelslab.com https://*.stablediffusionapi.com https://*.r2.dev https://api.stripe.com https://*.stripe.com https://fast.wistia.com https://fast.wistia.net",
 
         // Frames - specific domains only
         "frame-src https://js.stripe.com https://hooks.stripe.com https://fast.wistia.com https://fast.wistia.net",
@@ -342,8 +343,8 @@ export function contentSecurityPolicy(req: Request, res: Response, next: NextFun
         // Object/Embed - disable plugins
         "object-src 'none'",
 
-        // Media
-        "media-src 'self' https://*.modelslab.com https://fast.wistia.com blob:",
+        // Media - also allow R2 and stablediffusionapi for videos
+        "media-src 'self' https://*.modelslab.com https://*.stablediffusionapi.com https://*.r2.dev https://fast.wistia.com blob:",
 
         // Worker
         "worker-src 'self' blob:",

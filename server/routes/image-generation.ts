@@ -508,14 +508,20 @@ This is a HARD CONSTRAINT - violation means image rejection.`;
 
                         const cleanBase64 = base64Content.trim();
 
-                        // Detect image type from base64 header
-                        let mimeType = 'image/png';
-                        if (cleanBase64.startsWith('/9j/')) {
-                            mimeType = 'image/jpeg';
-                        } else if (cleanBase64.startsWith('iVBOR')) {
-                            mimeType = 'image/png';
+                        // Check if the content already has a data URI prefix (avoid double-prefixing)
+                        if (cleanBase64.startsWith('data:image/')) {
+                            processedOutput.push(cleanBase64);
+                            console.log(`Base64 content already has data URI prefix, using as-is`);
+                        } else {
+                            // Detect image type from base64 header
+                            let mimeType = 'image/png';
+                            if (cleanBase64.startsWith('/9j/')) {
+                                mimeType = 'image/jpeg';
+                            } else if (cleanBase64.startsWith('iVBOR')) {
+                                mimeType = 'image/png';
+                            }
+                            processedOutput.push(`data:${mimeType};base64,${cleanBase64}`);
                         }
-                        processedOutput.push(`data:${mimeType};base64,${cleanBase64}`);
                         console.log(`Successfully converted .base64 URL to data URI (${cleanBase64.length} chars)`);
                     } catch (err) {
                         console.error('Failed to fetch/convert base64 content:', err);

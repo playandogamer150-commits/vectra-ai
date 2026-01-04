@@ -112,6 +112,13 @@ export default function GalleryImagesPage() {
                                         src={image.imageUrl}
                                         alt={image.prompt || "Generated image"}
                                         className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                        onError={(e) => {
+                                            // Replace broken image with a placeholder
+                                            const target = e.currentTarget;
+                                            target.onerror = null; // Prevent infinite loop
+                                            target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='1'%3E%3Crect x='3' y='3' width='18' height='18' rx='2' ry='2'/%3E%3Ccircle cx='8.5' cy='8.5' r='1.5'/%3E%3Cpath d='m21 15-5-5L5 21'/%3E%3C/svg%3E";
+                                            target.classList.add("opacity-50");
+                                        }}
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 

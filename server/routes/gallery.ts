@@ -174,12 +174,21 @@ proxyRouter.get("/media", async (req, res) => {
             return res.status(400).json({ error: "URL parameter required" });
         }
 
-        // Only allow proxying from our R2 bucket
+        // Allow proxying from trusted image/video sources
         const allowedDomains = [
+            // Cloudflare R2 buckets
+            "r2.dev",
             "pub-3626123a908346a7a8be8d9295f44e26.r2.dev",
+            // ModelsLab CDNs
             "modelslab.com",
             "cdn.modelslab.com",
+            "cdn2.modelslab.com",
+            // Stable Diffusion API CDNs
+            "stablediffusionapi.com",
+            "cdn.stablediffusionapi.com",
             "cdn2.stablediffusionapi.com",
+            // Cloudflare general
+            "cloudflare.com",
         ];
 
         const parsedUrl = new URL(url);
