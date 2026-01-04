@@ -1,18 +1,18 @@
 /**
  * =============================================================================
- * VECTRA AI - SIMPLE BANNER EDITOR
+ * VECTRA AI - PROFESSIONAL BANNER EDITOR
  * =============================================================================
  * 
- * Editor de banner minimalista e funcional, inspirado no YouTube e Twitter.
+ * Um editor de banner premium, eficiente e funcional.
  * 
  * Features:
- * - Caixa de seleção clara com aspect ratio fixo (1152x274)
- * - Overlay escuro fora da área de corte
- * - Apenas controle de zoom
- * - Drag para reposicionar
- * - UX simples e intuitiva
+ * - Seleção precisa com aspect ratio fixo (1152x274)
+ * - Controles avançados: Rotação, Flip Horizontal/Vertical
+ * - Guia Visual: Grade de Regra dos Terços
+ * - Zoom Interativo com botões e slider
+ * - UI Dark Mode elegante e intuitiva
  * 
- * @author Tech Lead Senior
+ * @author Antigravity
  * @date 2026-01-04
  */
 
@@ -26,8 +26,13 @@ import {
 } from '@/components/ui/dialog';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
-import { Loader2, Check, X, ZoomIn, Move } from 'lucide-react';
+import {
+    Loader2, Check, X, ZoomIn, ZoomOut, Move,
+    RotateCcw, RotateCw, FlipHorizontal, FlipVertical,
+    Grid3X3, Maximize2
+} from 'lucide-react';
 import getCroppedImg from '@/lib/image-utils';
+import { cn } from '@/lib/utils';
 
 interface SimpleBannerEditorProps {
     isOpen: boolean;
@@ -38,7 +43,7 @@ interface SimpleBannerEditorProps {
     language?: string;
 }
 
-// Banner dimensions: 1152 x 274 = aspect ratio 4.2:1
+// Banner dimensions: 1152 x 274 = aspect ratio ~4.2:1
 const BANNER_ASPECT_RATIO = 1152 / 274;
 
 export function SimpleBannerEditor({
@@ -51,6 +56,9 @@ export function SimpleBannerEditor({
 }: SimpleBannerEditorProps) {
     const [crop, setCrop] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
+    const [rotation, setRotation] = useState(0);
+    const [flip, setFlip] = useState({ horizontal: false, vertical: false });
+    const [showGrid, setShowGrid] = useState(true);
     const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
 
     const onCropComplete = useCallback((_croppedArea: Area, croppedAreaPixels: Area) => {
@@ -64,9 +72,9 @@ export function SimpleBannerEditor({
             const croppedImageBase64 = await getCroppedImg(
                 imageUrl,
                 croppedAreaPixels,
-                0, // no rotation
-                { horizontal: false, vertical: false }, // no flip
-                { brightness: 100, contrast: 100, saturation: 100, grayscale: 0, sepia: 0, blur: 0 } // no filters
+                rotation,
+                flip,
+                { brightness: 100, contrast: 100, saturation: 100, grayscale: 0, sepia: 0, blur: 0 }
             );
 
             if (croppedImageBase64) {
@@ -81,115 +89,247 @@ export function SimpleBannerEditor({
         // Reset state when closing
         setCrop({ x: 0, y: 0 });
         setZoom(1);
+        setRotation(0);
+        setFlip({ horizontal: false, vertical: false });
         setCroppedAreaPixels(null);
         onClose();
     };
 
+    const toggleFlipHorizontal = () => setFlip(prev => ({ ...prev, horizontal: !prev.horizontal }));
+    const toggleFlipVertical = () => setFlip(prev => ({ ...prev, vertical: !prev.vertical }));
+    const resetTransformations = () => {
+        setZoom(1);
+        setRotation(0);
+        setFlip({ horizontal: false, vertical: false });
+    };
+
     const t = {
-        title: language === 'pt-BR' ? 'Ajustar Banner' : 'Adjust Banner',
-        dragHint: language === 'pt-BR' ? 'Arraste para reposicionar' : 'Drag to reposition',
-        zoom: 'Zoom',
+        title: language === 'pt-BR' ? 'Ajustar Banner do Perfil' : 'Adjust Profile Banner',
+        dragHint: language === 'pt-BR' ? 'Arraste para posicionar' : 'Drag to position',
+        zoom: language === 'pt-BR' ? 'Zoom' : 'Zoom',
+        rotation: language === 'pt-BR' ? 'Rotação' : 'Rotation',
+        flip: language === 'pt-BR' ? 'Inverter' : 'Flip',
+        grid: language === 'pt-BR' ? 'Grade' : 'Grid',
+        reset: language === 'pt-BR' ? 'Resetar' : 'Reset',
         cancel: language === 'pt-BR' ? 'Cancelar' : 'Cancel',
-        save: language === 'pt-BR' ? 'Salvar' : 'Save',
+        save: language === 'pt-BR' ? 'Salvar Banner' : 'Save Banner',
         saving: language === 'pt-BR' ? 'Salvando...' : 'Saving...',
     };
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="max-w-4xl w-[95vw] bg-[#0a0a0b] border-white/10 text-white p-0 gap-0 overflow-hidden">
-                {/* Header - Minimal */}
-                <DialogHeader className="px-6 py-4 border-b border-white/10">
-                    <DialogTitle className="text-lg font-semibold text-white">
-                        {t.title}
-                    </DialogTitle>
+            <DialogContent className="max-w-5xl w-[95vw] bg-[#0a0a0b] border-white/10 text-white p-0 gap-0 overflow-hidden shadow-2xl">
+                {/* Header */}
+                <DialogHeader className="px-6 py-4 border-b border-white/10 bg-white/[0.02]">
+                    <div className="flex items-center justify-between">
+                        <DialogTitle className="text-xl font-bold text-white tracking-tight">
+                            {t.title}
+                        </DialogTitle>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setShowGrid(!showGrid)}
+                                className={cn(
+                                    "h-8 px-3 text-xs gap-2 transition-colors",
+                                    showGrid ? "bg-white/10 text-white" : "text-white/40 hover:text-white"
+                                )}
+                            >
+                                <Grid3X3 className="w-3.5 h-3.5" />
+                                {t.grid}
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={resetTransformations}
+                                className="h-8 px-3 text-xs gap-2 text-white/40 hover:text-white"
+                            >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                {t.reset}
+                            </Button>
+                        </div>
+                    </div>
                 </DialogHeader>
 
-                {/* Cropper Area - The main focus */}
-                <div className="relative w-full bg-black" style={{ height: '400px' }}>
-                    {/* Custom styles for react-easy-crop */}
-                    <style dangerouslySetInnerHTML={{
-                        __html: `
-              .simple-banner-cropper .reactEasyCrop_Container {
-                background: #000 !important;
-              }
-              .simple-banner-cropper .reactEasyCrop_CropArea {
-                border: 3px solid #ffffff !important;
-                box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7) !important;
-                color: transparent !important;
-              }
-              .simple-banner-cropper .reactEasyCrop_CropAreaGrid {
-                display: none !important;
-              }
-            `
-                    }} />
+                {/* Main Content Area */}
+                <div className="flex flex-col lg:flex-row h-full lg:h-[500px]">
 
-                    <div className="simple-banner-cropper w-full h-full">
-                        {imageUrl && (
-                            <Cropper
-                                image={imageUrl}
-                                crop={crop}
-                                zoom={zoom}
-                                aspect={BANNER_ASPECT_RATIO}
-                                onCropChange={setCrop}
-                                onZoomChange={setZoom}
-                                onCropComplete={onCropComplete}
-                                showGrid={false}
-                                style={{
-                                    containerStyle: {
-                                        width: '100%',
-                                        height: '100%',
-                                        backgroundColor: '#000'
-                                    },
-                                }}
-                            />
-                        )}
-                    </div>
+                    {/* Left: Cropper Area */}
+                    <div className="relative flex-1 bg-[#050505] min-h-[350px] lg:min-h-0 border-r border-white/5 overflow-hidden">
+                        <style dangerouslySetInnerHTML={{
+                            __html: `
+                                .professional-banner-cropper .reactEasyCrop_Container {
+                                    background: #000 !important;
+                                }
+                                .professional-banner-cropper .reactEasyCrop_CropArea {
+                                    border: 2px solid #ffffff !important;
+                                    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.85) !important;
+                                    color: transparent !important;
+                                }
+                                .professional-banner-cropper .reactEasyCrop_CropAreaGrid::before,
+                                .professional-banner-cropper .reactEasyCrop_CropAreaGrid::after {
+                                    border: 0.5px solid rgba(255, 255, 255, 0.15) !important;
+                                }
+                            `
+                        }} />
 
-                    {/* Drag hint overlay */}
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-                        <div className="flex items-center gap-2 px-4 py-2 bg-black/80 backdrop-blur-sm rounded-full border border-white/20 text-white/70 text-sm">
-                            <Move className="w-4 h-4" />
-                            <span>{t.dragHint}</span>
+                        <div className="professional-banner-cropper w-full h-full">
+                            {imageUrl && (
+                                <Cropper
+                                    image={imageUrl}
+                                    crop={crop}
+                                    zoom={zoom}
+                                    rotation={rotation}
+                                    aspect={BANNER_ASPECT_RATIO}
+                                    onCropChange={setCrop}
+                                    onZoomChange={setZoom}
+                                    onRotationChange={setRotation}
+                                    onCropComplete={onCropComplete}
+                                    showGrid={showGrid}
+                                    style={{
+                                        containerStyle: {
+                                            width: '100%',
+                                            height: '100%',
+                                            backgroundColor: '#050505'
+                                        },
+                                    }}
+                                />
+                            )}
+                        </div>
+
+                        {/* Centered Hint */}
+                        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-40">
+                            <div className="flex items-center gap-2 px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-full border border-white/10 text-[10px] uppercase font-bold tracking-widest text-white">
+                                <Move className="w-3 h-3" />
+                                {t.dragHint}
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Controls - Only Zoom */}
-                <div className="px-6 py-5 bg-[#0f0f10] border-t border-white/5">
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 text-white/50 text-sm shrink-0">
-                            <ZoomIn className="w-4 h-4" />
-                            <span>{t.zoom}</span>
+                    {/* Right: Detailed Controls */}
+                    <div className="w-full lg:w-[280px] bg-[#0c0c0d] p-6 space-y-8 flex flex-col justify-center">
+
+                        {/* Zoom Control */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-[11px] font-bold uppercase tracking-wider text-white/40">{t.zoom}</Label>
+                                <span className="text-[11px] font-mono text-white/60">{Math.round(zoom * 100)}%</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-lg bg-white/5 hover:bg-white/10"
+                                    onClick={() => setZoom(Math.max(1, zoom - 0.1))}
+                                >
+                                    <ZoomOut className="w-4 h-4" />
+                                </Button>
+                                <Slider
+                                    value={[zoom]}
+                                    min={1}
+                                    max={3}
+                                    step={0.01}
+                                    onValueChange={(value) => setZoom(value[0])}
+                                    className="flex-1"
+                                />
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 rounded-lg bg-white/5 hover:bg-white/10"
+                                    onClick={() => setZoom(Math.min(3, zoom + 0.1))}
+                                >
+                                    <ZoomIn className="w-4 h-4" />
+                                </Button>
+                            </div>
                         </div>
-                        <Slider
-                            value={[zoom]}
-                            min={1}
-                            max={3}
-                            step={0.01}
-                            onValueChange={(value) => setZoom(value[0])}
-                            className="flex-1"
-                        />
-                        <span className="text-white/40 text-sm font-mono w-12 text-right">
-                            {Math.round(zoom * 100)}%
-                        </span>
+
+                        {/* Rotation Control */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-[11px] font-bold uppercase tracking-wider text-white/40">{t.rotation}</Label>
+                                <span className="text-[11px] font-mono text-white/60">{rotation}°</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-9 w-9 bg-white/5 hover:bg-white/10"
+                                    onClick={() => setRotation((rotation - 90) % 360)}
+                                >
+                                    <RotateCcw className="w-4 h-4" />
+                                </Button>
+                                <Slider
+                                    value={[rotation]}
+                                    min={-180}
+                                    max={180}
+                                    step={1}
+                                    onValueChange={(value) => setRotation(value[0])}
+                                    className="flex-1 px-2"
+                                />
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-9 w-9 bg-white/5 hover:bg-white/10"
+                                    onClick={() => setRotation((rotation + 90) % 360)}
+                                >
+                                    <RotateCw className="w-4 h-4" />
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Flip Controls */}
+                        <div className="space-y-4">
+                            <Label className="text-[11px] font-bold uppercase tracking-wider text-white/40">{t.flip}</Label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Button
+                                    variant="ghost"
+                                    className={cn(
+                                        "h-10 text-xs gap-2 border border-white/5 transition-all",
+                                        flip.horizontal ? "bg-white text-black font-bold" : "bg-white/5 text-white/60 hover:text-white hover:bg-white/10"
+                                    )}
+                                    onClick={toggleFlipHorizontal}
+                                >
+                                    <FlipHorizontal className="w-4 h-4" />
+                                    Horiz.
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    className={cn(
+                                        "h-10 text-xs gap-2 border border-white/5 transition-all",
+                                        flip.vertical ? "bg-white text-black font-bold" : "bg-white/5 text-white/60 hover:text-white hover:bg-white/10"
+                                    )}
+                                    onClick={toggleFlipVertical}
+                                >
+                                    <FlipVertical className="w-4 h-4" />
+                                    Vert.
+                                </Button>
+                            </div>
+                        </div>
+
+                        {/* Preview Stats */}
+                        <div className="mt-auto pt-6 border-t border-white/5">
+                            <div className="flex items-center justify-between text-[10px] text-white/30 uppercase tracking-tighter">
+                                <span>Output Ratio</span>
+                                <span className="text-white/60">4.2:1 (1152x274)</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 {/* Footer Actions */}
-                <div className="flex items-center justify-end gap-3 px-6 py-4 bg-[#0a0a0b] border-t border-white/10">
+                <div className="flex items-center justify-end gap-3 px-8 py-5 bg-[#0a0a0b] border-t border-white/10">
                     <Button
                         variant="ghost"
                         onClick={handleClose}
                         disabled={isSaving}
-                        className="text-white/60 hover:text-white hover:bg-white/10"
+                        className="h-11 px-6 text-white/40 hover:text-white hover:bg-white/5 font-medium transition-all"
                     >
-                        <X className="w-4 h-4 mr-2" />
                         {t.cancel}
                     </Button>
                     <Button
                         onClick={handleSave}
                         disabled={isSaving || !croppedAreaPixels}
-                        className="bg-white text-black hover:bg-white/90 font-medium px-6"
+                        className="h-11 px-10 bg-white text-black hover:bg-white/90 font-bold shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-all active:scale-95"
                     >
                         {isSaving ? (
                             <>

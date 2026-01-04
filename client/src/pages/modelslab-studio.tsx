@@ -1445,9 +1445,9 @@ export default function ModelsLabStudioPage() {
   // Uses 'subject' (raw user text) for pure text-to-image, or 'prompt' (compiled) if Prompt Engine is active
   const generateText2ImgMutation = useMutation({
     mutationFn: async () => {
-      // For text2img, prefer the raw subject text (what user types in the Assunto field)
-      // If Prompt Engine is ON and has generated a prompt, use that instead
-      const textPrompt = usePromptEngine && prompt.trim() ? prompt : subject;
+      // For text2img, prefer the manual prompt text if Prompt Engine is OFF
+      // If Prompt Engine is ON, use the compiled prompt
+      const textPrompt = usePromptEngine ? prompt : (prompt.trim() ? prompt : subject);
 
       if (!textPrompt.trim()) {
         throw new Error(t.modelslab.promptRequired || "Prompt is required for text-to-image generation");
@@ -1530,12 +1530,14 @@ export default function ModelsLabStudioPage() {
 
   const refinePromptMutation = useMutation({
     mutationFn: async () => {
-      if (!subject.trim()) {
+      const inputPrompt = usePromptEngine ? subject : (prompt.trim() ? prompt : subject);
+
+      if (!inputPrompt.trim()) {
         throw new Error("Digite um prompt para refinar");
       }
 
       const res = await apiRequest("POST", "/api/modelslab/refine-prompt", {
-        prompt: subject,
+        prompt: inputPrompt,
         aspectRatio: cinematicSettings?.optics?.aspectRatio || aspectRatio,
       });
       try {
@@ -1546,8 +1548,12 @@ export default function ModelsLabStudioPage() {
     },
     onSuccess: (data) => {
       setRefinedPromptData(data);
-      // Optionally update the subject with the refined prompt
-      setSubject(data.refined);
+      // Update the correct field based on engine status
+      if (usePromptEngine) {
+        setSubject(data.refined);
+      } else {
+        setPrompt(data.refined);
+      }
       toast({
         title: t.modelslab.promptRefined || "Prompt Refinado!",
         description: `Tipo detectado: ${data.analysis.type}`,
@@ -2215,50 +2221,7 @@ export default function ModelsLabStudioPage() {
                       data-testid="textarea-subject"
                     />
 
-                    {/* Refine Prompt Button - Only in text2img mode */}
-                    {generationMode === "text2img" && (
-                      <div className="space-y-2">
-                        <Button
-                          onClick={() => refinePromptMutation.mutate()}
-                          disabled={!subject.trim() || refinePromptMutation.isPending}
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                          data-testid="button-refine-prompt"
-                        >
-                          {refinePromptMutation.isPending ? (
-                            <>
-                              <VectraLaodingTriangle className="w-3 h-3 mr-2" />
-                              {t.modelslab.refiningPrompt || "Refinando..."}
-                            </>
-                          ) : (
-                            <>
-                              <Wand2 className="w-3 h-3 mr-2" />
-                              {t.modelslab.refinePrompt || "Refinar Prompt com IA"}
-                            </>
-                          )}
-                        </Button>
-
-                        {/* Show analysis results */}
-                        {refinedPromptData && (
-                          <div className="text-[10px] p-2 rounded-md bg-muted/50 space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <Badge variant="secondary" className="text-[9px]">
-                                {refinedPromptData.analysis.type}
-                              </Badge>
-                              {refinedPromptData.analysis.styles.slice(0, 2).map((s, i) => (
-                                <Badge key={i} variant="outline" className="text-[9px]">{s}</Badge>
-                              ))}
-                            </div>
-                            {refinedPromptData.suggestions.length > 0 && (
-                              <p className="text-muted-foreground text-[9px] mt-1">
-                                💡 {refinedPromptData.suggestions[0]}
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    {/* Refine Prompt Button removed from here and moved to main prompt area */}
                   </div>
 
                   {/* Seed */}
@@ -2332,13 +2295,55 @@ export default function ModelsLabStudioPage() {
               <span className="vectra-studio-card-title">{t.modelslab.prompt}</span>
             </div>
             <div className="space-y-4">
-              <Textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                placeholder={t.modelslab.promptPlaceholder}
-                rows={4}
-                data-testid="textarea-prompt"
-              />
+              <div className="relative">
+                <Textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder={t.modelslab.promptPlaceholder}
+                  rows={4}
+                  data-testid="textarea-prompt"
+                  className="pr-10"
+                />
+
+                {/* Refine Prompt Button - Floating inside textarea for clean UI */}
+                {generationMode === "text2img" && (
+                  <Button
+                    onClick={() => refinePromptMutation.mutate()}
+                    disabled={(!prompt.trim() && !subject.trim()) || refinePromptMutation.isPending}
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-2 right-2 h-8 w-8 text-white/40 hover:text-white"
+                    title={t.modelslab.refinePrompt || "Refinar Prompt"}
+                    data-testid="button-refine-prompt"
+                  >
+                    {refinePromptMutation.isPending ? (
+                      <VectraLaodingTriangle className="w-4 h-4" />
+                    ) : (
+                      <Wand2 className="w-4 h-4" />
+                    )}
+                  </Button>
+                )}
+              </div>
+
+              {/* Show analysis results below textarea if available */}
+              {generationMode === "text2img" && refinedPromptData && (
+                <div className="p-2 rounded-md bg-white/[0.03] border border-white/5 space-y-1 animate-in fade-in slide-in-from-top-1 duration-300">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-white/40">AI Analysis:</span>
+                    <Badge variant="secondary" className="text-[8px] h-4 bg-white/10 text-white">
+                      {refinedPromptData.analysis.type}
+                    </Badge>
+                    {refinedPromptData.analysis.styles.slice(0, 3).map((s, i) => (
+                      <Badge key={i} variant="outline" className="text-[8px] h-4 border-white/10 text-white/60">{s}</Badge>
+                    ))}
+                  </div>
+                  {refinedPromptData.suggestions.length > 0 && (
+                    <p className="text-white/40 text-[9px] mt-1 italic">
+                      💡 Tip: {refinedPromptData.suggestions[0]}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>{t.modelslab.aspectRatio}</Label>
@@ -2366,7 +2371,7 @@ export default function ModelsLabStudioPage() {
                   disabled={
                     isGeneratingImage ||
                     (generationMode === "text2img"
-                      ? !(usePromptEngine && prompt.trim() ? prompt : subject).trim()
+                      ? !(usePromptEngine ? prompt : (prompt.trim() ? prompt : subject)).trim()
                       : generationMode === "product-avatar"
                         ? (!prompt.trim() || !faceImage || !productImage)
                         : !prompt.trim()) ||
