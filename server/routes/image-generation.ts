@@ -491,11 +491,21 @@ This is a HARD CONSTRAINT - violation means image rejection.`;
             for (const url of data.output) {
                 if (typeof url === 'string' && url.endsWith('.base64')) {
                     try {
+                        console.log(`Fetching base64 content from: ${url}`);
                         // Fetch the base64 content from the file
                         const base64Response = await fetchWithTimeout(url, {
                             method: "GET",
-                        }, 30000);
+                        }, 45000); // Increased timeout for base64 fetch
+
+                        if (!base64Response.ok) {
+                            throw new Error(`Failed to fetch base64 file: ${base64Response.status} ${base64Response.statusText}`);
+                        }
+
                         const base64Content = await base64Response.text();
+                        if (!base64Content || base64Content.length < 100) {
+                            throw new Error("Invalid base64 content received (too short)");
+                        }
+
                         const cleanBase64 = base64Content.trim();
 
                         // Detect image type from base64 header
@@ -506,14 +516,24 @@ This is a HARD CONSTRAINT - violation means image rejection.`;
                             mimeType = 'image/png';
                         }
                         processedOutput.push(`data:${mimeType};base64,${cleanBase64}`);
+                        console.log(`Successfully converted .base64 URL to data URI (${cleanBase64.length} chars)`);
                     } catch (err) {
-                        console.error('Failed to fetch base64 content:', err);
-                        processedOutput.push(url); // Fallback to original
+                        console.error('Failed to fetch/convert base64 content:', err);
+                        // Do NOT push the original URL as fallback if it's a .base64 file
+                        // browsers cannot render .base64 text files in <img> tags
+                        // This prevents the "broken image" icon in frontend
                     }
                 } else {
                     processedOutput.push(url);
                 }
             }
+
+            // If we had outputs but failed to process any of them, mark as error
+            if (data.output.length > 0 && processedOutput.length === 0) {
+                console.error("All outputs failed processing");
+                return res.status(500).json({ error: "Generated images could not be retrieved. Please try again." });
+            }
+
             data.output = processedOutput;
         }
 
