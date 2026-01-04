@@ -38,6 +38,15 @@ router.post("/checkout", async (req, res) => {
             return res.status(400).json({ error: "Price ID is required" });
         }
 
+        // Validate Price ID against active products
+        const products = await stripeService.listProductsWithPrices();
+        const validPrice = products.find(p => p.priceId === priceId);
+
+        if (!validPrice) {
+            console.warn(`Invalid or inactive Price ID requested: ${priceId} by user ${userId}`);
+            return res.status(400).json({ error: "Invalid price selected. Please refresh the page and try again." });
+        }
+
         let appUser = await storage.getAppUser(userId);
 
         if (appUser?.plan === "pro") {
@@ -49,23 +58,30 @@ router.post("/checkout", async (req, res) => {
         const userName = user?.claims?.name || user?.claims?.sub || "User";
 
         if (!customerId) {
-            const customer = await stripeService.createCustomer(
-                userEmail,
-                userId,
-                userName
-            );
-            customerId = customer.id;
+            try {
+                const customer = await stripeService.createCustomer(
+                    userEmail,
+                    userId,
+                    userName
+                );
+                customerId = customer.id;
 
-            if (appUser) {
-                await stripeService.updateUserStripeInfo(userId, { stripeCustomerId: customerId });
-            } else {
-                await storage.createAppUserFromReplit(userId, userName, customerId);
+                if (appUser) {
+                    await stripeService.updateUserStripeInfo(userId, { stripeCustomerId: customerId });
+                } else {
+                    await storage.createAppUserFromReplit(userId, userName, customerId);
+                }
+                appUser = await storage.getAppUser(userId);
+            } catch (err: any) {
+                console.error("Failed to create Stripe customer:", err);
+                return res.status(500).json({ error: "Failed to initialize billing account: " + err.message });
             }
-            appUser = await storage.getAppUser(userId);
         }
 
         // Ensure customerId is a string
-        if (!customerId) throw new Error("Failed to create customer");
+        if (!customerId) {
+            return res.status(500).json({ error: "Failed to resolve customer ID" });
+        }
 
         const baseUrl = `${req.protocol}://${req.get('host')}`;
         const locale = req.body.locale || req.headers['accept-language']?.split(',')[0] || 'pt-BR';
