@@ -894,15 +894,23 @@ export default function ProfilePage() {
                   onCropComplete={onCropComplete}
                   onZoomChange={setZoom}
                   showGrid={true}
+                  cropShape="rect"
+                  classes={{
+                    containerClassName: "!bg-black",
+                    cropAreaClassName: "!border-2 !border-blue-500",
+                  }}
                   style={{
                     containerStyle: {
                       width: '100%',
                       height: '100%',
-                      backgroundColor: '#0a0a0a'
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      backgroundColor: '#000'
                     },
                     cropAreaStyle: {
-                      border: '2px solid #3b82f6',
-                      color: 'rgba(0, 0, 0, 0.6)'
+                      border: '3px solid #3b82f6',
+                      boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.7)'
                     },
                     mediaStyle: {
                       filter: `
