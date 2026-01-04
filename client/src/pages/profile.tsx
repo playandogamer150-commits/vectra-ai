@@ -14,21 +14,10 @@ import { Link } from "wouter";
 import {
   User, Settings, BarChart3, ArrowRight, Image, History, FolderOpen,
   Crown, Loader2, Check, CreditCard, ExternalLink, Camera, X, ImagePlus,
-  Trash2, SlidersHorizontal, Maximize, ZoomIn, RotateCw, RefreshCcw,
-  ImageIcon, Video
+  Trash2, ImageIcon, Video
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
-import Cropper from 'react-easy-crop';
-import getCroppedImg from "@/lib/image-utils";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Slider } from "@/components/ui/slider";
-import { BannerPreviewDynamic } from "@/components/BannerPreviewDynamic";
+import { SimpleBannerEditor } from "@/components/SimpleBannerEditor";
 
 const TIMEZONES = [
   "America/Sao_Paulo",
@@ -104,18 +93,6 @@ export default function ProfilePage() {
   const [bannerUploading, setBannerUploading] = useState(false);
   const [bannerEditorOpen, setBannerEditorOpen] = useState(false);
   const [bannerToCrop, setBannerToCrop] = useState<string | null>(null);
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [rotation, setRotation] = useState(0);
-  const [filters, setFilters] = useState({
-    brightness: 100,
-    contrast: 100,
-    saturation: 100,
-    grayscale: 0,
-    sepia: 0,
-    blur: 0,
-  });
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<{
@@ -280,40 +257,15 @@ export default function ProfilePage() {
     reader.onload = () => {
       setBannerToCrop(reader.result as string);
       setBannerEditorOpen(true);
-      setZoom(1);
-      setRotation(0);
-      setFilters({
-        brightness: 100,
-        contrast: 100,
-        saturation: 100,
-        grayscale: 0,
-        sepia: 0,
-        blur: 0,
-      });
-      setCrop({ x: 0, y: 0 });
     };
     reader.readAsDataURL(file);
     event.target.value = "";
   };
 
-  const onCropComplete = (croppedArea: any, croppedAreaPixels: any) => {
-    setCroppedAreaPixels(croppedAreaPixels);
-  };
-
-  const handleApplyBanner = async () => {
-    if (!bannerToCrop || !croppedAreaPixels) return;
-
+  // Save handler for SimpleBannerEditor
+  const handleSaveBanner = async (croppedImage: string) => {
     setBannerUploading(true);
     try {
-      const croppedImage = await getCroppedImg(
-        bannerToCrop,
-        croppedAreaPixels,
-        rotation,
-        { horizontal: false, vertical: false },
-        filters
-      );
-      if (!croppedImage) throw new Error("Cropping failed");
-
       const response = await apiRequest("POST", "/api/profile/banner", { imageData: croppedImage });
       const data = await response.json();
 
@@ -878,181 +830,18 @@ export default function ProfilePage() {
         </footer>
       </div>
 
-      {/* Banner Editor Modal - com Preview Dinâmico */}
-      <Dialog open={bannerEditorOpen} onOpenChange={setBannerEditorOpen}>
-        <DialogContent
-          className="max-w-6xl w-[95vw] bg-[#0a0a0b] border-white/10 text-white p-0 overflow-hidden shadow-2xl"
-          style={{ maxHeight: '90vh' }}
-        >
-          <DialogHeader className="p-4 border-b border-white/10 bg-[#0a0a0b] shrink-0">
-            <DialogTitle className="text-base font-bold flex items-center gap-2">
-              <SlidersHorizontal className="w-4 h-4 text-white/60" />
-              <span>{language === "pt-BR" ? "Ajustar Banner" : "Adjust Banner"}</span>
-            </DialogTitle>
-          </DialogHeader>
-
-          {/* Main Content com Layout de 3 Colunas */}
-          <div className="grid grid-cols-1 md:grid-cols-3 overflow-hidden" style={{ height: 'calc(90vh - 140px)', maxHeight: '600px' }}>
-
-            {/* Coluna 1: Cropper Area */}
-            <div className="md:col-span-2 relative overflow-hidden bg-black min-h-[350px]">
-              {bannerToCrop && (
-                <Cropper
-                  image={bannerToCrop}
-                  crop={crop}
-                  zoom={zoom}
-                  rotation={rotation}
-                  aspect={1152 / 274}
-                  onCropChange={setCrop}
-                  onCropComplete={(_, croppedPixels) => setCroppedAreaPixels(croppedPixels)}
-                  onZoomChange={setZoom}
-                  showGrid={true}
-                  style={{
-                    containerStyle: { width: '100%', height: '100%' },
-                    mediaStyle: {
-                      filter: `brightness(${filters.brightness}%) contrast(${filters.contrast}%) saturate(${filters.saturation}%) grayscale(${filters.grayscale}%) sepia(${filters.sepia}%) blur(${filters.blur}px)`
-                    }
-                  }}
-                />
-              )}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3 py-1.5 bg-black/70 backdrop-blur rounded-full border border-white/10 text-[10px] uppercase tracking-widest text-white/50 pointer-events-none">
-                <Maximize className="w-3 h-3" />
-                <span>{language === "pt-BR" ? "Arraste para ajustar" : "Drag to adjust"}</span>
-              </div>
-            </div>
-
-            {/* Coluna 2: Controles e PREVIEW DINÂMICO */}
-            <div className="w-full flex flex-col bg-[#0f0f10] border-l border-white/5 overflow-hidden shrink-0">
-              <div className="flex-1 overflow-y-auto p-4 space-y-6">
-
-                {/* Preview Dinâmico */}
-                <BannerPreviewDynamic
-                  imageUrl={bannerToCrop}
-                  crop={crop}
-                  zoom={zoom}
-                  rotation={rotation}
-                  croppedAreaPixels={croppedAreaPixels}
-                  filters={filters}
-                  displayName={profile?.displayName || ""}
-                  username={profile?.username || ""}
-                  avatarUrl={profile?.avatarUrl || null}
-                  isPro={usage?.plan === "pro"}
-                />
-
-                {/* Seção de Transformação */}
-                <div className="space-y-4 pt-4 border-t border-white/10">
-                  <h4 className="text-[10px] uppercase tracking-[0.15em] text-white/40 font-semibold">
-                    {language === "pt-BR" ? "Transformação" : "Transform"}
-                  </h4>
-
-                  {/* Zoom */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2 text-white/60">
-                        <ZoomIn className="w-3.5 h-3.5" />
-                        <span>Zoom</span>
-                      </div>
-                      <span className="font-mono text-white/40 text-[11px]">{Math.round(zoom * 100)}%</span>
-                    </div>
-                    <Slider value={[zoom]} min={1} max={3} step={0.01} onValueChange={(vals) => setZoom(vals[0])} />
-                  </div>
-
-                  {/* Rotação */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2 text-white/60">
-                        <RotateCw className="w-3.5 h-3.5" />
-                        <span>{language === "pt-BR" ? "Rotação" : "Rotation"}</span>
-                      </div>
-                      <span className="font-mono text-white/40 text-[11px]">{rotation}°</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Slider value={[rotation]} min={0} max={360} step={1} onValueChange={(vals) => setRotation(vals[0])} className="flex-1" />
-                      <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-white/10 text-white/40" onClick={() => setRotation(0)}>
-                        <RefreshCcw className="w-3 h-3" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Seção de Filtros */}
-                <div className="space-y-4 pt-4 border-t border-white/10">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-[10px] uppercase tracking-[0.15em] text-white/40 font-semibold">
-                      {language === "pt-BR" ? "Filtros" : "Filters"}
-                    </h4>
-                    <Button
-                      variant="ghost"
-                      className="h-5 px-1.5 text-[9px] text-white/30 hover:text-white/60"
-                      onClick={() => setFilters({ brightness: 100, contrast: 100, saturation: 100, grayscale: 0, sepia: 0, blur: 0 })}
-                    >
-                      Reset
-                    </Button>
-                  </div>
-
-                  {/* Brilho */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-white/60">{language === "pt-BR" ? "Brilho" : "Brightness"}</span>
-                      <span className="font-mono text-white/40 text-[11px]">{filters.brightness}%</span>
-                    </div>
-                    <Slider value={[filters.brightness]} min={0} max={200} step={1} onValueChange={([v]) => setFilters(f => ({ ...f, brightness: v }))} />
-                  </div>
-
-                  {/* Contraste */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-white/60">{language === "pt-BR" ? "Contraste" : "Contrast"}</span>
-                      <span className="font-mono text-white/40 text-[11px]">{filters.contrast}%</span>
-                    </div>
-                    <Slider value={[filters.contrast]} min={0} max={200} step={1} onValueChange={([v]) => setFilters(f => ({ ...f, contrast: v }))} />
-                  </div>
-
-                  {/* Saturação */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-white/60">{language === "pt-BR" ? "Saturação" : "Saturation"}</span>
-                      <span className="font-mono text-white/40 text-[11px]">{filters.saturation}%</span>
-                    </div>
-                    <Slider value={[filters.saturation]} min={0} max={200} step={1} onValueChange={([v]) => setFilters(f => ({ ...f, saturation: v }))} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer Actions */}
-              <div className="p-4 border-t border-white/10 bg-black/30 flex flex-col gap-2 shrink-0">
-                <Button
-                  className="w-full bg-white text-black hover:bg-white/90 h-10 font-bold"
-                  onClick={handleApplyBanner}
-                  disabled={bannerUploading}
-                >
-                  {bannerUploading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      <span>{language === "pt-BR" ? "Salvando..." : "Saving..."}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-4 h-4 mr-2" />
-                      <span>{language === "pt-BR" ? "Aplicar Banner" : "Apply Banner"}</span>
-                    </>
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full text-white/40 hover:text-white hover:bg-white/5 h-9"
-                  onClick={() => {
-                    setBannerEditorOpen(false);
-                    setBannerToCrop(null);
-                  }}
-                >
-                  {language === "pt-BR" ? "Cancelar" : "Cancel"}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Simple Banner Editor - Minimalista e Funcional */}
+      <SimpleBannerEditor
+        isOpen={bannerEditorOpen}
+        onClose={() => {
+          setBannerEditorOpen(false);
+          setBannerToCrop(null);
+        }}
+        imageUrl={bannerToCrop}
+        onSave={handleSaveBanner}
+        isSaving={bannerUploading}
+        language={language}
+      />
 
     </div>
   );
