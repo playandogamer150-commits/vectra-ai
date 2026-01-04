@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/lib/i18n";
 import { Header } from "@/components/header";
 import { CookieConsent } from "@/components/cookie-consent";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import LandingPage from "@/pages/landing";
 import PricingPage from "@/pages/pricing";
 import LibraryPage from "@/pages/library";
@@ -64,16 +65,19 @@ function AppContent() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <I18nProvider>
-          <TooltipProvider>
-            <AppContent />
-          </TooltipProvider>
-        </I18nProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <I18nProvider>
+            <TooltipProvider>
+              <AppContent />
+            </TooltipProvider>
+          </I18nProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
 export default App;
+

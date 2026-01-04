@@ -121,25 +121,27 @@ interface RateLimitRecord {
     blockUntil?: number;
 }
 
-// Endpoint-specific rate limits
+// Endpoint-specific rate limits - adjusted for production usage
+// These are per-IP limits to protect against abuse while allowing normal usage
 const RATE_LIMIT_CONFIGS: Record<string, RateLimitConfig> = {
-    // Auth endpoints - very strict (CRÍTICA #3)
-    "/api/login": { windowMs: 15 * 60 * 1000, maxRequests: 5, message: "Too many login attempts", blockDurationMs: 30 * 60 * 1000 },
-    "/api/auth": { windowMs: 15 * 60 * 1000, maxRequests: 10, message: "Too many auth requests", blockDurationMs: 15 * 60 * 1000 },
-    "/api/register": { windowMs: 60 * 60 * 1000, maxRequests: 3, message: "Too many registration attempts", blockDurationMs: 60 * 60 * 1000 },
-    "/auth/forgot-password": { windowMs: 60 * 60 * 1000, maxRequests: 3, message: "Too many password reset requests" },
+    // Auth endpoints - strict to prevent brute force
+    "/api/login": { windowMs: 15 * 60 * 1000, maxRequests: 10, message: "Too many login attempts. Please wait 15 minutes.", blockDurationMs: 15 * 60 * 1000 },
+    "/api/auth": { windowMs: 15 * 60 * 1000, maxRequests: 20, message: "Too many auth requests", blockDurationMs: 10 * 60 * 1000 },
+    "/api/register": { windowMs: 60 * 60 * 1000, maxRequests: 5, message: "Too many registration attempts", blockDurationMs: 30 * 60 * 1000 },
+    "/auth/forgot-password": { windowMs: 60 * 60 * 1000, maxRequests: 5, message: "Too many password reset requests" },
 
-    // Profile endpoints - moderate
-    "/api/profile": { windowMs: 60 * 1000, maxRequests: 30, message: "Too many profile requests" },
-    "/api/profile/avatar": { windowMs: 60 * 1000, maxRequests: 5, message: "Too many avatar uploads" },
-    "/api/profile/banner": { windowMs: 60 * 1000, maxRequests: 5, message: "Too many banner uploads" },
+    // Profile endpoints - relaxed for normal usage
+    "/api/profile": { windowMs: 60 * 1000, maxRequests: 60, message: "Too many profile requests" },
+    "/api/profile/avatar": { windowMs: 60 * 1000, maxRequests: 10, message: "Too many avatar uploads" },
+    "/api/profile/banner": { windowMs: 60 * 1000, maxRequests: 10, message: "Too many banner uploads" },
 
-    // Generation endpoints - based on plan limits
-    "/api/modelslab/generate": { windowMs: 60 * 1000, maxRequests: 10, message: "Generation rate limit exceeded" },
-    "/api/sora2": { windowMs: 60 * 1000, maxRequests: 5, message: "Video generation rate limit exceeded" },
+    // Generation endpoints - generous limits (actual quotas handled by backend)
+    // Rate limiting here is just to prevent API abuse, not quota management
+    "/api/modelslab/generate": { windowMs: 60 * 1000, maxRequests: 30, message: "Generation rate limit exceeded. Please slow down." },
+    "/api/sora2": { windowMs: 60 * 1000, maxRequests: 15, message: "Video generation rate limit exceeded" },
 
-    // Admin endpoints - moderate but logged
-    "/api/admin": { windowMs: 60 * 1000, maxRequests: 50, message: "Admin rate limit exceeded" },
+    // Admin endpoints - moderate
+    "/api/admin": { windowMs: 60 * 1000, maxRequests: 100, message: "Admin rate limit exceeded" },
 };
 
 // Per-IP rate limit storage
