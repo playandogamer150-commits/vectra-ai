@@ -44,11 +44,13 @@ const TIMEZONES = [
   "Pacific/Auckland",
 ];
 
-// Default banner gradients for users without custom banners
+// P2 FIX: Improved default banner gradients
 const DEFAULT_BANNERS = [
-  "linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%)",
-  "linear-gradient(135deg, #0a0a0a 0%, #1f1f1f 50%, #0a0a0a 100%)",
-  "linear-gradient(135deg, #111 0%, #222 100%)",
+  "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+  "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+  "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+  "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
+  "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
 ];
 
 interface ProfileData {
@@ -133,13 +135,23 @@ export default function ProfilePage() {
     email: "",
   });
 
-  const { data: profile, isLoading: profileLoading } = useQuery<ProfileData>({
+  // P0 FIX: Auth state validation with redirect
+  const { data: profile, isLoading: profileLoading, isError: profileError } = useQuery<ProfileData>({
     queryKey: ["/api/profile"],
+    retry: false, // Não retentar em 401
   });
 
   const { data: usage, isLoading: usageLoading } = useQuery<UsageData>({
     queryKey: ["/api/profile/usage"],
+    enabled: !!profile, // Só buscar usage se profile existir
   });
+
+  // P0 FIX: Redirect unauthenticated users
+  useEffect(() => {
+    if (profileError) {
+      window.location.href = "/api/login";
+    }
+  }, [profileError]);
 
   const { data: profiles } = useQuery<LLMProfile[]>({
     queryKey: ["/api/profiles"],
@@ -536,6 +548,7 @@ export default function ProfilePage() {
                 <label
                   htmlFor="avatar-upload"
                   className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                  aria-label={language === "pt-BR" ? "Alterar foto de perfil" : "Change profile picture"}
                 >
                   {avatarUploading ? (
                     <Loader2 className="w-5 h-5 text-white animate-spin" />
@@ -588,40 +601,40 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="displayName" className="text-xs text-white/60">{t.profile.displayName}</Label>
+                <Label htmlFor="displayName" className="text-xs text-white/90">{t.profile.displayName}</Label>
                 <Input
                   id="displayName"
                   value={formData.displayName}
                   onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
                   placeholder={language === "pt-BR" ? "Seu nome de exibição" : "Your display name"}
-                  className="h-9 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-white/30"
+                  className="h-9 bg-white/5 border-white/10 text-white placeholder:text-white/60 focus:border-white/30"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-xs text-white/60">{t.profile.email}</Label>
+                <Label htmlFor="email" className="text-xs text-white/90">{t.profile.email}</Label>
                 <Input
                   id="email"
                   value={formData.email}
                   onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                   placeholder="seu@email.com"
-                  className="h-9 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-white/30"
+                  className="h-9 bg-white/5 border-white/10 text-white placeholder:text-white/60 focus:border-white/30"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="tagline" className="text-xs text-white/60">{t.profile.tagline}</Label>
+                <Label htmlFor="tagline" className="text-xs text-white/90">{t.profile.tagline}</Label>
                 <Input
                   id="tagline"
                   value={formData.tagline}
                   onChange={(e) => setFormData(prev => ({ ...prev, tagline: e.target.value }))}
                   placeholder={language === "pt-BR" ? "Uma breve descrição sobre você" : "A short description about yourself"}
-                  className="h-9 bg-white/5 border-white/10 text-white placeholder:text-white/20 focus:border-white/30"
+                  className="h-9 bg-white/5 border-white/10 text-white placeholder:text-white/60 focus:border-white/30"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="timezone" className="text-xs text-white/60">{t.profile.timezone}</Label>
+                <Label htmlFor="timezone" className="text-xs text-white/90">{t.profile.timezone}</Label>
                 <Select
                   value={formData.timezone}
                   onValueChange={(v) => setFormData(prev => ({ ...prev, timezone: v }))}
@@ -649,7 +662,7 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="language" className="text-xs text-white/60">{t.profile.language}</Label>
+                <Label htmlFor="language" className="text-xs text-white/90">{t.profile.language}</Label>
                 <Select
                   value={formData.defaultLanguage}
                   onValueChange={(v) => setFormData(prev => ({ ...prev, defaultLanguage: v }))}
@@ -665,7 +678,7 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="defaultProfile" className="text-xs text-white/60">{t.profile.defaultProfile}</Label>
+                <Label htmlFor="defaultProfile" className="text-xs text-white/90">{t.profile.defaultProfile}</Label>
                 <Select
                   value={formData.defaultLlmProfileId || "auto"}
                   onValueChange={(v) => setFormData(prev => ({
