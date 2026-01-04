@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useI18n } from "@/lib/i18n";
 import { useToast } from "@/hooks/use-toast";
@@ -14,8 +14,8 @@ import { Link } from "wouter";
 import {
   User, Settings, BarChart3, ArrowRight, Image, History, FolderOpen,
   Crown, Loader2, Check, CreditCard, ExternalLink, Camera, X, ImagePlus,
-  Trash2, SlidersHorizontal, Maximize, ZoomIn, RotateCw, RefreshCcw, Minus, Plus, ArrowLeft,
-  ImageIcon, Video, Grid3X3, Eye
+  Trash2, SlidersHorizontal, Maximize, ZoomIn, RotateCw, RefreshCcw,
+  ImageIcon, Video
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import Cropper from 'react-easy-crop';
@@ -28,7 +28,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
-import { BannerPreview, BannerEditorControls, BannerFilterControls } from "@/components/banner-editor";
+import { BannerPreviewDynamic } from "@/components/BannerPreviewDynamic";
 
 const TIMEZONES = [
   "America/Sao_Paulo",
@@ -116,8 +116,6 @@ export default function ProfilePage() {
     blur: 0,
   });
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
-  const [beforeAfterMode, setBeforeAfterMode] = useState(false);
-  const [showGrid, setShowGrid] = useState(true);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<{
@@ -880,211 +878,145 @@ export default function ProfilePage() {
         </footer>
       </div>
 
-      {/* Banner Editor Modal - ENHANCED VERSION */}
+      {/* Banner Editor Modal - com Preview Dinâmico */}
       <Dialog open={bannerEditorOpen} onOpenChange={setBannerEditorOpen}>
         <DialogContent
-          className="max-w-5xl w-[95vw] bg-[#0a0a0b] border-white/10 text-white p-0 overflow-hidden shadow-2xl"
+          className="max-w-6xl w-[95vw] bg-[#0a0a0b] border-white/10 text-white p-0 overflow-hidden shadow-2xl"
           style={{ maxHeight: '90vh' }}
         >
-          {/* Header with Dimensions */}
           <DialogHeader className="p-4 border-b border-white/10 bg-[#0a0a0b] shrink-0">
-            <div className="flex items-center justify-between w-full pr-8">
-              <DialogTitle className="text-base font-bold flex items-center gap-2">
-                <SlidersHorizontal className="w-4 h-4 text-white/60" />
-                <span>{language === "pt-BR" ? "Editor de Banner" : "Banner Editor"}</span>
-              </DialogTitle>
-
-              {/* Dimensions Badge */}
-              <div className="hidden md:flex items-center gap-3">
-                <div className="flex items-center gap-2 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20">
-                  <Check className="w-3 h-3 text-green-400" />
-                  <span className="text-[10px] font-mono text-green-400">
-                    1152 × 274 px
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 text-[10px] text-white/40">
-                  <span>Aspect: 4.2:1</span>
-                </div>
-              </div>
-            </div>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <SlidersHorizontal className="w-4 h-4 text-white/60" />
+              <span>{language === "pt-BR" ? "Ajustar Banner" : "Adjust Banner"}</span>
+            </DialogTitle>
           </DialogHeader>
 
-          {/* Main Content */}
-          <div className="flex flex-col lg:flex-row overflow-hidden" style={{ height: 'calc(90vh - 140px)', maxHeight: '600px' }}>
+          {/* Main Content com Layout de 3 Colunas */}
+          <div className="grid grid-cols-1 md:grid-cols-3 overflow-hidden" style={{ height: 'calc(90vh - 140px)', maxHeight: '600px' }}>
 
-            {/* Cropper Area - Enhanced with visible selection box */}
-            <div className="flex-1 lg:flex-[2] relative overflow-hidden bg-black min-h-[300px]">
-              {/* Enhanced Crop Area Styles */}
-              <style dangerouslySetInnerHTML={{
-                __html: `
-                /* Container */
-                .react-easy-crop_Container { 
-                  background: #000 !important; 
-                }
-                
-                /* ENHANCED CROP AREA - Caixa de Seleção Visível */
-                .react-easy-crop_CropArea {
-                  border: 3px solid #FFFFFF !important;
-                  box-shadow: 
-                    0 0 0 9999px rgba(0, 0, 0, 0.8) !important,
-                    inset 0 0 0 1px rgba(255, 255, 255, 0.3) !important,
-                    0 0 20px rgba(255, 255, 255, 0.1) !important;
-                  color: #FFFFFF !important;
-                }
-                
-                /* Corner Handles */
-                .react-easy-crop_CropArea::before {
-                  content: '';
-                  position: absolute;
-                  top: -4px;
-                  left: -4px;
-                  right: -4px;
-                  bottom: -4px;
-                  border: 1px solid rgba(255, 255, 255, 0.2);
-                  border-radius: 2px;
-                  pointer-events: none;
-                }
-                
-                /* Rule of Thirds Grid - More Visible */
-                .react-easy-crop_CropAreaGrid::before {
-                  border-color: rgba(255, 255, 255, 0.3) !important;
-                  border-width: 1px !important;
-                }
-                .react-easy-crop_CropAreaGrid::after {
-                  border-color: rgba(255, 255, 255, 0.3) !important;
-                  border-width: 1px !important;
-                }
-                
-                /* Additional Grid Lines for better alignment */
-                .react-easy-crop_CropAreaRound,
-                .react-easy-crop_CropAreaGrid {
-                  background-image: 
-                    linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
-                  background-size: 20% 20%;
-                }
-              `}} />
-
+            {/* Coluna 1: Cropper Area */}
+            <div className="md:col-span-2 relative overflow-hidden bg-black min-h-[350px]">
               {bannerToCrop && (
                 <Cropper
                   image={bannerToCrop}
                   crop={crop}
                   zoom={zoom}
                   rotation={rotation}
-                  aspect={4.2}
+                  aspect={1152 / 274}
                   onCropChange={setCrop}
                   onCropComplete={(_, croppedPixels) => setCroppedAreaPixels(croppedPixels)}
                   onZoomChange={setZoom}
-                  showGrid={showGrid}
+                  showGrid={true}
                   style={{
                     containerStyle: { width: '100%', height: '100%' },
                     mediaStyle: {
-                      filter: beforeAfterMode
-                        ? 'none'
-                        : `
-                          brightness(${filters.brightness}%) 
-                          contrast(${filters.contrast}%) 
-                          saturate(${filters.saturation}%) 
-                          grayscale(${filters.grayscale}%) 
-                          sepia(${filters.sepia}%) 
-                          blur(${filters.blur}px)
-                        `
+                      filter: `brightness(${filters.brightness}%) contrast(${filters.contrast}%) saturate(${filters.saturation}%) grayscale(${filters.grayscale}%) sepia(${filters.sepia}%) blur(${filters.blur}px)`
                     }
                   }}
                 />
               )}
-
-              {/* Overlay with Dimensions and Instructions */}
-              <div className="absolute top-4 left-4 z-[100] flex flex-col gap-2 pointer-events-none">
-                {/* Dimensions Badge */}
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-black/80 backdrop-blur rounded-lg border border-white/10">
-                  <Maximize className="w-3 h-3 text-white/60" />
-                  <span className="text-[11px] font-mono text-white/80">
-                    {croppedAreaPixels?.width || 1152} × {croppedAreaPixels?.height || 274}
-                  </span>
-                </div>
-
-                {/* Zoom/Rotation Info */}
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-black/80 backdrop-blur rounded-lg border border-white/10">
-                  <ZoomIn className="w-3 h-3 text-white/60" />
-                  <span className="text-[11px] font-mono text-white/60">
-                    {Math.round(zoom * 100)}%
-                  </span>
-                  <span className="text-white/20">|</span>
-                  <RotateCw className="w-3 h-3 text-white/60" />
-                  <span className="text-[11px] font-mono text-white/60">
-                    {rotation}°
-                  </span>
-                </div>
-              </div>
-
-              {/* Bottom Instructions */}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 px-4 py-2 bg-black/80 backdrop-blur rounded-full border border-white/10 text-[10px] uppercase tracking-widest text-white/50 pointer-events-none">
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3 py-1.5 bg-black/70 backdrop-blur rounded-full border border-white/10 text-[10px] uppercase tracking-widest text-white/50 pointer-events-none">
                 <Maximize className="w-3 h-3" />
-                {language === "pt-BR" ? "Arraste para ajustar a posição" : "Drag to adjust position"}
+                <span>{language === "pt-BR" ? "Arraste para ajustar" : "Drag to adjust"}</span>
               </div>
-
-              {/* Grid Toggle Button */}
-              <button
-                className={`absolute top-4 right-4 z-[100] p-2 rounded-lg border transition-all ${showGrid
-                    ? 'bg-white/10 border-white/20 text-white/80'
-                    : 'bg-black/60 border-white/10 text-white/40'
-                  }`}
-                onClick={() => setShowGrid(!showGrid)}
-                title={language === "pt-BR" ? "Mostrar/Ocultar Grid" : "Toggle Grid"}
-              >
-                <Grid3X3 className="w-4 h-4" />
-              </button>
             </div>
 
-            {/* Controls Sidebar */}
-            <div className="w-full lg:w-80 flex flex-col bg-[#0f0f10] border-l border-white/5 overflow-hidden shrink-0">
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Coluna 2: Controles e PREVIEW DINÂMICO */}
+            <div className="w-full flex flex-col bg-[#0f0f10] border-l border-white/5 overflow-hidden shrink-0">
+              <div className="flex-1 overflow-y-auto p-4 space-y-6">
 
-                {/* Live Preview - Mini version */}
-                <BannerPreview
+                {/* Preview Dinâmico */}
+                <BannerPreviewDynamic
                   imageUrl={bannerToCrop}
+                  crop={crop}
                   zoom={zoom}
                   rotation={rotation}
-                  filters={filters}
                   croppedAreaPixels={croppedAreaPixels}
-                  displayName={profile?.displayName || profile?.username || "User"}
-                  username={profile?.username || "user"}
+                  filters={filters}
+                  displayName={profile?.displayName || ""}
+                  username={profile?.username || ""}
                   avatarUrl={profile?.avatarUrl || null}
                   isPro={usage?.plan === "pro"}
-                  language={language}
                 />
 
-                {/* Transform Controls */}
-                <BannerEditorControls
-                  zoom={zoom}
-                  rotation={rotation}
-                  onZoomChange={setZoom}
-                  onRotationChange={setRotation}
-                  onReset={() => {
-                    setZoom(1);
-                    setRotation(0);
-                    setCrop({ x: 0, y: 0 });
-                  }}
-                  language={language}
-                />
+                {/* Seção de Transformação */}
+                <div className="space-y-4 pt-4 border-t border-white/10">
+                  <h4 className="text-[10px] uppercase tracking-[0.15em] text-white/40 font-semibold">
+                    {language === "pt-BR" ? "Transformação" : "Transform"}
+                  </h4>
 
-                {/* Filter Controls */}
-                <BannerFilterControls
-                  filters={filters}
-                  onFilterChange={(filter, value) => setFilters(f => ({ ...f, [filter]: value }))}
-                  onReset={() => setFilters({
-                    brightness: 100,
-                    contrast: 100,
-                    saturation: 100,
-                    grayscale: 0,
-                    sepia: 0,
-                    blur: 0,
-                  })}
-                  beforeAfterMode={beforeAfterMode}
-                  onBeforeAfterToggle={() => setBeforeAfterMode(!beforeAfterMode)}
-                  language={language}
-                />
+                  {/* Zoom */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 text-white/60">
+                        <ZoomIn className="w-3.5 h-3.5" />
+                        <span>Zoom</span>
+                      </div>
+                      <span className="font-mono text-white/40 text-[11px]">{Math.round(zoom * 100)}%</span>
+                    </div>
+                    <Slider value={[zoom]} min={1} max={3} step={0.01} onValueChange={(vals) => setZoom(vals[0])} />
+                  </div>
+
+                  {/* Rotação */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 text-white/60">
+                        <RotateCw className="w-3.5 h-3.5" />
+                        <span>{language === "pt-BR" ? "Rotação" : "Rotation"}</span>
+                      </div>
+                      <span className="font-mono text-white/40 text-[11px]">{rotation}°</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Slider value={[rotation]} min={0} max={360} step={1} onValueChange={(vals) => setRotation(vals[0])} className="flex-1" />
+                      <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-white/10 text-white/40" onClick={() => setRotation(0)}>
+                        <RefreshCcw className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Seção de Filtros */}
+                <div className="space-y-4 pt-4 border-t border-white/10">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[10px] uppercase tracking-[0.15em] text-white/40 font-semibold">
+                      {language === "pt-BR" ? "Filtros" : "Filters"}
+                    </h4>
+                    <Button
+                      variant="ghost"
+                      className="h-5 px-1.5 text-[9px] text-white/30 hover:text-white/60"
+                      onClick={() => setFilters({ brightness: 100, contrast: 100, saturation: 100, grayscale: 0, sepia: 0, blur: 0 })}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+
+                  {/* Brilho */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-white/60">{language === "pt-BR" ? "Brilho" : "Brightness"}</span>
+                      <span className="font-mono text-white/40 text-[11px]">{filters.brightness}%</span>
+                    </div>
+                    <Slider value={[filters.brightness]} min={0} max={200} step={1} onValueChange={([v]) => setFilters(f => ({ ...f, brightness: v }))} />
+                  </div>
+
+                  {/* Contraste */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-white/60">{language === "pt-BR" ? "Contraste" : "Contrast"}</span>
+                      <span className="font-mono text-white/40 text-[11px]">{filters.contrast}%</span>
+                    </div>
+                    <Slider value={[filters.contrast]} min={0} max={200} step={1} onValueChange={([v]) => setFilters(f => ({ ...f, contrast: v }))} />
+                  </div>
+
+                  {/* Saturação */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-white/60">{language === "pt-BR" ? "Saturação" : "Saturation"}</span>
+                      <span className="font-mono text-white/40 text-[11px]">{filters.saturation}%</span>
+                    </div>
+                    <Slider value={[filters.saturation]} min={0} max={200} step={1} onValueChange={([v]) => setFilters(f => ({ ...f, saturation: v }))} />
+                  </div>
+                </div>
               </div>
 
               {/* Footer Actions */}
@@ -1097,12 +1029,12 @@ export default function ProfilePage() {
                   {bannerUploading ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {language === "pt-BR" ? "Salvando..." : "Saving..."}
+                      <span>{language === "pt-BR" ? "Salvando..." : "Saving..."}</span>
                     </>
                   ) : (
                     <>
                       <Check className="w-4 h-4 mr-2" />
-                      {language === "pt-BR" ? "Aplicar Banner" : "Apply Banner"}
+                      <span>{language === "pt-BR" ? "Aplicar Banner" : "Apply Banner"}</span>
                     </>
                   )}
                 </Button>
@@ -1112,7 +1044,6 @@ export default function ProfilePage() {
                   onClick={() => {
                     setBannerEditorOpen(false);
                     setBannerToCrop(null);
-                    setBeforeAfterMode(false);
                   }}
                 >
                   {language === "pt-BR" ? "Cancelar" : "Cancel"}
