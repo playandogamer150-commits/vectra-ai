@@ -8,10 +8,10 @@ import { useI18n } from "@/lib/i18n";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { SavedVideo } from "@shared/schema";
 import {
-    Download, Trash2, Video as VideoIcon, Play, ChevronDown, ChevronUp
+    Download, Trash2, Video as VideoIcon, Play, Clock, Film
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Badge } from "@/components/ui/badge";
 
 function getProxiedVideoUrl(url: string): string {
     if (!url) return url;
@@ -62,7 +62,6 @@ export default function GalleryVideosPage() {
     const { toast } = useToast();
     const { t, language } = useI18n();
     const [selectedVideo, setSelectedVideo] = useState<SavedVideo | null>(null);
-    const [expandedVideoId, setExpandedVideoId] = useState<string | null>(null);
 
     const { data: savedVideos, isLoading } = useQuery<SavedVideo[]>({
         queryKey: ["/api/video-gallery"],
@@ -80,6 +79,7 @@ export default function GalleryVideosPage() {
                     ? "O vídeo foi removido da sua galeria."
                     : "The video has been removed from your gallery.",
             });
+            setSelectedVideo(null);
         },
         onError: (error: Error) => {
             toast({
@@ -113,6 +113,17 @@ export default function GalleryVideosPage() {
         }
     };
 
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        return date.toLocaleString(language === "pt-BR" ? "pt-BR" : "en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    };
+
     return (
         <div className="min-h-screen bg-black text-white pt-20 pb-10">
             <div className="max-w-7xl mx-auto px-6">
@@ -141,14 +152,26 @@ export default function GalleryVideosPage() {
                                 <div className="relative aspect-video overflow-hidden bg-black">
                                     <VideoThumbnail
                                         src={video.videoUrl}
-                                        className="w-full h-full object-cover cursor-pointer"
+                                        poster={video.thumbnailUrl || undefined}
+                                        className="w-full h-full object-cover"
                                     />
+
+                                    {/* Duration Badge */}
+                                    <Badge className="absolute top-2 left-2 bg-black/70 backdrop-blur text-xs">
+                                        {video.durationSeconds}s
+                                    </Badge>
+
+                                    {/* Play Button Overlay */}
                                     <div
                                         className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                                         onClick={() => setSelectedVideo(video)}
                                     >
-                                        <Play className="w-12 h-12 text-white" />
+                                        <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                                            <Play className="w-8 h-8 text-white ml-1" />
+                                        </div>
                                     </div>
+
+                                    {/* Action Buttons */}
                                     <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Button
                                             size="icon"
@@ -167,33 +190,25 @@ export default function GalleryVideosPage() {
                                             className="h-8 w-8"
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                deleteVideoMutation.mutate(video.id);
+                                                if (confirm(language === "pt-BR" ? "Excluir este vídeo?" : "Delete this video?")) {
+                                                    deleteVideoMutation.mutate(video.id);
+                                                }
                                             }}
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </Button>
                                     </div>
+
+                                    {/* Quick Info Overlay */}
+                                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <p className="text-xs text-white/80 line-clamp-2">{video.prompt}</p>
+                                    </div>
                                 </div>
                                 <CardContent className="p-3">
-                                    <Collapsible
-                                        open={expandedVideoId === video.id}
-                                        onOpenChange={(open) => setExpandedVideoId(open ? video.id : null)}
-                                    >
-                                        <CollapsibleTrigger className="w-full flex items-center justify-between text-xs text-white/60 hover:text-white">
-                                            <span>{language === "pt-BR" ? "Detalhes" : "Details"}</span>
-                                            {expandedVideoId === video.id ? (
-                                                <ChevronUp className="w-3 h-3" />
-                                            ) : (
-                                                <ChevronDown className="w-3 h-3" />
-                                            )}
-                                        </CollapsibleTrigger>
-                                        <CollapsibleContent className="mt-2 space-y-1 text-[10px] text-white/40">
-                                            {video.prompt && (
-                                                <p className="line-clamp-2">{video.prompt}</p>
-                                            )}
-                                            <p>ID: {video.id.slice(0, 8)}</p>
-                                        </CollapsibleContent>
-                                    </Collapsible>
+                                    <div className="flex items-center gap-2 text-[10px] text-white/40">
+                                        <Clock className="w-3 h-3" />
+                                        {formatDate(video.createdAt)}
+                                    </div>
                                 </CardContent>
                             </Card>
                         ))}
@@ -209,29 +224,70 @@ export default function GalleryVideosPage() {
 
                 {/* Video Detail Modal */}
                 <Dialog open={!!selectedVideo} onOpenChange={() => setSelectedVideo(null)}>
-                    <DialogContent className="max-w-4xl bg-black border-white/10">
+                    <DialogContent className="max-w-5xl bg-black border-white/10 text-white max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>{language === "pt-BR" ? "Detalhes do Vídeo" : "Video Details"}</DialogTitle>
                         </DialogHeader>
                         {selectedVideo && (
                             <div className="space-y-4">
+                                {/* Video Player */}
                                 <video
                                     src={getProxiedVideoUrl(selectedVideo.videoUrl)}
                                     controls
-                                    className="w-full rounded-lg"
+                                    className="w-full rounded-lg bg-black"
                                     autoPlay
                                     loop
+                                    poster={selectedVideo.thumbnailUrl || undefined}
                                 />
-                                {selectedVideo.prompt && (
-                                    <div>
-                                        <p className="text-xs text-white/60 mb-1">{language === "pt-BR" ? "Prompt:" : "Prompt:"}</p>
-                                        <p className="text-sm text-white/80">{selectedVideo.prompt}</p>
+
+                                {/* Prompt */}
+                                <div className="space-y-2">
+                                    <h3 className="text-sm font-semibold text-white/80">{language === "pt-BR" ? "Prompt:" : "Prompt:"}</h3>
+                                    <p className="text-sm text-white/60 bg-white/5 p-3 rounded-lg">{selectedVideo.prompt}</p>
+                                </div>
+
+                                {/* Metadata Grid */}
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    {selectedVideo.aspectRatio && (
+                                        <div className="bg-white/5 p-3 rounded-lg">
+                                            <p className="text-[10px] text-white/40 uppercase mb-1">{language === "pt-BR" ? "Proporção" : "Aspect Ratio"}</p>
+                                            <p className="text-sm text-white/80">{selectedVideo.aspectRatio}</p>
+                                        </div>
+                                    )}
+                                    <div className="bg-white/5 p-3 rounded-lg">
+                                        <p className="text-[10px] text-white/40 uppercase mb-1">{language === "pt-BR" ? "Duração" : "Duration"}</p>
+                                        <p className="text-sm text-white/80">{selectedVideo.durationSeconds}s</p>
                                     </div>
-                                )}
-                                <div className="flex gap-2">
-                                    <Button onClick={() => downloadVideo(selectedVideo.videoUrl, `vectra-${selectedVideo.id}.mp4`)}>
+                                    {selectedVideo.jobId && (
+                                        <div className="bg-white/5 p-3 rounded-lg">
+                                            <p className="text-[10px] text-white/40 uppercase mb-1">Job ID</p>
+                                            <p className="text-sm text-white/80 font-mono truncate">{selectedVideo.jobId}</p>
+                                        </div>
+                                    )}
+                                    {selectedVideo.createdAt && (
+                                        <div className="bg-white/5 p-3 rounded-lg">
+                                            <p className="text-[10px] text-white/40 uppercase mb-1">{language === "pt-BR" ? "Data de Criação" : "Created At"}</p>
+                                            <p className="text-sm text-white/80">{formatDate(selectedVideo.createdAt)}</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="flex gap-2 pt-2">
+                                    <Button onClick={() => downloadVideo(selectedVideo.videoUrl, `vectra-${selectedVideo.id}.mp4`)} className="flex-1">
                                         <Download className="w-4 h-4 mr-2" />
                                         {language === "pt-BR" ? "Baixar" : "Download"}
+                                    </Button>
+                                    <Button
+                                        variant="destructive"
+                                        onClick={() => {
+                                            if (confirm(language === "pt-BR" ? "Excluir este vídeo?" : "Delete this video?")) {
+                                                deleteVideoMutation.mutate(selectedVideo.id);
+                                            }
+                                        }}
+                                    >
+                                        <Trash2 className="w-4 h-4 mr-2" />
+                                        {language === "pt-BR" ? "Excluir" : "Delete"}
                                     </Button>
                                 </div>
                             </div>

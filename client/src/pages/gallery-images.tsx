@@ -9,10 +9,11 @@ import { useI18n } from "@/lib/i18n";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { SavedImage } from "@shared/schema";
 import {
-    Download, Trash2, Image as ImageIcon, ChevronDown, ChevronUp, ExternalLink
+    Download, Trash2, Image as ImageIcon, ChevronDown, ChevronUp, ExternalLink, Clock, Palette, Sparkles
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Badge } from "@/components/ui/badge";
 
 export default function GalleryImagesPage() {
     const { toast } = useToast();
@@ -36,6 +37,7 @@ export default function GalleryImagesPage() {
                     ? "A imagem foi removida da sua galeria."
                     : "The image has been removed from your gallery.",
             });
+            setSelectedImage(null);
         },
         onError: (error: Error) => {
             toast({
@@ -69,6 +71,17 @@ export default function GalleryImagesPage() {
         }
     };
 
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        return date.toLocaleString(language === "pt-BR" ? "pt-BR" : "en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    };
+
     return (
         <div className="min-h-screen bg-black text-white pt-20 pb-10">
             <div className="max-w-7xl mx-auto px-6">
@@ -94,20 +107,31 @@ export default function GalleryImagesPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {savedImages.map((image) => (
                             <Card key={image.id} className="bg-white/5 border-white/10 overflow-hidden group">
-                                <div className="relative aspect-square overflow-hidden">
+                                <div className="relative aspect-square overflow-hidden cursor-pointer" onClick={() => setSelectedImage(image)}>
                                     <img
                                         src={image.imageUrl}
                                         alt={image.prompt || "Generated image"}
                                         className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                                        onClick={() => setSelectedImage(image)}
                                     />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                                    {/* Quality Badge */}
+                                    {image.metadata?.imageQuality && (
+                                        <Badge className="absolute top-2 left-2 bg-black/70 backdrop-blur text-xs">
+                                            {image.metadata.imageQuality === "hq" ? "HQ" : "Standard"}
+                                        </Badge>
+                                    )}
+
+                                    {/* Action Buttons */}
                                     <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Button
                                             size="icon"
                                             variant="secondary"
                                             className="h-8 w-8 bg-black/60 hover:bg-black/80"
-                                            onClick={() => downloadImage(image.imageUrl, `vectra-${image.id}.png`)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                downloadImage(image.imageUrl, `vectra-${image.id}.png`);
+                                            }}
                                         >
                                             <Download className="w-4 h-4" />
                                         </Button>
@@ -115,32 +139,27 @@ export default function GalleryImagesPage() {
                                             size="icon"
                                             variant="destructive"
                                             className="h-8 w-8"
-                                            onClick={() => deleteImageMutation.mutate(image.id)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (confirm(language === "pt-BR" ? "Excluir esta imagem?" : "Delete this image?")) {
+                                                    deleteImageMutation.mutate(image.id);
+                                                }
+                                            }}
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </Button>
                                     </div>
+
+                                    {/* Quick Info Overlay */}
+                                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <p className="text-xs text-white/80 line-clamp-2">{image.prompt}</p>
+                                    </div>
                                 </div>
                                 <CardContent className="p-3">
-                                    <Collapsible
-                                        open={expandedImageId === image.id}
-                                        onOpenChange={(open) => setExpandedImageId(open ? image.id : null)}
-                                    >
-                                        <CollapsibleTrigger className="w-full flex items-center justify-between text-xs text-white/60 hover:text-white">
-                                            <span>{language === "pt-BR" ? "Detalhes" : "Details"}</span>
-                                            {expandedImageId === image.id ? (
-                                                <ChevronUp className="w-3 h-3" />
-                                            ) : (
-                                                <ChevronDown className="w-3 h-3" />
-                                            )}
-                                        </CollapsibleTrigger>
-                                        <CollapsibleContent className="mt-2 space-y-1 text-[10px] text-white/40">
-                                            {image.prompt && (
-                                                <p className="line-clamp-2">{image.prompt}</p>
-                                            )}
-                                            <p>ID: {image.id.slice(0, 8)}</p>
-                                        </CollapsibleContent>
-                                    </Collapsible>
+                                    <div className="flex items-center gap-2 text-[10px] text-white/40">
+                                        <Clock className="w-3 h-3" />
+                                        {formatDate(image.createdAt)}
+                                    </div>
                                 </CardContent>
                             </Card>
                         ))}
@@ -156,31 +175,124 @@ export default function GalleryImagesPage() {
 
                 {/* Image Detail Modal */}
                 <Dialog open={!!selectedImage} onOpenChange={() => setSelectedImage(null)}>
-                    <DialogContent className="max-w-4xl bg-black border-white/10">
+                    <DialogContent className="max-w-5xl bg-black border-white/10 text-white max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>{language === "pt-BR" ? "Detalhes da Imagem" : "Image Details"}</DialogTitle>
                         </DialogHeader>
                         {selectedImage && (
                             <div className="space-y-4">
+                                {/* Image */}
                                 <img
                                     src={selectedImage.imageUrl}
                                     alt={selectedImage.prompt || "Generated image"}
                                     className="w-full rounded-lg"
                                 />
-                                {selectedImage.prompt && (
-                                    <div>
-                                        <p className="text-xs text-white/60 mb-1">{language === "pt-BR" ? "Prompt:" : "Prompt:"}</p>
-                                        <p className="text-sm text-white/80">{selectedImage.prompt}</p>
+
+                                {/* Prompt */}
+                                <div className="space-y-2">
+                                    <h3 className="text-sm font-semibold text-white/80">{language === "pt-BR" ? "Prompt:" : "Prompt:"}</h3>
+                                    <p className="text-sm text-white/60 bg-white/5 p-3 rounded-lg">{selectedImage.prompt}</p>
+                                </div>
+
+                                {/* Metadata Grid */}
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    {selectedImage.aspectRatio && (
+                                        <div className="bg-white/5 p-3 rounded-lg">
+                                            <p className="text-[10px] text-white/40 uppercase mb-1">{language === "pt-BR" ? "Proporção" : "Aspect Ratio"}</p>
+                                            <p className="text-sm text-white/80">{selectedImage.aspectRatio}</p>
+                                        </div>
+                                    )}
+                                    {selectedImage.metadata?.imageQuality && (
+                                        <div className="bg-white/5 p-3 rounded-lg">
+                                            <p className="text-[10px] text-white/40 uppercase mb-1">{language === "pt-BR" ? "Qualidade" : "Quality"}</p>
+                                            <p className="text-sm text-white/80">{selectedImage.metadata.imageQuality === "hq" ? "High Quality" : "Standard"}</p>
+                                        </div>
+                                    )}
+                                    {selectedImage.metadata?.modelId && (
+                                        <div className="bg-white/5 p-3 rounded-lg">
+                                            <p className="text-[10px] text-white/40 uppercase mb-1">{language === "pt-BR" ? "Modelo" : "Model"}</p>
+                                            <p className="text-sm text-white/80">{selectedImage.metadata.modelId}</p>
+                                        </div>
+                                    )}
+                                    {selectedImage.metadata?.generationTime && (
+                                        <div className="bg-white/5 p-3 rounded-lg">
+                                            <p className="text-[10px] text-white/40 uppercase mb-1">{language === "pt-BR" ? "Tempo de Geração" : "Generation Time"}</p>
+                                            <p className="text-sm text-white/80">{(selectedImage.metadata.generationTime / 1000).toFixed(2)}s</p>
+                                        </div>
+                                    )}
+                                    {selectedImage.seed && (
+                                        <div className="bg-white/5 p-3 rounded-lg">
+                                            <p className="text-[10px] text-white/40 uppercase mb-1">Seed</p>
+                                            <p className="text-sm text-white/80 font-mono">{selectedImage.seed}</p>
+                                        </div>
+                                    )}
+                                    {selectedImage.createdAt && (
+                                        <div className="bg-white/5 p-3 rounded-lg">
+                                            <p className="text-[10px] text-white/40 uppercase mb-1">{language === "pt-BR" ? "Data de Criação" : "Created At"}</p>
+                                            <p className="text-sm text-white/80">{formatDate(selectedImage.createdAt)}</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Applied Filters */}
+                                {selectedImage.appliedFilters && Object.keys(selectedImage.appliedFilters).length > 0 && (
+                                    <div className="space-y-2">
+                                        <h3 className="text-sm font-semibold text-white/80 flex items-center gap-2">
+                                            <Palette className="w-4 h-4" />
+                                            {language === "pt-BR" ? "Filtros Aplicados:" : "Applied Filters:"}
+                                        </h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {Object.entries(selectedImage.appliedFilters).map(([key, value]) => (
+                                                <Badge key={key} variant="secondary" className="text-xs">
+                                                    {key}: {value}
+                                                </Badge>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
-                                <div className="flex gap-2">
-                                    <Button onClick={() => downloadImage(selectedImage.imageUrl, `vectra-${selectedImage.id}.png`)}>
+
+                                {/* Cinematic Settings */}
+                                {selectedImage.metadata?.cinematicSettings && (
+                                    <div className="space-y-2">
+                                        <h3 className="text-sm font-semibold text-white/80 flex items-center gap-2">
+                                            <Sparkles className="w-4 h-4" />
+                                            {language === "pt-BR" ? "Configurações Cinemáticas:" : "Cinematic Settings:"}
+                                        </h3>
+                                        <div className="bg-white/5 p-3 rounded-lg space-y-2 text-sm text-white/60">
+                                            {selectedImage.metadata.cinematicSettings.optics && (
+                                                <div>
+                                                    <span className="text-white/40">Optics:</span> {selectedImage.metadata.cinematicSettings.optics.style}
+                                                </div>
+                                            )}
+                                            {selectedImage.metadata.cinematicSettings.activeGems && selectedImage.metadata.cinematicSettings.activeGems.length > 0 && (
+                                                <div>
+                                                    <span className="text-white/40">Gems:</span> {selectedImage.metadata.cinematicSettings.activeGems.join(", ")}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Action Buttons */}
+                                <div className="flex gap-2 pt-2">
+                                    <Button onClick={() => downloadImage(selectedImage.imageUrl, `vectra-${selectedImage.id}.png`)} className="flex-1">
                                         <Download className="w-4 h-4 mr-2" />
                                         {language === "pt-BR" ? "Baixar" : "Download"}
                                     </Button>
                                     <Button variant="outline" onClick={() => window.open(selectedImage.imageUrl, "_blank")}>
                                         <ExternalLink className="w-4 h-4 mr-2" />
-                                        {language === "pt-BR" ? "Abrir em Nova Aba" : "Open in New Tab"}
+                                        {language === "pt-BR" ? "Abrir" : "Open"}
+                                    </Button>
+                                    <Button
+                                        variant="destructive"
+                                        onClick={() => {
+                                            if (confirm(language === "pt-BR" ? "Excluir esta imagem?" : "Delete this image?")) {
+                                                deleteImageMutation.mutate(selectedImage.id);
+                                            }
+                                        }}
+                                    >
+                                        <Trash2 className="w-4 h-4 mr-2" />
+                                        {language === "pt-BR" ? "Excluir" : "Delete"}
                                     </Button>
                                 </div>
                             </div>
