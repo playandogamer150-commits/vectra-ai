@@ -4,7 +4,7 @@ import { useTheme } from "@/components/theme-provider";
 import { useI18n, LanguageToggle } from "@/lib/i18n";
 import { BRAND } from "@/lib/constants";
 import { MonoIcon } from "@/components/mono-icon";
-import { Moon, Sun, Menu, X, Image, Library, History, User, LogOut, Settings, Crown, Sparkles, LogIn } from "lucide-react";
+import { Moon, Sun, Menu, X, Image, Library, History, User, LogOut, Settings, Crown, Sparkles, LogIn, Video, ImageIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -42,6 +42,8 @@ export function Header() {
     { href: "/image-studio", label: t.nav.imageStudio, icon: Image },
     { href: "/library", label: t.nav.library, icon: Library },
     { href: "/history", label: t.nav.history, icon: History },
+    { href: "/gallery/images", label: t.nav.imageStudio === "Image Studio" ? "Image Gallery" : "Galeria de Imagens", icon: ImageIcon },
+    { href: "/gallery/videos", label: t.nav.imageStudio === "Image Studio" ? "Video Gallery" : "Galeria de Vídeos", icon: Video },
   ];
 
   return (

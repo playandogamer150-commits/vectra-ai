@@ -14,7 +14,8 @@ import { Link } from "wouter";
 import {
   User, Settings, BarChart3, ArrowRight, Image, History, FolderOpen,
   Crown, Loader2, Check, CreditCard, ExternalLink, Camera, X, ImagePlus,
-  Trash2, SlidersHorizontal, Maximize, ZoomIn, RotateCw, RefreshCcw, Minus, Plus, ArrowLeft
+  Trash2, SlidersHorizontal, Maximize, ZoomIn, RotateCw, RefreshCcw, Minus, Plus, ArrowLeft,
+  ImageIcon, Video
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
 import Cropper from 'react-easy-crop';
@@ -810,6 +811,24 @@ export default function ProfilePage() {
                 >
                   <Image className="w-3.5 h-3.5 mr-2" />
                   {t.profile.goToStudio}
+                </Button>
+              </Link>
+              <Link href="/gallery/images">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start h-9 text-xs text-white/60 hover:text-white hover:bg-white/5 border border-white/5"
+                >
+                  <ImageIcon className="w-3.5 h-3.5 mr-2" />
+                  {language === "pt-BR" ? "Galeria de Imagens" : "Image Gallery"}
+                </Button>
+              </Link>
+              <Link href="/gallery/videos">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start h-9 text-xs text-white/60 hover:text-white hover:bg-white/5 border border-white/5"
+                >
+                  <Video className="w-3.5 h-3.5 mr-2" />
+                  {language === "pt-BR" ? "Galeria de Vídeos" : "Video Gallery"}
                 </Button>
               </Link>
             </div>

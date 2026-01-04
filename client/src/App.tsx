@@ -21,6 +21,8 @@ import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/auth/login";
 import RegisterPage from "@/pages/auth/register";
 import WaitlistPage from "@/pages/waitlist";
+import GalleryImagesPage from "@/pages/gallery-images";
+import GalleryVideosPage from "@/pages/gallery-videos";
 
 function Router() {
   return (
@@ -30,6 +32,8 @@ function Router() {
       <Route path="/waitlist" component={WaitlistPage} />
       <Route path="/library" component={LibraryPage} />
       <Route path="/history" component={HistoryPage} />
+      <Route path="/gallery/images" component={GalleryImagesPage} />
+      <Route path="/gallery/videos" component={GalleryVideosPage} />
       <Route path="/image-studio" component={ModelsLabStudioPage} />
       <Route path="/lora-studio" component={LoRAStudioPage} />
       <Route path="/profile" component={ProfilePage} />
