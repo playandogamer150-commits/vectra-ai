@@ -1,8 +1,9 @@
 import { getStripeSync, getUncachableStripeClient } from './stripeClient';
 import { db } from './db';
 import { appUsers } from '@shared/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import type Stripe from 'stripe';
+import { log } from './lib/logger';
 
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string): Promise<void> {
@@ -26,30 +27,23 @@ export class WebhookHandlers {
         const event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
         await WebhookHandlers.handleEvent(event);
       } catch (err) {
-        console.log('Webhook event parsing failed (using sync fallback):', err);
+        log(`Webhook event parsing failed: ${err}`, 'stripe', 'warn');
       }
     }
   }
 
   static async handleEvent(event: Stripe.Event): Promise<void> {
-    console.log(`[Stripe Webhook] Processing event: ${event.type}`);
+    log(`[Stripe Webhook] Processing event: ${event.type}`, 'stripe', 'info');
+
     switch (event.type) {
       case 'customer.subscription.created': {
         const subscription = event.data.object as Stripe.Subscription;
-        await WebhookHandlers.handleSubscriptionCreated(
-          subscription.id,
-          subscription.customer as string,
-          subscription.status
-        );
+        await WebhookHandlers.handleSubscriptionCreated(subscription);
         break;
       }
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
-        await WebhookHandlers.handleSubscriptionUpdated(
-          subscription.id,
-          subscription.customer as string,
-          subscription.status
-        );
+        await WebhookHandlers.handleSubscriptionUpdated(subscription);
         break;
       }
       case 'customer.subscription.deleted': {
@@ -64,46 +58,114 @@ export class WebhookHandlers {
         }
         break;
       }
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session;
+        log(`Checkout completed for customer ${session.customer}`, 'stripe', 'info');
+        break;
+      }
+      default:
+        log(`Unhandled webhook event type: ${event.type}`, 'stripe', 'debug');
     }
   }
 
-  static async handleSubscriptionCreated(subscriptionId: string, customerId: string, status: string): Promise<void> {
+  static async handleSubscriptionCreated(subscription: Stripe.Subscription): Promise<void> {
+    const customerId = subscription.customer as string;
+    const subscriptionId = subscription.id;
+    const status = subscription.status;
+    const userId = subscription.metadata?.userId;
+
+    log(`Subscription created: ${subscriptionId} for customer ${customerId} (status: ${status})`, 'stripe', 'info');
+
     const plan = status === 'active' || status === 'trialing' ? 'pro' : 'free';
 
-    await db.update(appUsers)
-      .set({
-        stripeSubscriptionId: subscriptionId,
-        plan: plan,
-        planStatus: status as any,
-        updatedAt: new Date(),
-      })
-      .where(eq(appUsers.stripeCustomerId, customerId));
+    // Try to update by userId first (from metadata), fallback to customerId
+    let updated = false;
+
+    if (userId) {
+      const result = await db.update(appUsers)
+        .set({
+          stripeSubscriptionId: subscriptionId,
+          stripeCustomerId: customerId,
+          plan: plan,
+          planStatus: status as any,
+          updatedAt: new Date(),
+        })
+        .where(eq(appUsers.id, userId))
+        .returning();
+
+      if (result.length > 0) {
+        updated = true;
+        log(`Updated user ${userId} to plan: ${plan}`, 'stripe', 'info');
+      }
+    }
+
+    // Fallback: update by customerId
+    if (!updated) {
+      const result = await db.update(appUsers)
+        .set({
+          stripeSubscriptionId: subscriptionId,
+          plan: plan,
+          planStatus: status as any,
+          updatedAt: new Date(),
+        })
+        .where(eq(appUsers.stripeCustomerId, customerId))
+        .returning();
+
+      if (result.length > 0) {
+        log(`Updated user by customerId ${customerId} to plan: ${plan}`, 'stripe', 'info');
+      } else {
+        log(`No user found for customerId ${customerId}`, 'stripe', 'warn');
+      }
+    }
   }
 
-  static async handleSubscriptionUpdated(subscriptionId: string, customerId: string, status: string): Promise<void> {
+  static async handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
+    const subscriptionId = subscription.id;
+    const status = subscription.status;
+
+    log(`Subscription updated: ${subscriptionId} (status: ${status})`, 'stripe', 'info');
+
     const plan = status === 'active' || status === 'trialing' ? 'pro' : 'free';
 
-    await db.update(appUsers)
+    const result = await db.update(appUsers)
       .set({
         plan: plan,
         planStatus: status as any,
         updatedAt: new Date(),
       })
-      .where(eq(appUsers.stripeSubscriptionId, subscriptionId));
+      .where(eq(appUsers.stripeSubscriptionId, subscriptionId))
+      .returning();
+
+    if (result.length > 0) {
+      log(`Updated subscription ${subscriptionId} to plan: ${plan}`, 'stripe', 'info');
+    } else {
+      log(`No user found for subscription ${subscriptionId}`, 'stripe', 'warn');
+    }
   }
 
   static async handleSubscriptionCanceled(subscriptionId: string): Promise<void> {
-    await db.update(appUsers)
+    log(`Subscription canceled: ${subscriptionId}`, 'stripe', 'info');
+
+    const result = await db.update(appUsers)
       .set({
         plan: 'free',
         planStatus: 'canceled',
         stripeSubscriptionId: null,
         updatedAt: new Date(),
       })
-      .where(eq(appUsers.stripeSubscriptionId, subscriptionId));
+      .where(eq(appUsers.stripeSubscriptionId, subscriptionId))
+      .returning();
+
+    if (result.length > 0) {
+      log(`Canceled subscription ${subscriptionId}, user reverted to free plan`, 'stripe', 'info');
+    } else {
+      log(`No user found for subscription ${subscriptionId} during cancellation`, 'stripe', 'warn');
+    }
   }
 
   static async handlePaymentFailed(customerId: string): Promise<void> {
+    log(`Payment failed for customer: ${customerId}`, 'stripe', 'warn');
+
     await db.update(appUsers)
       .set({
         planStatus: 'past_due',

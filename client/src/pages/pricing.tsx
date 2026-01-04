@@ -9,6 +9,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Check, Crown, Sparkles, Building2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface UserProfile {
   id: string;
@@ -17,14 +18,39 @@ interface UserProfile {
   planStatus?: string;
 }
 
+interface StripeProduct {
+  productId: string;
+  productName: string;
+  description: string | null;
+  priceId: string;
+  amount: number;
+  currency: string;
+  interval: 'month' | 'year' | null;
+  intervalCount: number | null;
+  active: boolean;
+  metadata: Record<string, string>;
+}
+
 export default function PricingPage() {
   const { t, language, setLanguage } = useI18n();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [isUpgrading, setIsUpgrading] = useState(false);
 
+  // Fetch user profile
   const { data: profile } = useQuery<UserProfile>({
     queryKey: ["/api/profile"],
+  });
+
+  // Fetch products from Stripe (dynamic)
+  const { data: stripeProducts, isLoading: isLoadingProducts } = useQuery<StripeProduct[]>({
+    queryKey: ["/api/stripe/products"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/stripe/products");
+      const data = await response.json();
+      return data.products || [];
+    },
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
   useEffect(() => {
@@ -60,25 +86,18 @@ export default function PricingPage() {
     try {
       const response = await apiRequest("POST", "/api/stripe/checkout", { priceId, locale: language });
       const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
       if (data.url) {
         window.location.href = data.url;
       }
     } catch (error: any) {
-      let errorMessage = language === "pt-BR"
+      const errorMessage = error?.message || (language === "pt-BR"
         ? "Não foi possível iniciar o checkout. Tente novamente."
-        : "Could not start checkout. Please try again.";
-
-      if (error instanceof Error) {
-        // Try to see if it's an API query error with a message
-        // The apiRequest throws, but usually we can't get the body easily from the generic Error unless we parse it.
-        // However, standard fetch or apiRequest usually strictly throws on non-200?
-        // Let's assume apiRequest throws an object that might have info
-      }
-
-      // Better approach for debugging:
-      // Since apiRequest throws on error status, we might ideally want to read the body.
-      // But queryClient might not expose it easily.
-      // Let's try to trust the user saw "500" or similar.
+        : "Could not start checkout. Please try again.");
 
       toast({
         title: language === "pt-BR" ? "Erro" : "Error",
@@ -90,6 +109,23 @@ export default function PricingPage() {
     }
   };
 
+  // Find Pro product from Stripe
+  const proProduct = stripeProducts?.find(p =>
+    p.productName.toLowerCase().includes('pro') ||
+    p.metadata?.plan === 'pro'
+  );
+
+  // Format price for display
+  const formatPrice = (amount: number, currency: string) => {
+    const formatter = new Intl.NumberFormat(language === "pt-BR" ? "pt-BR" : "en-US", {
+      style: "currency",
+      currency: currency.toUpperCase(),
+      minimumFractionDigits: 0,
+    });
+    return formatter.format(amount / 100);
+  };
+
+  // Build plans array (static Free + Enterprise, dynamic Pro from Stripe)
   const plans = [
     {
       id: "free",
@@ -116,12 +152,19 @@ export default function PricingPage() {
       cta: language === "pt-BR" ? "Começar Grátis" : "Start Free",
       variant: "outline" as const,
       href: "/image-studio",
+      priceId: null,
     },
     {
       id: "pro",
       name: "Pro",
-      price: language === "pt-BR" ? "R$49" : "$19",
-      period: language === "pt-BR" ? "/mês" : "/mo",
+      price: proProduct
+        ? formatPrice(proProduct.amount, proProduct.currency)
+        : (language === "pt-BR" ? "R$49" : "$19"),
+      period: proProduct?.interval === 'month'
+        ? (language === "pt-BR" ? "/mês" : "/mo")
+        : proProduct?.interval === 'year'
+          ? (language === "pt-BR" ? "/ano" : "/yr")
+          : (language === "pt-BR" ? "/mês" : "/mo"),
       description: language === "pt-BR"
         ? "Controle total para profissionais"
         : "Full control for professionals",
@@ -146,7 +189,7 @@ export default function PricingPage() {
       ],
       cta: language === "pt-BR" ? "Assinar Pro" : "Upgrade to Pro",
       variant: "default" as const,
-      priceId: language === "pt-BR" ? "price_1Si1TxBuzUxsFLiDZ7rTnB7w" : "price_1Si1TxBuzUxsFLiDPgywDBQE",
+      priceId: proProduct?.priceId || null,
     },
     {
       id: "enterprise",
@@ -177,10 +220,32 @@ export default function PricingPage() {
       cta: language === "pt-BR" ? "Fale Conosco" : "Contact Us",
       variant: "outline" as const,
       href: "/support",
+      priceId: null,
     },
   ];
 
   const isPro = profile?.plan === "pro";
+
+  // Loading skeleton for pricing cards
+  const PricingCardSkeleton = () => (
+    <div className="bg-card border border-border rounded-xl p-6 flex flex-col">
+      <div className="text-center mb-6">
+        <Skeleton className="w-10 h-10 rounded-lg mx-auto mb-3" />
+        <Skeleton className="h-6 w-20 mx-auto mb-2" />
+        <Skeleton className="h-4 w-32 mx-auto mb-4" />
+        <Skeleton className="h-10 w-24 mx-auto" />
+      </div>
+      <div className="space-y-3 mb-6 flex-1">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="flex items-start gap-3">
+            <Skeleton className="w-4 h-4 rounded-full mt-0.5" />
+            <Skeleton className="h-4 flex-1" />
+          </div>
+        ))}
+      </div>
+      <Skeleton className="h-10 w-full" />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -230,82 +295,91 @@ export default function PricingPage() {
             </div>
 
             <div className="grid md:grid-cols-3 gap-6">
-              {plans.map((plan) => {
-                const Icon = plan.icon;
-                const isCurrentPlan = (plan.id === "free" && !isPro) || (plan.id === "pro" && isPro);
+              {isLoadingProducts ? (
+                // Show skeletons while loading
+                <>
+                  <PricingCardSkeleton />
+                  <PricingCardSkeleton />
+                  <PricingCardSkeleton />
+                </>
+              ) : (
+                plans.map((plan) => {
+                  const Icon = plan.icon;
+                  const isCurrentPlan = (plan.id === "free" && !isPro) || (plan.id === "pro" && isPro);
 
-                return (
-                  <div
-                    key={plan.name}
-                    className={`relative bg-card border rounded-xl p-6 flex flex-col ${plan.badge ? "border-foreground/30 ring-1 ring-foreground/10" : "border-border"
-                      }`}
-                    data-testid={`card-pricing-${plan.id}`}
-                  >
-                    {plan.badge && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                        <span className="px-3 py-1 text-xs font-medium bg-foreground text-background rounded-full">
-                          {plan.badge}
-                        </span>
+                  return (
+                    <div
+                      key={plan.name}
+                      className={`relative bg-card border rounded-xl p-6 flex flex-col ${plan.badge ? "border-foreground/30 ring-1 ring-foreground/10" : "border-border"
+                        }`}
+                      data-testid={`card-pricing-${plan.id}`}
+                    >
+                      {plan.badge && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                          <span className="px-3 py-1 text-xs font-medium bg-foreground text-background rounded-full">
+                            {plan.badge}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="text-center mb-6">
+                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center mx-auto mb-3">
+                          <Icon className="w-5 h-5" />
+                        </div>
+                        <h3 className="text-lg font-medium mb-1">{plan.name}</h3>
+                        <p className="text-sm text-muted-foreground mb-4">{plan.description}</p>
+                        <div className="flex items-baseline justify-center gap-1">
+                          <span className="text-4xl font-medium tracking-tight">{plan.price}</span>
+                          {plan.period && (
+                            <span className="text-sm text-muted-foreground">{plan.period}</span>
+                          )}
+                        </div>
                       </div>
-                    )}
 
-                    <div className="text-center mb-6">
-                      <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center mx-auto mb-3">
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <h3 className="text-lg font-medium mb-1">{plan.name}</h3>
-                      <p className="text-sm text-muted-foreground mb-4">{plan.description}</p>
-                      <div className="flex items-baseline justify-center gap-1">
-                        <span className="text-4xl font-medium tracking-tight">{plan.price}</span>
-                        {plan.period && (
-                          <span className="text-sm text-muted-foreground">{plan.period}</span>
-                        )}
-                      </div>
-                    </div>
+                      <ul className="space-y-3 mb-6 flex-1">
+                        {plan.features.map((feature, i) => (
+                          <li key={i} className="flex items-start gap-3">
+                            <div className="w-4 h-4 rounded-full bg-foreground/10 flex items-center justify-center mt-0.5 shrink-0">
+                              <Check className="w-2.5 h-2.5" />
+                            </div>
+                            <span className="text-sm">{feature}</span>
+                          </li>
+                        ))}
+                      </ul>
 
-                    <ul className="space-y-3 mb-6 flex-1">
-                      {plan.features.map((feature, i) => (
-                        <li key={i} className="flex items-start gap-3">
-                          <div className="w-4 h-4 rounded-full bg-foreground/10 flex items-center justify-center mt-0.5 shrink-0">
-                            <Check className="w-2.5 h-2.5" />
-                          </div>
-                          <span className="text-sm">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-
-                    {isCurrentPlan ? (
-                      <Button variant="secondary" className="w-full" disabled>
-                        {language === "pt-BR" ? "Plano Atual" : "Current Plan"}
-                      </Button>
-                    ) : plan.priceId ? (
-                      <Button
-                        variant={plan.variant}
-                        className="w-full"
-                        onClick={() => handleUpgrade(plan.priceId!)}
-                        disabled={isUpgrading}
-                        data-testid={`button-pricing-${plan.id}`}
-                      >
-                        {isUpgrading ? (
-                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {language === "pt-BR" ? "Carregando..." : "Loading..."}</>
-                        ) : (
-                          plan.cta
-                        )}
-                      </Button>
-                    ) : (
-                      <Link href={plan.href || "/"}>
+                      {isCurrentPlan ? (
+                        <Button variant="secondary" className="w-full" disabled>
+                          {language === "pt-BR" ? "Plano Atual" : "Current Plan"}
+                        </Button>
+                      ) : plan.priceId ? (
                         <Button
                           variant={plan.variant}
                           className="w-full"
+                          onClick={() => handleUpgrade(plan.priceId!)}
+                          disabled={isUpgrading}
                           data-testid={`button-pricing-${plan.id}`}
                         >
-                          {plan.cta}
+                          {isUpgrading ? (
+                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {language === "pt-BR" ? "Carregando..." : "Loading..."}</>
+                          ) : (
+                            plan.cta
+                          )}
                         </Button>
-                      </Link>
-                    )}
-                  </div>
-                );
-              })}
+                      ) : (
+                        <Link href={plan.href || "/"}>
+                          <Button
+                            variant={plan.variant}
+                            className="w-full"
+                            data-testid={`button-pricing-${plan.id}`}
+                          >
+                            {plan.cta}
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
 
             <div className="mt-16 text-center">

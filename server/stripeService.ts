@@ -1,7 +1,22 @@
 import { db } from './db';
 import { appUsers } from '@shared/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { getUncachableStripeClient } from './stripeClient';
+import { log } from './lib/logger';
+
+// Interface for product with price
+export interface StripeProductWithPrice {
+  productId: string;
+  productName: string;
+  description: string | null;
+  priceId: string;
+  amount: number; // in cents
+  currency: string;
+  interval: 'month' | 'year' | 'week' | 'day' | null;
+  intervalCount: number | null;
+  active: boolean;
+  metadata: Record<string, string>;
+}
 
 export class StripeService {
   async createCustomer(email: string, userId: string, name?: string) {
@@ -42,55 +57,77 @@ export class StripeService {
     });
   }
 
-  async getProduct(productId: string) {
-    const result = await db.execute(
-      sql`SELECT * FROM stripe.products WHERE id = ${productId}`
-    );
-    return result.rows[0] || null;
-  }
+  /**
+   * List products with prices directly from Stripe API
+   * This is the preferred method - no SQL needed
+   */
+  async listProductsWithPrices(): Promise<StripeProductWithPrice[]> {
+    const stripe = await getUncachableStripeClient();
+    if (!stripe) {
+      log('Stripe client not available', 'stripe', 'warn');
+      return [];
+    }
 
-  async listProducts(active = true, limit = 20, offset = 0) {
-    const result = await db.execute(
-      sql`SELECT * FROM stripe.products WHERE active = ${active} LIMIT ${limit} OFFSET ${offset}`
-    );
-    return result.rows;
-  }
+    try {
+      // Fetch active products
+      const products = await stripe.products.list({
+        active: true,
+        limit: 20,
+      });
 
-  async listProductsWithPrices(active = true, limit = 20, offset = 0) {
-    const result = await db.execute(
-      sql`
-        WITH paginated_products AS (
-          SELECT id, name, description, metadata, active
-          FROM stripe.products
-          WHERE active = ${active}
-          ORDER BY id
-          LIMIT ${limit} OFFSET ${offset}
-        )
-        SELECT 
-          p.id as product_id,
-          p.name as product_name,
-          p.description as product_description,
-          p.active as product_active,
-          p.metadata as product_metadata,
-          pr.id as price_id,
-          pr.unit_amount,
-          pr.currency,
-          pr.recurring,
-          pr.active as price_active,
-          pr.metadata as price_metadata
-        FROM paginated_products p
-        LEFT JOIN stripe.prices pr ON pr.product = p.id AND pr.active = true
-        ORDER BY p.id, pr.unit_amount
-      `
-    );
-    return result.rows;
+      // Fetch active prices
+      const prices = await stripe.prices.list({
+        active: true,
+        limit: 100,
+        expand: ['data.product'],
+      });
+
+      // Map products with their prices
+      const result: StripeProductWithPrice[] = [];
+
+      for (const price of prices.data) {
+        if (!price.product || typeof price.product === 'string') continue;
+
+        // Skip deleted products
+        const product = price.product;
+        if ('deleted' in product && product.deleted) continue;
+        if (!('active' in product) || !product.active) continue;
+
+        result.push({
+          productId: product.id,
+          productName: product.name,
+          description: product.description,
+          priceId: price.id,
+          amount: price.unit_amount || 0,
+          currency: price.currency,
+          interval: price.recurring?.interval || null,
+          intervalCount: price.recurring?.interval_count || null,
+          active: price.active,
+          metadata: { ...product.metadata, ...price.metadata },
+        });
+      }
+
+      // Sort by amount (lowest first)
+      result.sort((a, b) => a.amount - b.amount);
+
+      log(`Fetched ${result.length} products with prices from Stripe API`, 'stripe');
+      return result;
+    } catch (error: any) {
+      log(`Error fetching products from Stripe: ${error.message}`, 'stripe', 'error');
+      throw error;
+    }
   }
 
   async getSubscription(subscriptionId: string) {
-    const result = await db.execute(
-      sql`SELECT * FROM stripe.subscriptions WHERE id = ${subscriptionId}`
-    );
-    return result.rows[0] || null;
+    const stripe = await getUncachableStripeClient();
+    if (!stripe) throw new Error("Stripe disabled");
+
+    try {
+      return await stripe.subscriptions.retrieve(subscriptionId);
+    } catch (error: any) {
+      log(`Error fetching subscription ${subscriptionId}: ${error.message}`, 'stripe', 'error');
+      return null;
+    }
   }
 
   async updateUserStripeInfo(userId: string, stripeInfo: {
