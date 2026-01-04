@@ -113,9 +113,9 @@ export default function GalleryVideosPage() {
         }
     };
 
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleString(language === "pt-BR" ? "pt-BR" : "en-US", {
+    const formatDate = (date: string | Date) => {
+        const dateObj = typeof date === 'string' ? new Date(date) : date;
+        return dateObj.toLocaleString(language === "pt-BR" ? "pt-BR" : "en-US", {
             year: "numeric",
             month: "short",
             day: "numeric",
