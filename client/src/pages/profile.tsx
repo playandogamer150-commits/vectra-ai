@@ -521,11 +521,11 @@ export default function ProfilePage() {
 
           {/* Profile Info overlapping banner */}
           <div className="relative px-4 md:px-6 pb-6">
-            <div className="flex items-end gap-4 -mt-12">
+            <div className="flex items-center gap-4 -mt-16">
               {/* Avatar */}
-              <div className="relative group">
-                <div className="relative rounded-full p-[2px] bg-black">
-                  <Avatar className="h-24 w-24 border-4 border-black">
+              <div className="relative group shrink-0">
+                <div className="relative rounded-full overflow-hidden ring-2 ring-white/20 shadow-lg">
+                  <Avatar className="h-24 w-24">
                     <AvatarImage
                       src={profile?.avatarUrl || undefined}
                       alt={profile?.displayName || profile?.username}
@@ -562,22 +562,22 @@ export default function ProfilePage() {
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity bg-white/10 hover:bg-white/20"
+                    className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity bg-red-500/80 hover:bg-red-600"
                     onClick={handleRemoveAvatar}
                   >
-                    <X className="w-3 h-3 text-white" />
+                    <X className="w-4 h-4 text-white" />
                   </Button>
                 )}
               </div>
 
               {/* Name and details */}
-              <div className="pb-1">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-bold text-white">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xl font-bold text-white truncate">
                     {profile?.displayName || profile?.username}
                   </h2>
                   {isPro && (
-                    <Badge className="bg-white text-black text-[10px] px-1.5 py-0">
+                    <Badge className="bg-white text-black text-[10px] px-1.5 py-0.5 h-5 shrink-0">
                       <Crown className="w-2.5 h-2.5 mr-0.5" />
                       PRO
                     </Badge>

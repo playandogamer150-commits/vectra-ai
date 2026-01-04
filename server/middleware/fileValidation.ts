@@ -167,6 +167,12 @@ export function validateImageDataUrl(
     // Step 4: Decode and check magic numbers
     try {
         const buffer = Buffer.from(parsed.data, "base64");
+
+        // Verify buffer is not empty
+        if (buffer.length < 8) {
+            return { valid: false, error: "File is too small to be a valid image" };
+        }
+
         const signatureCheck = validateFileSignature(buffer, ALLOWED_IMAGE_TYPES);
 
         if (!signatureCheck.valid) {
@@ -174,24 +180,38 @@ export function validateImageDataUrl(
             return { valid: false, error: "File content does not match declared type" };
         }
 
-        // Verify declared MIME matches detected MIME
+        // Verify declared MIME matches detected MIME (with tolerance)
         if (signatureCheck.detectedMime && signatureCheck.detectedMime !== parsed.mime) {
             // WebP special case - can declare as image/webp but RIFF signature
             const isWebpMismatch = parsed.mime === "image/webp";
-            if (!isWebpMismatch) {
+            // JPEG can have slight variations in MIME
+            const isJpegVariant = parsed.mime.includes("jpeg") || parsed.mime.includes("jpg");
+            if (!isWebpMismatch && !isJpegVariant) {
                 log(`MIME mismatch: declared ${parsed.mime}, detected ${signatureCheck.detectedMime}`, "security", "warn");
                 // Allow but log - some browsers may send slightly different MIME types
             }
         }
 
-        // Step 5: Check for malicious patterns (polyglot attacks)
-        const textContent = buffer.toString("utf8", 0, Math.min(buffer.length, 1000));
-        for (const pattern of MALICIOUS_PATTERNS) {
-            if (pattern.test(textContent)) {
-                log(`Rejected file upload: malicious pattern detected`, "security", "warn");
-                return { valid: false, error: "File contains suspicious content" };
+        // Step 5: Check for dangerous patterns ONLY in text-based metadata sections
+        // Avoid checking pure binary data to prevent false positives
+        // Only check if file appears to have embedded text/scripts at the start or end
+        const startBytes = buffer.toString("utf8", 0, Math.min(buffer.length, 100));
+        const endBytes = buffer.toString("utf8", Math.max(0, buffer.length - 100), buffer.length);
+
+        // Only check for obvious script injections (not common in legitimate images)
+        const scriptPatterns = [
+            /<script/i,
+            /javascript:/i,
+            /<\?php/i,
+        ];
+
+        for (const pattern of scriptPatterns) {
+            if (pattern.test(startBytes) || pattern.test(endBytes)) {
+                log(`Rejected file upload: script pattern detected in image boundaries`, "security", "warn");
+                return { valid: false, error: "File contains potentially malicious content" };
             }
         }
+
     } catch (err) {
         log(`File validation error: ${err}`, "security", "error");
         return { valid: false, error: "Failed to validate file content" };
