@@ -28,7 +28,7 @@ interface SimpleBannerEditorProps {
     isOpen: boolean;
     onClose: () => void;
     imageUrl: string | null;
-    onSave: (croppedImage: string) => Promise<void>;
+    onSave: (croppedImage: string, cropData: any) => Promise<void>;
     isSaving?: boolean;
     language?: string;
 }
@@ -85,7 +85,14 @@ export function SimpleBannerEditor({
             );
 
             if (croppedImageBase64) {
-                await onSave(croppedImageBase64);
+                const cropData = {
+                    x: crop.x,
+                    y: crop.y,
+                    zoom,
+                    cropAreaPixels: croppedAreaPixels,
+                    aspect: BANNER_ASPECT_RATIO
+                };
+                await onSave(croppedImageBase64, cropData);
             }
         } catch (error) {
             console.error('Error cropping image:', error);

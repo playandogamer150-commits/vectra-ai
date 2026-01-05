@@ -34,7 +34,6 @@ const TIMEZONES = [
   "Pacific/Auckland",
 ];
 
-// P2 FIX: Improved default banner gradients
 const DEFAULT_BANNERS = [
   "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
   "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
@@ -59,6 +58,13 @@ interface ProfileData {
   defaultLanguage: string | null;
   defaultLlmProfileId: string | null;
   theme: string | null;
+  bannerCrop?: {
+    x: number;
+    y: number;
+    zoom: number;
+    cropAreaPixels: { x: number; y: number; width: number; height: number };
+    aspect: number;
+  } | null;
 }
 
 interface UsageData {
@@ -95,45 +101,49 @@ export default function ProfilePage() {
   const [bannerToCrop, setBannerToCrop] = useState<string | null>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
-  const [formData, setFormData] = useState<{
-    displayName: string;
-    tagline: string;
-    timezone: string;
-    defaultLanguage: string;
-    defaultLlmProfileId: string | null;
-    theme: string;
-    email: string;
-  }>({
+  const [formData, setFormData] = useState({
     displayName: "",
     tagline: "",
     timezone: "America/Sao_Paulo",
     defaultLanguage: language,
-    defaultLlmProfileId: null,
+    defaultLlmProfileId: null as string | null,
     theme: "system",
     email: "",
   });
 
-  // P0 FIX: Auth state validation with redirect
   const { data: profile, isLoading: profileLoading, isError: profileError } = useQuery<ProfileData>({
     queryKey: ["/api/profile"],
-    retry: false, // Não retentar em 401
+    retry: false,
   });
 
   const { data: usage, isLoading: usageLoading } = useQuery<UsageData>({
     queryKey: ["/api/profile/usage"],
-    enabled: !!profile, // Só buscar usage se profile existir
+    enabled: !!profile,
   });
 
-  // P0 FIX: Redirect unauthenticated users
+  const { data: profiles } = useQuery<LLMProfile[]>({
+    queryKey: ["/api/profiles"],
+  });
+
   useEffect(() => {
     if (profileError) {
       window.location.href = "/api/login";
     }
   }, [profileError]);
 
-  const { data: profiles } = useQuery<LLMProfile[]>({
-    queryKey: ["/api/profiles"],
-  });
+  useEffect(() => {
+    if (profile) {
+      setFormData({
+        displayName: profile.displayName || "",
+        tagline: profile.tagline || "",
+        timezone: profile.timezone || "America/Sao_Paulo",
+        defaultLanguage: (profile.defaultLanguage as any) || language,
+        defaultLlmProfileId: profile.defaultLlmProfileId,
+        theme: profile.theme || "system",
+        email: profile.email || "",
+      });
+    }
+  }, [profile, language]);
 
   const updateMutation = useMutation({
     mutationFn: async (data: Partial<typeof formData>) => {
@@ -158,31 +168,16 @@ export default function ProfilePage() {
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     if (!file.type.startsWith("image/")) {
-      toast({
-        title: t.common.error,
-        description: language === "pt-BR"
-          ? "Selecione um arquivo de imagem válido."
-          : "Please select a valid image file.",
-        variant: "destructive",
-      });
+      toast({ title: t.common.error, description: language === "pt-BR" ? "Selecione um arquivo de imagem válido." : "Please select a valid image file.", variant: "destructive" });
       return;
     }
-
     if (file.size > 10 * 1024 * 1024) {
-      toast({
-        title: t.common.error,
-        description: language === "pt-BR"
-          ? "A imagem deve ter no máximo 10MB."
-          : "Image must be 10MB or less.",
-        variant: "destructive",
-      });
+      toast({ title: t.common.error, description: language === "pt-BR" ? "A imagem deve ter no máximo 10MB." : "Image must be 10MB or less.", variant: "destructive" });
       return;
     }
 
     setAvatarUploading(true);
-
     try {
       const reader = new FileReader();
       reader.onloadend = async () => {
@@ -190,24 +185,12 @@ export default function ProfilePage() {
           const imageData = reader.result as string;
           const response = await apiRequest("POST", "/api/profile/avatar", { imageData });
           const data = await response.json();
-
           if (data.success) {
             queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-            toast({
-              title: language === "pt-BR" ? "Foto atualizada" : "Photo updated",
-              description: language === "pt-BR"
-                ? "Sua foto de perfil foi atualizada com sucesso."
-                : "Your profile photo has been updated successfully.",
-            });
+            toast({ title: language === "pt-BR" ? "Foto atualizada" : "Photo updated", description: language === "pt-BR" ? "Sua foto de perfil foi atualizada com sucesso." : "Your profile photo has been updated successfully." });
           }
         } catch {
-          toast({
-            title: t.common.error,
-            description: language === "pt-BR"
-              ? "Erro ao enviar a foto. Tente novamente."
-              : "Failed to upload photo. Please try again.",
-            variant: "destructive",
-          });
+          toast({ title: t.common.error, description: language === "pt-BR" ? "Erro ao enviar a foto. Tente novamente." : "Failed to upload photo. Please try again.", variant: "destructive" });
         } finally {
           setAvatarUploading(false);
         }
@@ -215,41 +198,20 @@ export default function ProfilePage() {
       reader.readAsDataURL(file);
     } catch {
       setAvatarUploading(false);
-      toast({
-        title: t.common.error,
-        description: language === "pt-BR"
-          ? "Erro ao processar a imagem."
-          : "Failed to process image.",
-        variant: "destructive",
-      });
+      toast({ title: t.common.error, description: language === "pt-BR" ? "Erro ao processar a imagem." : "Failed to process image.", variant: "destructive" });
     }
-
     event.target.value = "";
   };
 
   const handleBannerUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     if (!file.type.startsWith("image/")) {
-      toast({
-        title: t.common.error,
-        description: language === "pt-BR"
-          ? "Selecione um arquivo de imagem válido."
-          : "Please select a valid image file.",
-        variant: "destructive",
-      });
+      toast({ title: t.common.error, description: language === "pt-BR" ? "Selecione um arquivo de imagem válido." : "Please select a valid image file.", variant: "destructive" });
       return;
     }
-
-    if (file.size > 15 * 1024 * 1024) { // Increased to 15MB for convenience
-      toast({
-        title: t.common.error,
-        description: language === "pt-BR"
-          ? "A imagem deve ter no máximo 15MB."
-          : "Image must be 15MB or less.",
-        variant: "destructive",
-      });
+    if (file.size > 15 * 1024 * 1024) {
+      toast({ title: t.common.error, description: language === "pt-BR" ? "A imagem deve ter no máximo 15MB." : "Image must be 15MB or less.", variant: "destructive" });
       return;
     }
 
@@ -262,33 +224,23 @@ export default function ProfilePage() {
     event.target.value = "";
   };
 
-  // Save handler for SimpleBannerEditor
-  const handleSaveBanner = async (croppedImage: string) => {
+  const handleSaveBanner = async (croppedImage: string, cropData: any) => {
     setBannerUploading(true);
     try {
-      const response = await apiRequest("POST", "/api/profile/banner", { imageData: croppedImage });
+      const response = await apiRequest("POST", "/api/profile/banner", {
+        imageData: bannerToCrop,
+        cropData: cropData
+      });
       const data = await response.json();
-
       if (data.success) {
         queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
         setBannerEditorOpen(false);
         setBannerToCrop(null);
-        toast({
-          title: language === "pt-BR" ? "Banner atualizado" : "Banner updated",
-          description: language === "pt-BR"
-            ? "Seu banner foi ajustado e salvo com sucesso."
-            : "Your banner has been adjusted and saved successfully.",
-        });
+        toast({ title: language === "pt-BR" ? "Banner atualizado" : "Banner updated", description: language === "pt-BR" ? "Seu banner foi ajustado e salvo com sucesso." : "Your banner has been adjusted and saved successfully." });
       }
     } catch (error) {
       console.error("Banner upload error:", error);
-      toast({
-        title: t.common.error,
-        description: (error instanceof Error ? error.message : String(error)) || (language === "pt-BR"
-          ? "Erro ao salvar o banner. Tente novamente."
-          : "Failed to save banner. Please try again."),
-        variant: "destructive",
-      });
+      toast({ title: t.common.error, description: (error instanceof Error ? error.message : String(error)) || (language === "pt-BR" ? "Erro ao salvar o banner." : "Failed to save banner."), variant: "destructive" });
     } finally {
       setBannerUploading(false);
     }
@@ -299,19 +251,10 @@ export default function ProfilePage() {
       const response = await apiRequest("DELETE", "/api/profile/banner", {});
       if (response.ok) {
         queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-        toast({
-          title: language === "pt-BR" ? "Banner removido" : "Banner removed",
-          description: language === "pt-BR"
-            ? "O banner padrão foi restaurado."
-            : "Default banner has been restored.",
-        });
+        toast({ title: language === "pt-BR" ? "Banner removido" : "Banner removed", description: language === "pt-BR" ? "O banner padrão foi restaurado." : "Default banner has been restored." });
       }
-    } catch (error) {
-      toast({
-        title: t.common.error,
-        description: language === "pt-BR" ? "Erro ao remover" : "Failed to remove",
-        variant: "destructive"
-      });
+    } catch {
+      toast({ title: t.common.error, description: language === "pt-BR" ? "Erro ao remover" : "Failed to remove", variant: "destructive" });
     }
   };
 
@@ -319,36 +262,11 @@ export default function ProfilePage() {
     try {
       await apiRequest("DELETE", "/api/profile/avatar", {});
       queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-      toast({
-        title: language === "pt-BR" ? "Foto removida" : "Photo removed",
-        description: language === "pt-BR"
-          ? "Sua foto de perfil foi removida."
-          : "Your profile photo has been removed.",
-      });
+      toast({ title: language === "pt-BR" ? "Foto removida" : "Photo removed", description: language === "pt-BR" ? "Sua foto de perfil foi removida." : "Your profile photo has been removed." });
     } catch {
-      toast({
-        title: t.common.error,
-        description: language === "pt-BR"
-          ? "Erro ao remover a foto."
-          : "Failed to remove photo.",
-        variant: "destructive",
-      });
+      toast({ title: t.common.error, description: language === "pt-BR" ? "Erro ao remover a foto." : "Failed to remove photo.", variant: "destructive" });
     }
   };
-
-  useEffect(() => {
-    if (profile) {
-      setFormData({
-        displayName: profile.displayName || "",
-        tagline: profile.tagline || "",
-        timezone: profile.timezone || "America/Sao_Paulo",
-        defaultLanguage: profile.defaultLanguage || language,
-        defaultLlmProfileId: profile.defaultLlmProfileId,
-        theme: profile.theme || "system",
-        email: profile.email || "",
-      });
-    }
-  }, [profile, language]);
 
   const handleSave = () => {
     updateMutation.mutate({
@@ -360,24 +278,24 @@ export default function ProfilePage() {
       theme: formData.theme,
       email: formData.email !== profile?.email ? formData.email : undefined,
     });
-
-    if (formData.defaultLanguage !== language) {
-      setLanguage(formData.defaultLanguage as "en" | "pt-BR");
-    }
-
+    if (formData.defaultLanguage !== language) setLanguage(formData.defaultLanguage as any);
     setTheme(formData.theme as "light" | "dark" | "system");
   };
 
   const isPro = usage?.plan === "pro";
 
-  // Get banner style
   const getBannerStyle = () => {
-    if (profile?.bannerUrl) {
-      return { backgroundImage: `url(${profile.bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' };
+    if (profile?.bannerUrl && !profile.bannerCrop) {
+      return { backgroundImage: `url(${profile.bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' };
     }
-    // Use a subtle gradient based on username hash for variety
     const hash = (profile?.username || "user").charCodeAt(0) % DEFAULT_BANNERS.length;
     return { background: DEFAULT_BANNERS[hash] };
+  };
+
+  const getBannerImgTransform = () => {
+    if (!profile?.bannerCrop) return 'translate(-50%, -50%)';
+    const { x, y, zoom } = profile.bannerCrop;
+    return `translate(-50%, -50%) translate3d(${-x}%, ${-y}%, 0) scale(${zoom})`;
   };
 
   if (profileLoading) {
@@ -396,36 +314,44 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-white/20">
-      {/* Minimal Grid Background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-[0.02]">
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `
-              linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)
-            `,
-            backgroundSize: "60px 60px"
-          }}
-        />
-      </div>
-
-      <div className="relative z-10 max-w-4xl mx-auto px-4 md:px-6 pt-16 md:pt-24 pb-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white tracking-tight">{t.profile.title}</h1>
-          <p className="text-white/40 text-sm mt-1">{t.profile.subtitle}</p>
+    <>
+      <div className="min-h-screen bg-black text-white selection:bg-white/20">
+        <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-[0.02]">
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: `
+                linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)
+              `,
+              backgroundSize: "60px 60px"
+            }}
+          />
         </div>
 
-        {/* Profile Banner Section */}
-        <div className="relative mb-8 rounded-xl overflow-hidden border border-white/10 bg-black/40">
-          {/* Banner */}
-          <div
-            className="w-full aspect-[3/1] relative group cursor-pointer"
-            style={getBannerStyle()}
-          >
-            {/* Banner overlay on hover */}
+        <div className="relative z-10 max-w-4xl mx-auto px-4 md:px-6 pt-16 md:pt-24 pb-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-white tracking-tight">{t.profile.title}</h1>
+            <p className="text-white/40 text-sm mt-1">{t.profile.subtitle}</p>
+          </div>
+
+          <div className="relative mb-8 rounded-xl overflow-hidden border border-white/10 bg-black group cursor-pointer">
+            <div className="w-full aspect-[3/1] relative overflow-hidden">
+              {profile?.bannerUrl ? (
+                <img
+                  src={profile.bannerUrl}
+                  alt="Profile Banner"
+                  className="absolute top-1/2 left-1/2 min-w-full min-h-full object-cover pointer-events-none"
+                  style={{
+                    transform: getBannerImgTransform(),
+                    transformOrigin: 'center'
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full" style={getBannerStyle()} />
+              )}
+            </div>
+
             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
               {bannerUploading ? (
                 <Loader2 className="w-6 h-6 text-white animate-spin" />
@@ -445,15 +371,7 @@ export default function ProfilePage() {
                   </Button>
 
                   {profile?.bannerUrl && (
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="h-8"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemoveBanner();
-                      }}
-                    >
+                    <Button variant="destructive" size="sm" className="h-8" onClick={(e) => { e.stopPropagation(); handleRemoveBanner(); }}>
                       <Trash2 className="w-4 h-4 mr-2" />
                       {language === "pt-BR" ? "Remover" : "Remove"}
                     </Button>
@@ -461,388 +379,138 @@ export default function ProfilePage() {
                 </>
               )}
             </div>
-            <input
-              ref={bannerInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={handleBannerUpload}
-              disabled={bannerUploading}
-            />
+            <input ref={bannerInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleBannerUpload} disabled={bannerUploading} />
           </div>
 
-          {/* Profile Info overlapping banner */}
           <div className="relative px-4 md:px-6 pb-6">
             <div className="flex items-center gap-4 -mt-16">
-              {/* Avatar */}
               <div className="relative group shrink-0">
                 <div className="relative rounded-full overflow-hidden ring-2 ring-white/20 shadow-lg">
                   <Avatar className="h-24 w-24">
-                    <AvatarImage
-                      src={profile?.avatarUrl || undefined}
-                      alt={profile?.displayName || profile?.username}
-                      className="object-cover"
-                    />
+                    <AvatarImage src={profile?.avatarUrl || undefined} alt={profile?.displayName || profile?.username} className="object-cover" />
                     <AvatarFallback className="text-2xl bg-white/10 text-white">
                       {(profile?.displayName || profile?.username || "U").charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </div>
-
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  className="hidden"
-                  id="avatar-upload"
-                  onChange={handleAvatarUpload}
-                  disabled={avatarUploading}
-                />
-
-                <label
-                  htmlFor="avatar-upload"
-                  className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                  aria-label={language === "pt-BR" ? "Alterar foto de perfil" : "Change profile picture"}
-                >
-                  {avatarUploading ? (
-                    <Loader2 className="w-5 h-5 text-white animate-spin" />
-                  ) : (
-                    <Camera className="w-5 h-5 text-white" />
-                  )}
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" id="avatar-upload" onChange={handleAvatarUpload} disabled={avatarUploading} />
+                <label htmlFor="avatar-upload" className="absolute inset-0 flex items-center justify-center bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                  {avatarUploading ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
                 </label>
-
                 {profile?.avatarUrl && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity bg-red-500/80 hover:bg-red-600"
-                    onClick={handleRemoveAvatar}
-                  >
+                  <Button size="icon" variant="ghost" className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity bg-red-500/80 hover:bg-red-600" onClick={handleRemoveAvatar}>
                     <X className="w-4 h-4 text-white" />
                   </Button>
                 )}
               </div>
 
-              {/* Name and details */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-xl font-bold text-white truncate">
-                    {profile?.displayName || profile?.username}
-                  </h2>
-                  {isPro && (
-                    <Badge className="bg-white text-black text-[10px] px-1.5 py-0.5 h-5 shrink-0">
-                      <Crown className="w-2.5 h-2.5 mr-0.5" />
-                      PRO
-                    </Badge>
-                  )}
+                  <h2 className="text-xl font-bold text-white truncate">{profile?.displayName || profile?.username}</h2>
+                  {isPro && <Badge className="bg-white text-black text-[10px] px-1.5 py-0.5 h-5 shrink-0"><Crown className="w-2.5 h-2.5 mr-0.5" />PRO</Badge>}
                 </div>
                 <p className="text-white/40 text-sm">@{profile?.username}</p>
-                {profile?.tagline && (
-                  <p className="text-white/60 text-xs mt-1">{profile.tagline}</p>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Cards Grid */}
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* Personal Info Card */}
-          <div className="p-5 rounded-xl border border-white/10 bg-white/[0.02]">
-            <div className="flex items-center gap-2 mb-4">
-              <User className="w-4 h-4 text-white/40" />
-              <h3 className="text-sm font-semibold text-white">{t.profile.personalInfo}</h3>
-            </div>
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="displayName" className="text-xs text-white/90">{t.profile.displayName}</Label>
-                <Input
-                  id="displayName"
-                  value={formData.displayName}
-                  onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
-                  placeholder={language === "pt-BR" ? "Seu nome de exibição" : "Your display name"}
-                  className="h-9 bg-white/5 border-white/10 text-white placeholder:text-white/60 focus:border-white/30"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-xs text-white/90">{t.profile.email}</Label>
-                <Input
-                  id="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  placeholder="seu@email.com"
-                  className="h-9 bg-white/5 border-white/10 text-white placeholder:text-white/60 focus:border-white/30"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="tagline" className="text-xs text-white/90">{t.profile.tagline}</Label>
-                <Input
-                  id="tagline"
-                  value={formData.tagline}
-                  onChange={(e) => setFormData(prev => ({ ...prev, tagline: e.target.value }))}
-                  placeholder={language === "pt-BR" ? "Uma breve descrição sobre você" : "A short description about yourself"}
-                  className="h-9 bg-white/5 border-white/10 text-white placeholder:text-white/60 focus:border-white/30"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="timezone" className="text-xs text-white/90">{t.profile.timezone}</Label>
-                <Select
-                  value={formData.timezone}
-                  onValueChange={(v) => setFormData(prev => ({ ...prev, timezone: v }))}
-                >
-                  <SelectTrigger id="timezone" className="h-9 bg-white/5 border-white/10 text-white">
-                    <SelectValue placeholder={language === "pt-BR" ? "Selecione o fuso horário" : "Select timezone"} />
-                  </SelectTrigger>
-                  <SelectContent className="bg-black border-white/10">
-                    {TIMEZONES.map((tz) => (
-                      <SelectItem key={tz} value={tz} className="text-white hover:bg-white/10">
-                        {tz.replace("_", " ")}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {profile?.tagline && <p className="text-white/60 text-xs mt-1 md:text-sm">{profile.tagline}</p>}
               </div>
             </div>
           </div>
 
-          {/* Preferences Card */}
-          <div className="p-5 rounded-xl border border-white/10 bg-white/[0.02]">
-            <div className="flex items-center gap-2 mb-4">
-              <Settings className="w-4 h-4 text-white/40" />
-              <h3 className="text-sm font-semibold text-white">{t.profile.preferences}</h3>
-            </div>
-            <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="language" className="text-xs text-white/90">{t.profile.language}</Label>
-                <Select
-                  value={formData.defaultLanguage}
-                  onValueChange={(v) => setFormData(prev => ({ ...prev, defaultLanguage: v }))}
-                >
-                  <SelectTrigger id="language" className="h-9 bg-white/5 border-white/10 text-white">
-                    <SelectValue placeholder={language === "pt-BR" ? "Selecione o idioma" : "Select language"} />
-                  </SelectTrigger>
-                  <SelectContent className="bg-black border-white/10">
-                    <SelectItem value="en" className="text-white hover:bg-white/10">English</SelectItem>
-                    <SelectItem value="pt-BR" className="text-white hover:bg-white/10">Português (Brasil)</SelectItem>
-                  </SelectContent>
-                </Select>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="p-6 rounded-xl border border-white/10 bg-white/[0.02] space-y-6">
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-white/40" />
+                <h3 className="text-sm font-semibold text-white">{t.profile.personalInfo}</h3>
               </div>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="displayName" className="text-xs text-white/90">{t.profile.displayName}</Label>
+                  <Input id="displayName" value={formData.displayName} onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))} className="h-10 bg-white/5 border-white/10 text-white placeholder:text-white/60" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="tagline" className="text-xs text-white/90">{t.profile.tagline}</Label>
+                  <Input id="tagline" value={formData.tagline} onChange={(e) => setFormData(prev => ({ ...prev, tagline: e.target.value }))} className="h-10 bg-white/5 border-white/10 text-white placeholder:text-white/60" />
+                </div>
+              </div>
+            </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="defaultProfile" className="text-xs text-white/90">{t.profile.defaultProfile}</Label>
-                <Select
-                  value={formData.defaultLlmProfileId || "auto"}
-                  onValueChange={(v) => setFormData(prev => ({
-                    ...prev,
-                    defaultLlmProfileId: v === "auto" ? null : v
-                  }))}
-                >
-                  <SelectTrigger id="defaultProfile" className="h-9 bg-white/5 border-white/10 text-white">
-                    <SelectValue placeholder={language === "pt-BR" ? "Selecione o perfil" : "Select profile"} />
-                  </SelectTrigger>
-                  <SelectContent className="bg-black border-white/10">
-                    <SelectItem value="auto" className="text-white hover:bg-white/10">{t.profile.autoSelect}</SelectItem>
-                    {profiles?.map((p) => (
-                      <SelectItem key={p.id} value={p.id} className="text-white hover:bg-white/10">
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="p-6 rounded-xl border border-white/10 bg-white/[0.02] space-y-6">
+              <div className="flex items-center gap-2">
+                <Settings className="w-4 h-4 text-white/40" />
+                <h3 className="text-sm font-semibold text-white">{t.profile.preferences}</h3>
+              </div>
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="language" className="text-xs text-white/90">{t.profile.language}</Label>
+                  <Select value={formData.defaultLanguage} onValueChange={(val) => { setFormData(prev => ({ ...prev, defaultLanguage: val as any })); setLanguage(val as any); }}>
+                    <SelectTrigger id="language" className="h-10 bg-white/5 border-white/10 text-white"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-neutral-900 border-white/10 text-white">
+                      <SelectItem value="pt-BR">Português (Brasil)</SelectItem>
+                      <SelectItem value="en">English (US)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="timezone" className="text-xs text-white/90">{t.profile.timezone}</Label>
+                  <Select value={formData.timezone} onValueChange={(val) => setFormData(prev => ({ ...prev, timezone: val }))}>
+                    <SelectTrigger id="timezone" className="h-10 bg-white/5 border-white/10 text-white"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-neutral-900 border-white/10 text-white">
+                      {TIMEZONES.map(tz => <SelectItem key={tz} value={tz}>{tz.replace("_", " ")}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Plan & Usage Card */}
-          <div className="p-5 rounded-xl border border-white/10 bg-white/[0.02]">
-            <div className="flex items-center gap-2 mb-4">
+          <div className="mt-8 p-6 rounded-xl border border-white/10 bg-white/[0.02]">
+            <div className="flex items-center gap-2 mb-6">
               <BarChart3 className="w-4 h-4 text-white/40" />
               <h3 className="text-sm font-semibold text-white">{t.profile.planAndUsage}</h3>
             </div>
-
-            <div className="flex items-center justify-between mb-4 p-3 rounded-lg bg-white/5">
-              <span className="text-xs text-white/60">{t.profile.currentPlan}</span>
-              <Badge
-                className={isPro
-                  ? "bg-white text-black text-[10px]"
-                  : "bg-white/10 text-white/60 text-[10px]"
-                }
-              >
-                {isPro && <Crown className="w-2.5 h-2.5 mr-1" />}
-                {isPro ? "PRO" : "FREE"}
-              </Badge>
+            <div className="grid gap-6 md:grid-cols-3">
+              {[
+                { label: t.profile.promptsGenerated, value: usage?.totalPromptsGenerated || 0, used: usage?.daily?.prompts?.used, limit: usage?.daily?.prompts?.limit, color: 'bg-white/20' },
+                { label: t.profile.imagesGenerated, value: usage?.totalImagesGenerated || 0, used: usage?.daily?.images?.used, limit: usage?.daily?.images?.limit, color: 'bg-blue-500/40' },
+                { label: t.profile.videosGenerated, value: usage?.totalVideosGenerated || 0, used: usage?.daily?.videos?.used, limit: usage?.daily?.videos?.limit, color: 'bg-purple-500/40' }
+              ].map((item, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="flex justify-between text-xs"><span className="text-white/60">{item.label}</span><span className="text-white font-medium">{item.value}</span></div>
+                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                    <div className={`h-full ${item.color} transition-all duration-1000`} style={{ width: `${Math.min(100, ((item.used || 0) / (item.limit || 1)) * 100)}%` }} />
+                  </div>
+                </div>
+              ))}
             </div>
 
-            {usageLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-full bg-white/10" />
-                <Skeleton className="h-4 w-full bg-white/10" />
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="flex justify-between p-2 rounded bg-white/5">
-                  <span className="text-white/40">{t.profile.promptsToday}</span>
-                  <span className="text-white font-medium">
-                    {usage?.daily?.prompts?.used || 0}
-                    {!isPro && <span className="text-white/40">/{usage?.daily?.prompts?.limit || 3}</span>}
-                  </span>
-                </div>
-                <div className="flex justify-between p-2 rounded bg-white/5">
-                  <span className="text-white/40">{t.profile.imagesGenerated}</span>
-                  <span className="text-white font-medium">{usage?.daily?.images?.used || 0}</span>
-                </div>
-                <div className="flex justify-between p-2 rounded bg-white/5">
-                  <span className="text-white/40">{t.profile.videosGenerated}</span>
-                  <span className="text-white font-medium">{usage?.daily?.videos?.used || 0}</span>
-                </div>
-                <div className="flex justify-between p-2 rounded bg-white/5">
-                  <span className="text-white/40">{t.profile.blueprintsSaved}</span>
-                  <span className="text-white font-medium">
-                    {usage?.blueprintsSaved || 0}
-                    {!isPro && <span className="text-white/40">/5</span>}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {!isPro && (
-              <Link href="/pricing">
-                <Button className="w-full mt-4 bg-white text-black hover:bg-white/90 h-9 text-xs font-medium">
-                  <Crown className="w-3 h-3 mr-2" />
-                  {t.profile.upgradeToPro}
-                </Button>
-              </Link>
-            )}
-
-            {isPro && profile?.stripeCustomerId && (
-              <Button
-                className="w-full mt-4 h-9 text-xs border-white/10 text-white/80"
-                variant="outline"
-                onClick={async () => {
-                  try {
-                    const response = await apiRequest("POST", "/api/stripe/portal", {});
-                    const data = await response.json();
-                    if (data.url) {
-                      window.location.href = data.url;
-                    }
-                  } catch {
-                    toast({
-                      title: t.common.error,
-                      description: language === "pt-BR"
-                        ? "Não foi possível abrir o portal de pagamento."
-                        : "Could not open billing portal.",
-                      variant: "destructive",
-                    });
-                  }
-                }}
-              >
-                <CreditCard className="w-3 h-3 mr-2" />
-                {language === "pt-BR" ? "Gerenciar Assinatura" : "Manage Subscription"}
-                <ExternalLink className="w-2.5 h-2.5 ml-2" />
-              </Button>
-            )}
-          </div>
-
-          {/* Quick Links Card */}
-          <div className="p-5 rounded-xl border border-white/10 bg-white/[0.02]">
-            <div className="flex items-center gap-2 mb-4">
-              <ArrowRight className="w-4 h-4 text-white/40" />
-              <h3 className="text-sm font-semibold text-white">{t.profile.quickLinks}</h3>
-            </div>
-            <div className="space-y-2">
-              <Link href="/library">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start h-9 text-xs text-white/60 hover:text-white hover:bg-white/5 border border-white/5"
-                >
-                  <FolderOpen className="w-3.5 h-3.5 mr-2" />
-                  {t.profile.goToBlueprints}
-                </Button>
-              </Link>
-              <Link href="/history">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start h-9 text-xs text-white/60 hover:text-white hover:bg-white/5 border border-white/5"
-                >
-                  <History className="w-3.5 h-3.5 mr-2" />
-                  {t.profile.goToHistory}
-                </Button>
-              </Link>
-              <Link href="/image-studio">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start h-9 text-xs text-white/60 hover:text-white hover:bg-white/5 border border-white/5"
-                >
-                  <Image className="w-3.5 h-3.5 mr-2" />
-                  {t.profile.goToStudio}
-                </Button>
-              </Link>
-              <Link href="/gallery/images">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start h-9 text-xs text-white/60 hover:text-white hover:bg-white/5 border border-white/5"
-                >
-                  <ImageIcon className="w-3.5 h-3.5 mr-2" />
-                  {language === "pt-BR" ? "Galeria de Imagens" : "Image Gallery"}
-                </Button>
-              </Link>
-              <Link href="/gallery/videos">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start h-9 text-xs text-white/60 hover:text-white hover:bg-white/5 border border-white/5"
-                >
-                  <Video className="w-3.5 h-3.5 mr-2" />
-                  {language === "pt-BR" ? "Galeria de Vídeos" : "Video Gallery"}
-                </Button>
-              </Link>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <Link href="/library"><Button variant="ghost" size="sm" className="h-8 text-[10px] text-white/40 border border-white/5"><FolderOpen className="w-3 h-3 mr-1.5" />{t.profile.goToBlueprints}</Button></Link>
+              <Link href="/history"><Button variant="ghost" size="sm" className="h-8 text-[10px] text-white/40 border border-white/5"><History className="w-3 h-3 mr-1.5" />{t.profile.goToHistory}</Button></Link>
+              <Link href="/modelslab-studio"><Button variant="ghost" size="sm" className="h-8 text-[10px] text-white/40 border border-white/5"><Image className="w-3 h-3 mr-1.5" />{t.profile.goToStudio}</Button></Link>
+              <Link href="/gallery/images"><Button variant="ghost" size="sm" className="h-8 text-[10px] text-white/40 border border-white/5"><ImageIcon className="w-3 h-3 mr-1.5" />{language === "pt-BR" ? "Imagens" : "Images"}</Button></Link>
+              <Link href="/gallery/videos"><Button variant="ghost" size="sm" className="h-8 text-[10px] text-white/40 border border-white/5"><Video className="w-3 h-3 mr-1.5" />{language === "pt-BR" ? "Vídeos" : "Videos"}</Button></Link>
             </div>
           </div>
-        </div>
 
-        {/* Save Button */}
-        <div className="flex justify-end mt-6">
-          <Button
-            onClick={handleSave}
-            disabled={updateMutation.isPending}
-            className="bg-white text-black hover:bg-white/90 h-9 px-6 text-xs font-medium"
-          >
-            {updateMutation.isPending ? (
-              <>
-                <Loader2 className="w-3 h-3 mr-2 animate-spin" />
-                {t.profile.saving}
-              </>
-            ) : (
-              <>
-                <Check className="w-3 h-3 mr-2" />
-                {t.profile.saveChanges}
-              </>
-            )}
-          </Button>
-        </div>
+          <div className="flex justify-end mt-8">
+            <Button onClick={handleSave} disabled={updateMutation.isPending} className="bg-white text-black hover:bg-white/90 h-10 px-8 text-sm font-semibold">
+              {updateMutation.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{t.profile.saving}</> : <><Check className="w-4 h-4 mr-2" />{t.profile.saveChanges}</>}
+            </Button>
+          </div>
 
-        {/* Footer */}
-        <footer className="mt-16 pt-8 border-t border-white/5 text-center">
-          <p className="text-[10px] text-white/20 uppercase tracking-[0.2em]">
-            © 2025 VECTRA AI
-          </p>
-        </footer>
+          <footer className="mt-16 pt-8 border-t border-white/5 text-center">
+            <p className="text-[10px] text-white/20 uppercase tracking-[0.2em]">© 2025 VECTRA AI</p>
+          </footer>
+        </div>
       </div>
 
-      {/* Simple Banner Editor - Minimalista e Funcional */}
       <SimpleBannerEditor
         isOpen={bannerEditorOpen}
-        onClose={() => {
-          setBannerEditorOpen(false);
-          setBannerToCrop(null);
-        }}
+        onClose={() => { setBannerEditorOpen(false); setBannerToCrop(null); }}
         imageUrl={bannerToCrop}
         onSave={handleSaveBanner}
         isSaving={bannerUploading}
         language={language}
       />
-
-    </div>
+    </>
   );
 }

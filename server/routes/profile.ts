@@ -228,34 +228,37 @@ router.delete("/avatar", async (req, res) => {
     }
 });
 
-// Banner upload endpoint - with enterprise-grade file validation
+// Banner upload endpoint - with persistent cropping support
 router.post("/banner", async (req, res) => {
     try {
         const userId = requireAuth(req, res);
         if (!userId) return;
 
-        const { imageData } = req.body;
+        const { imageData, cropData } = req.body;
 
         if (!imageData || typeof imageData !== "string") {
             return res.status(400).json({ error: "Image data is required" });
         }
 
-        // Enterprise-grade file validation (magic numbers, MIME, size, malicious content)
+        // Enterprise-grade file validation
         const validation = validateImageDataUrl(imageData, "banner");
         if (!validation.valid) {
             log(`Banner upload rejected for user ${userId}: ${validation.error}`, "security", "warn");
             return res.status(400).json({ error: validation.error });
         }
 
-        // Update user banner
-        const updated = await storage.updateAppUser(userId, { bannerUrl: imageData });
+        // Update user banner and its crop metadata
+        const updated = await storage.updateAppUser(userId, {
+            bannerUrl: imageData,
+            bannerCrop: cropData || null
+        });
 
         if (!updated) {
             return res.status(500).json({ error: "Failed to update banner" });
         }
 
-        log(`Banner updated for user ${userId}`, "profile", "info");
-        res.json({ success: true, bannerUrl: imageData });
+        log(`Banner and crop metadata updated for user ${userId}`, "profile", "info");
+        res.json({ success: true, bannerUrl: imageData, bannerCrop: cropData });
     } catch (error) {
         console.error("Error uploading banner:", error);
         res.status(500).json({ error: "Failed to upload banner" });

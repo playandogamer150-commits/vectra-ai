@@ -32,6 +32,7 @@ export const appUsers = pgTable("app_users", {
   displayName: text("display_name"),
   avatarUrl: text("avatar_url"),
   bannerUrl: text("banner_url"),
+  bannerCrop: jsonb("banner_crop").$type<{ x: number, y: number, zoom: number, cropAreaPixels: { x: number, y: number, width: number, height: number }, aspect: number }>(),
   tagline: text("tagline"),
   timezone: text("timezone").default("America/Sao_Paulo"),
   defaultLanguage: varchar("default_language", { length: 5 }).default("pt-BR"),
@@ -506,6 +507,18 @@ export const updateProfileSchema = z.object({
   theme: z.enum(["light", "dark", "system"]).optional(),
   tutorialCompleted: z.number().min(0).max(1).optional(),
   email: z.string().email().optional(),
+  bannerCrop: z.object({
+    x: z.number(),
+    y: z.number(),
+    zoom: z.number(),
+    cropAreaPixels: z.object({
+      x: z.number(),
+      y: z.number(),
+      width: z.number(),
+      height: z.number()
+    }),
+    aspect: z.number()
+  }).optional().nullable(),
 });
 
 export type UpdateProfileRequest = z.infer<typeof updateProfileSchema>;
