@@ -504,19 +504,3 @@ export default function ProfilePage() {
     </>
   );
 }
-<p className="text-[10px] text-white/20 uppercase tracking-[0.2em]">© 2025 VECTRA AI</p>
-          </footer >
-        </div >
-      </div >
-
-  <SimpleBannerEditor
-    isOpen={bannerEditorOpen}
-    onClose={() => { setBannerEditorOpen(false); setBannerToCrop(null); }}
-    imageUrl={bannerToCrop}
-    onSave={handleSaveBanner}
-    isSaving={bannerUploading}
-    language={language}
-  />
-    </>
-  );
-}
