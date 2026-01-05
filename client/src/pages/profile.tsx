@@ -352,7 +352,7 @@ export default function ProfilePage() {
               )}
             </div>
 
-            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+            <div className="absolute inset-0 bg-black/40 transition-opacity flex items-center justify-center gap-3">
               {bannerUploading ? (
                 <Loader2 className="w-6 h-6 text-white animate-spin" />
               ) : (

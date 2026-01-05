@@ -55,14 +55,26 @@ export function SimpleBannerEditor({
             const style = document.createElement('style');
             style.id = styleId;
             style.innerHTML = `
-                .vectra-cropper-active .reactEasyCrop_CropArea {
-                    border: 2px solid #1d9bf0 !important;
-                    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.75) !important;
-                    color: #1d9bf0 !important;
-                    pointer-events: none;
-                }
-                .vectra-cropper-active .reactEasyCrop_Container {
+                /* Base container fix */
+                .react-easy-crop_Container {
                     background-color: #000 !important;
+                    cursor: grab;
+                }
+                .react-easy-crop_Container:active {
+                    cursor: grabbing;
+                }
+                
+                /* Crop Area Visibility (THE FIX) */
+                .react-easy-crop_CropArea {
+                    border: 2px solid #1d9bf0 !important;
+                    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65) !important;
+                    color: rgba(29, 155, 240, 0.3) !important;
+                }
+
+                /* Grid visibility if enabled */
+                .react-easy-crop_CropAreaGrid::before, 
+                .react-easy-crop_CropAreaGrid::after {
+                    border-color: rgba(255, 255, 255, 0.3) !important;
                 }
             `;
             document.head.appendChild(style);
@@ -155,7 +167,7 @@ export function SimpleBannerEditor({
                                 onCropChange={setCrop}
                                 onZoomChange={setZoom}
                                 onCropComplete={onCropComplete}
-                                showGrid={false}
+                                showGrid={true}
                                 restrictPosition={true}
                             />
                         )}
