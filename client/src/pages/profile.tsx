@@ -462,9 +462,17 @@ export default function ProfilePage() {
           </div>
 
           <div className="mt-8 p-6 rounded-xl border border-white/10 bg-white/[0.02]">
-            <div className="flex items-center gap-2 mb-6">
-              <BarChart3 className="w-4 h-4 text-white/40" />
-              <h3 className="text-sm font-semibold text-white">{t.profile.planAndUsage}</h3>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-white/40" />
+                <h3 className="text-sm font-semibold text-white">{t.profile.planAndUsage}</h3>
+              </div>
+              <Link href="/pricing">
+                <Button variant="outline" size="sm" className="h-8 text-xs border-white/10 hover:bg-white/5 text-white bg-transparent">
+                  <CreditCard className="w-3.5 h-3.5 mr-2" />
+                  {language === "pt-BR" ? "Gerenciar Plano" : "Manage Plan"}
+                </Button>
+              </Link>
             </div>
             <div className="grid gap-6 md:grid-cols-3">
               {[
