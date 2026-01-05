@@ -419,10 +419,10 @@ export default function ProfilePage() {
         </div>
 
         {/* Profile Banner Section */}
-        <div className="relative mb-8 rounded-xl overflow-hidden border border-white/10">
+        <div className="relative mb-8 rounded-xl overflow-hidden border border-white/10 bg-black/40">
           {/* Banner */}
           <div
-            className="h-32 md:h-40 relative group cursor-pointer"
+            className="w-full aspect-[3/1] relative group cursor-pointer"
             style={getBannerStyle()}
           >
             {/* Banner overlay on hover */}
