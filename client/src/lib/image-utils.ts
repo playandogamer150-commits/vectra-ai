@@ -118,3 +118,56 @@ export default async function getCroppedImg(
         }, 'image/jpeg', 0.85); // Increased quality slightly
     });
 }
+
+export async function getAutoCroppedImg(
+    imageSrc: string,
+    targetWidth = 1600,
+    targetHeight = 600
+): Promise<string> {
+    const image = await createImage(imageSrc);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    if (!ctx) throw new Error('No 2d context');
+
+    // Calculate aspect ratios
+    const sourceAspect = image.width / image.height;
+    const targetAspect = targetWidth / targetHeight;
+
+    let renderWidth, renderHeight, offsetX, offsetY;
+
+    if (sourceAspect > targetAspect) {
+        // Source is wider than target: fit to height, center width
+        renderHeight = image.height;
+        renderWidth = image.height * targetAspect;
+        offsetX = (image.width - renderWidth) / 2;
+        offsetY = 0;
+    } else {
+        // Source is taller than target: fit to width, center height
+        renderWidth = image.width;
+        renderHeight = image.width / targetAspect;
+        offsetX = 0;
+        offsetY = (image.height - renderHeight) / 2;
+    }
+
+    // Set canvas dimensions to target resolution
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+
+    // Draw image centered and resized
+    ctx.drawImage(
+        image,
+        offsetX, offsetY, renderWidth, renderHeight, // Source rect
+        0, 0, targetWidth, targetHeight             // Destination rect
+    );
+
+    return new Promise((resolve) => {
+        canvas.toBlob((file) => {
+            if (file) {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onloadend = () => resolve(reader.result as string);
+            }
+        }, 'image/jpeg', 0.90);
+    });
+}

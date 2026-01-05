@@ -17,7 +17,7 @@ import {
   Trash2, ImageIcon, Video
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
-import { SimpleBannerEditor } from "@/components/SimpleBannerEditor";
+import { getAutoCroppedImg } from "@/lib/image-utils";
 
 const TIMEZONES = [
   "America/Sao_Paulo",
@@ -97,8 +97,6 @@ export default function ProfilePage() {
   const { setTheme } = useTheme();
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [bannerUploading, setBannerUploading] = useState(false);
-  const [bannerEditorOpen, setBannerEditorOpen] = useState(false);
-  const [bannerToCrop, setBannerToCrop] = useState<string | null>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
@@ -215,36 +213,41 @@ export default function ProfilePage() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setBannerToCrop(reader.result as string);
-      setBannerEditorOpen(true);
-    };
-    reader.readAsDataURL(file);
+    setBannerUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const originalImage = reader.result as string;
+          // Auto-resize/crop to 1600x600 (8:3 ratio) 
+          const processedImage = await getAutoCroppedImg(originalImage, 1600, 600);
+
+          const response = await apiRequest("POST", "/api/profile/banner", {
+            imageData: processedImage,
+            cropData: null // No manual crop data needed anymore
+          });
+
+          const data = await response.json();
+          if (data.success) {
+            queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
+            toast({ title: language === "pt-BR" ? "Banner atualizado" : "Banner updated", description: language === "pt-BR" ? "Seu banner foi ajustado automaticamente." : "Your banner has been automatically adjusted." });
+          }
+        } catch (error) {
+          console.error("Banner processing error:", error);
+          toast({ title: t.common.error, description: language === "pt-BR" ? "Erro ao processar o banner." : "Failed to process banner.", variant: "destructive" });
+        } finally {
+          setBannerUploading(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      setBannerUploading(false);
+      console.error(error);
+    }
     event.target.value = "";
   };
 
-  const handleSaveBanner = async (croppedImage: string, cropData: any) => {
-    setBannerUploading(true);
-    try {
-      const response = await apiRequest("POST", "/api/profile/banner", {
-        imageData: bannerToCrop,
-        cropData: cropData
-      });
-      const data = await response.json();
-      if (data.success) {
-        queryClient.invalidateQueries({ queryKey: ["/api/profile"] });
-        setBannerEditorOpen(false);
-        setBannerToCrop(null);
-        toast({ title: language === "pt-BR" ? "Banner atualizado" : "Banner updated", description: language === "pt-BR" ? "Seu banner foi ajustado e salvo com sucesso." : "Your banner has been adjusted and saved successfully." });
-      }
-    } catch (error) {
-      console.error("Banner upload error:", error);
-      toast({ title: t.common.error, description: (error instanceof Error ? error.message : String(error)) || (language === "pt-BR" ? "Erro ao salvar o banner." : "Failed to save banner."), variant: "destructive" });
-    } finally {
-      setBannerUploading(false);
-    }
-  };
+
 
   const handleRemoveBanner = async () => {
     try {
@@ -292,11 +295,7 @@ export default function ProfilePage() {
     return { background: DEFAULT_BANNERS[hash] };
   };
 
-  const getBannerImgTransform = () => {
-    if (!profile?.bannerCrop) return 'translate(-50%, -50%)';
-    const { x, y, zoom } = profile.bannerCrop;
-    return `translate(-50%, -50%) translate3d(${-x}%, ${-y}%, 0) scale(${zoom})`;
-  };
+  const getBannerImgTransform = () => 'translate(-50%, -50%)';
 
   if (profileLoading) {
     return (
@@ -498,19 +497,26 @@ export default function ProfilePage() {
           </div>
 
           <footer className="mt-16 pt-8 border-t border-white/5 text-center">
-            <p className="text-[10px] text-white/20 uppercase tracking-[0.2em]">© 2025 VECTRA AI</p>
+            <p className="text-white/20 text-xs">VECTRA AI &copy; 2026</p>
           </footer>
         </div>
       </div>
+    </>
+  );
+}
+<p className="text-[10px] text-white/20 uppercase tracking-[0.2em]">© 2025 VECTRA AI</p>
+          </footer >
+        </div >
+      </div >
 
-      <SimpleBannerEditor
-        isOpen={bannerEditorOpen}
-        onClose={() => { setBannerEditorOpen(false); setBannerToCrop(null); }}
-        imageUrl={bannerToCrop}
-        onSave={handleSaveBanner}
-        isSaving={bannerUploading}
-        language={language}
-      />
+  <SimpleBannerEditor
+    isOpen={bannerEditorOpen}
+    onClose={() => { setBannerEditorOpen(false); setBannerToCrop(null); }}
+    imageUrl={bannerToCrop}
+    onSave={handleSaveBanner}
+    isSaving={bannerUploading}
+    language={language}
+  />
     </>
   );
 }
