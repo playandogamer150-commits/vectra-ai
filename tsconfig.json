@@ -37,6 +37,8 @@
       "@shared/*": [
         "./shared/*"
       ]
-    }
+    },
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   }
 }

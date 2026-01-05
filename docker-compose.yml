@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      # Adicione outras variáveis de ambiente necessárias, como DATABASE_URL, etc.
+      # - DATABASE_URL=${DATABASE_URL}
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
