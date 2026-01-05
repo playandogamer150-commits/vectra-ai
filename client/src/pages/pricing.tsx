@@ -78,16 +78,22 @@ export default function PricingPage() {
 
   const handleUpgrade = async (priceId: string) => {
     if (isLoadingProfile) {
+      console.log("[Pricing] Profile is loading, ignoring click.");
       return;
     }
 
+    console.log("[Pricing] Upgrade clicked. Profile:", profile);
+
     if (!profile?.id) {
-      setLocation("/login");
+      console.log("[Pricing] No user profile found, redirecting to login.");
+      // Save current selection to auto-trigger after login? (Future enhancement)
+      setLocation("/login?redirect=/pricing");
       return;
     }
 
     setIsUpgrading(true);
     try {
+      console.log("[Pricing] Starting checkout for:", priceId);
       const response = await apiRequest("POST", "/api/stripe/checkout", { priceId, locale: language });
       const data = await response.json();
 

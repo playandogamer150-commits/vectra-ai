@@ -41,7 +41,8 @@ export default function LoginPage() {
                     title: language === "pt-BR" ? "Sucesso" : "Success",
                     description: language === "pt-BR" ? "Login realizado com sucesso." : "Logged in successfully.",
                 });
-                setLocation("/image-studio");
+                const params = new URLSearchParams(window.location.search);
+                setLocation(params.get("redirect") || "/image-studio");
             } else {
                 toast({
                     variant: "destructive",

@@ -29,7 +29,11 @@ router.get("/products", async (req, res) => {
 router.post("/checkout", async (req, res) => {
     try {
         const userId = requireAuth(req, res);
-        if (!userId) return;
+        console.log("[Stripe Checkout] Request received from UserID:", userId);
+        if (!userId) {
+            console.log("[Stripe Checkout] Unauthorized attempt.");
+            return;
+        }
 
         const user = req.user as any;
         const { priceId } = req.body;
@@ -43,9 +47,10 @@ router.post("/checkout", async (req, res) => {
         const validPrice = products.find(p => p.priceId === priceId);
 
         if (!validPrice) {
-            console.warn(`Invalid or inactive Price ID requested: ${priceId} by user ${userId}`);
+            console.warn(`[Stripe Checkout] Invalid or inactive Price ID requested: ${priceId} by user ${userId}`);
             return res.status(400).json({ error: "Invalid price selected. Please refresh the page and try again." });
         }
+        console.log("[Stripe Checkout] Valid price ID:", priceId);
 
         let appUser = await storage.getAppUser(userId);
 
@@ -99,9 +104,10 @@ router.post("/checkout", async (req, res) => {
             userId
         );
 
+        console.log("[Stripe Checkout] Session created:", session.id, "URL:", session.url);
         res.json({ sessionId: session.id, url: session.url });
     } catch (error: any) {
-        console.error("Error creating checkout session:", error);
+        console.error("[Stripe Checkout] Error creating checkout session:", error);
         res.status(500).json({ error: error.message || "Failed to create checkout session" });
     }
 });

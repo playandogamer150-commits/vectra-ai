@@ -34,7 +34,7 @@ export function getSession() {
     cookie: {
       httpOnly: true,     // CRÍTICO: Previne XSS de ler cookies
       secure: IS_PRODUCTION, // HTTPS only em produção
-      sameSite: "strict", // CSRF protection
+      sameSite: "lax", // CSRF protection (Lax is better for usability)
       maxAge: sessionTtl,
       path: "/",
     },
