@@ -30,7 +30,7 @@ export function getSession() {
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
-    name: "__Host-sid", // Secure cookie name prefix
+    name: IS_PRODUCTION ? "__Host-sid" : "vectra.sid", // __Host- prefix requires Secure attribute
     cookie: {
       httpOnly: true,     // CRÍTICO: Previne XSS de ler cookies
       secure: IS_PRODUCTION, // HTTPS only em produção
