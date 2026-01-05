@@ -79,7 +79,21 @@ export function SimpleBannerEditor({
             `;
             document.head.appendChild(style);
         }
+
+        return () => {
+            const styleElement = document.getElementById(styleId);
+            if (styleElement) {
+                document.head.removeChild(styleElement);
+            }
+        };
     }, []);
+
+    // Reset state when new image is loaded
+    useEffect(() => {
+        setCrop({ x: 0, y: 0 });
+        setZoom(1);
+        setCroppedAreaPixels(null);
+    }, [imageUrl]);
 
     const onCropComplete = useCallback((_croppedArea: Area, croppedAreaPixels: Area) => {
         setCroppedAreaPixels(croppedAreaPixels);
@@ -133,6 +147,7 @@ export function SimpleBannerEditor({
                     <div className="flex items-center gap-6">
                         <button
                             onClick={handleClose}
+                            aria-label={language === 'pt-BR' ? 'Voltar' : 'Go back'}
                             className="p-2 hover:bg-white/10 rounded-full transition-colors"
                         >
                             <ArrowLeft className="w-5 h-5 text-white" />
@@ -156,28 +171,30 @@ export function SimpleBannerEditor({
                 </div>
 
                 {/* Cropper Section */}
-                <div className="relative w-full aspect-[16/10] sm:aspect-square md:aspect-[16/9] max-h-[500px] bg-black border-y border-white/5 flex items-center justify-center overflow-hidden">
-                    <div className="w-full h-full relative">
-                        {imageUrl && (
-                            <Cropper
-                                image={imageUrl}
-                                crop={crop}
-                                zoom={zoom}
-                                aspect={BANNER_ASPECT_RATIO}
-                                onCropChange={setCrop}
-                                onZoomChange={setZoom}
-                                onCropComplete={onCropComplete}
-                                showGrid={true}
-                                restrictPosition={true}
-                            />
-                        )}
-                    </div>
+                <div className="relative w-full aspect-[3/1] bg-black border-y border-white/20">
+                    {imageUrl && (
+                        <Cropper
+                            image={imageUrl}
+                            crop={crop}
+                            zoom={zoom}
+                            aspect={BANNER_ASPECT_RATIO}
+                            onCropChange={setCrop}
+                            onZoomChange={setZoom}
+                            onCropComplete={onCropComplete}
+                            showGrid={true}
+                            restrictPosition={true}
+                        />
+                    )}
                 </div>
 
                 {/* Footer Slider */}
                 <div className="bg-black px-12 py-10 flex flex-col items-center justify-center">
                     <div className="flex items-center gap-6 w-full max-w-[450px]">
-                        <button onClick={() => setZoom(Math.max(1, zoom - 0.1))} className="p-1 hover:bg-white/5 rounded-full transition-colors">
+                        <button
+                            onClick={() => setZoom(Math.max(1, zoom - 0.1))}
+                            aria-label={language === 'pt-BR' ? 'Diminuir zoom' : 'Zoom out'}
+                            className="p-1 hover:bg-white/5 rounded-full transition-colors"
+                        >
                             <ZoomOut className="w-5 h-5 text-white/40" />
                         </button>
                         <Slider
@@ -188,7 +205,11 @@ export function SimpleBannerEditor({
                             onValueChange={(value) => setZoom(value[0])}
                             className="flex-1"
                         />
-                        <button onClick={() => setZoom(Math.min(3, zoom + 0.1))} className="p-1 hover:bg-white/5 rounded-full transition-colors">
+                        <button
+                            onClick={() => setZoom(Math.min(3, zoom + 0.1))}
+                            aria-label={language === 'pt-BR' ? 'Aumentar zoom' : 'Zoom in'}
+                            className="p-1 hover:bg-white/5 rounded-full transition-colors"
+                        >
                             <ZoomIn className="w-5 h-5 text-white/40" />
                         </button>
                     </div>
