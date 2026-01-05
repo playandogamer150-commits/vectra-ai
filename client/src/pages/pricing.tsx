@@ -38,7 +38,7 @@ export default function PricingPage() {
   const [isUpgrading, setIsUpgrading] = useState(false);
 
   // Fetch user profile
-  const { data: profile } = useQuery<UserProfile>({
+  const { data: profile, isLoading: isLoadingProfile } = useQuery<UserProfile>({
     queryKey: ["/api/profile"],
   });
 
@@ -77,8 +77,12 @@ export default function PricingPage() {
   }, [language, toast]);
 
   const handleUpgrade = async (priceId: string) => {
+    if (isLoadingProfile) {
+      return;
+    }
+
     if (!profile?.id) {
-      setLocation("/__repl?login=1");
+      setLocation("/login");
       return;
     }
 
@@ -356,7 +360,7 @@ export default function PricingPage() {
                           variant={plan.variant}
                           className="w-full"
                           onClick={() => handleUpgrade(plan.priceId!)}
-                          disabled={isUpgrading}
+                          disabled={isUpgrading || isLoadingProfile}
                           data-testid={`button-pricing-${plan.id}`}
                         >
                           {isUpgrading ? (
