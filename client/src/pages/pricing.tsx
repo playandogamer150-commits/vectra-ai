@@ -85,9 +85,13 @@ export default function PricingPage() {
     console.log("[Pricing] Upgrade clicked. Profile:", profile);
 
     if (!profile?.id) {
-      console.log("[Pricing] No user profile found, redirecting to login.");
+      console.log("[Pricing] No user profile found, redirecting to GitHub OAuth.");
       // Save current selection to auto-trigger after login? (Future enhancement)
-      setLocation("/login?redirect=/pricing");
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/b9f4aeaa-15c2-4e37-b8bd-d049fca18de0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H5',location:'client/src/pages/pricing.tsx:upgrade_click',message:'upgrade_click_unauthenticated',data:{redirectTo:'/pricing'},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      // Redirect directly to GitHub OAuth with return path
+      window.location.href = "/api/auth/github?redirect=/pricing";
       return;
     }
 

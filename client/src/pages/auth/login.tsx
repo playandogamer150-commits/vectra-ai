@@ -149,7 +149,14 @@ export default function LoginPage() {
                         <Button
                             variant="outline"
                             className="w-full border-white/10 bg-transparent text-white hover:bg-white/5 hover:text-white"
-                            onClick={() => window.location.href = "/api/auth/github"}
+                            onClick={() => {
+                                const params = new URLSearchParams(window.location.search);
+                                const redirect = params.get("redirect");
+                                const githubUrl = redirect 
+                                    ? `/api/auth/github?redirect=${encodeURIComponent(redirect)}`
+                                    : "/api/auth/github";
+                                window.location.href = githubUrl;
+                            }}
                         >
                             <MonoIcon name="github" className="w-4 h-4 mr-2" />
                             GitHub
