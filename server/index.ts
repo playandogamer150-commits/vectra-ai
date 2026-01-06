@@ -81,11 +81,15 @@ async function initStripe() {
     log('Stripe schema ready', 'stripe');
 
     const replitDomain = process.env.REPLIT_DOMAINS?.split(',')[0];
-    // If STRIPE_WEBHOOK_SECRET is set, we assume you're using a manually configured webhook
-    // (e.g., https://vectraai.io/api/stripe/webhook). In that case, skip Replit managed webhook
-    // to avoid startup failures from stale/orphaned managed webhook records.
-    if (replitDomain && !process.env.STRIPE_WEBHOOK_SECRET) {
-      log('Setting up managed webhook...', 'stripe');
+    const enableManagedWebhook =
+      process.env.ENABLE_REPLIT_MANAGED_WEBHOOK === "1" ||
+      process.env.ENABLE_REPLIT_MANAGED_WEBHOOK === "true";
+
+    // To avoid startup failures from stale/orphaned managed webhook records, we only
+    // configure Replit-managed webhooks when explicitly enabled.
+    // In production for vectraai.io you should use a manually configured webhook with STRIPE_WEBHOOK_SECRET.
+    if (replitDomain && enableManagedWebhook) {
+      log('Setting up managed webhook (explicitly enabled)...', 'stripe');
       const webhookBaseUrl = `https://${replitDomain}`;
       try {
         const { webhook } = await stripeSync.findOrCreateManagedWebhook(
@@ -93,12 +97,12 @@ async function initStripe() {
         );
         log(`Webhook configured: ${webhook?.url || 'unknown'}`, 'stripe');
       } catch (webhookError: any) {
-        log(`Webhook setup skipped: ${webhookError.message}`, 'stripe');
+        log(`Managed webhook setup failed (continuing anyway): ${webhookError.message}`, 'stripe');
       }
     } else {
       log(
         replitDomain
-          ? 'Skipping managed webhook setup (STRIPE_WEBHOOK_SECRET is set)'
+          ? 'Skipping managed webhook setup (not enabled)'
           : 'Skipping webhook setup (no REPLIT_DOMAINS)',
         'stripe'
       );
