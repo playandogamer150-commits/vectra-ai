@@ -36,6 +36,7 @@ export default function PricingPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [isUpgrading, setIsUpgrading] = useState(false);
+  const [autoCheckoutTriggered, setAutoCheckoutTriggered] = useState(false);
 
   // Fetch user profile
   const { data: profile, isLoading: isLoadingProfile } = useQuery<UserProfile>({
@@ -91,7 +92,8 @@ export default function PricingPage() {
       fetch('http://127.0.0.1:7242/ingest/b9f4aeaa-15c2-4e37-b8bd-d049fca18de0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H5',location:'client/src/pages/pricing.tsx:upgrade_click',message:'upgrade_click_unauthenticated',data:{redirectTo:'/pricing'},timestamp:Date.now()})}).catch(()=>{});
       // #endregion
       // Redirect to GitHub OAuth with return path and checkout flag to auto-trigger checkout after login
-      window.location.href = "/api/auth/github?redirect=/pricing?checkout=true";
+      const redirectUrl = encodeURIComponent("/pricing?checkout=true");
+      window.location.href = `/api/auth/github?redirect=${redirectUrl}`;
       return;
     }
 
@@ -125,24 +127,29 @@ export default function PricingPage() {
 
   // Auto-trigger checkout after login if user was trying to upgrade
   useEffect(() => {
+    // Prevent multiple triggers
+    if (autoCheckoutTriggered) return;
+    
     const searchParams = new URLSearchParams(window.location.search);
     const autoCheckout = searchParams.get("checkout") === "true";
     
     // Only auto-trigger if user is logged in, products are loaded, and we have a Pro product
-    if (autoCheckout && profile?.id && !isLoadingProfile && !isLoadingProducts && stripeProducts) {
+    if (autoCheckout && profile?.id && !isLoadingProfile && !isLoadingProducts && stripeProducts && !isUpgrading) {
       const proProduct = stripeProducts.find(p =>
         p.productName.toLowerCase().includes('pro') ||
         p.metadata?.plan === 'pro'
       );
       
       if (proProduct?.priceId && profile.plan !== "pro") {
+        setAutoCheckoutTriggered(true);
         // Remove the checkout parameter from URL
         window.history.replaceState({}, "", "/pricing");
         // Trigger checkout automatically
+        console.log("[Pricing] Auto-triggering checkout for Pro plan after login");
         handleUpgrade(proProduct.priceId);
       }
     }
-  }, [profile, isLoadingProfile, isLoadingProducts, stripeProducts, handleUpgrade]);
+  }, [profile, isLoadingProfile, isLoadingProducts, stripeProducts, handleUpgrade, autoCheckoutTriggered, isUpgrading]);
 
   // Find Pro product from Stripe
   const proProduct = stripeProducts?.find(p =>
