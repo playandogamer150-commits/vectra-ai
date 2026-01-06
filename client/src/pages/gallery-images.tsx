@@ -14,6 +14,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
+import { RetentionNotice } from "@/components/retention-notice";
 
 export default function GalleryImagesPage() {
     const { toast } = useToast();
@@ -95,6 +96,8 @@ export default function GalleryImagesPage() {
                         {language === "pt-BR" ? "Suas imagens geradas salvas" : "Your saved generated images"}
                     </p>
                 </div>
+
+                <RetentionNotice kind="images" />
 
                 {/* Gallery Grid */}
                 {isLoading ? (

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { RetentionNotice } from "@/components/retention-notice";
 
 function getProxiedVideoUrl(url: string): string {
     if (!url) return url;
@@ -137,6 +138,8 @@ export default function GalleryVideosPage() {
                         {language === "pt-BR" ? "Seus vídeos gerados salvos" : "Your saved generated videos"}
                     </p>
                 </div>
+
+                <RetentionNotice kind="videos" />
 
                 {/* Gallery Grid */}
                 {isLoading ? (
