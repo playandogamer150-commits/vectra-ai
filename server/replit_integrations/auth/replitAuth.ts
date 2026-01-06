@@ -38,6 +38,11 @@ export function getSession() {
     process.env.RAILWAY_ENVIRONMENT === "production" ||
     process.env.REPLIT_DEPLOYMENT === "1";
 
+  if (IS_PRODUCTION && !process.env.SESSION_SECRET) {
+    console.error("[auth] CRITICAL: SESSION_SECRET must be set in production.");
+    process.exit(1);
+  }
+
   return session({
     secret: process.env.SESSION_SECRET || "vectra-secret-key-change-in-production",
     store: sessionStore,
