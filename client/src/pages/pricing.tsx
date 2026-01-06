@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { BRAND } from "@/lib/constants";
@@ -76,7 +76,7 @@ export default function PricingPage() {
     }
   }, [language, toast]);
 
-  const handleUpgrade = async (priceId: string) => {
+  const handleUpgrade = useCallback(async (priceId: string) => {
     if (isLoadingProfile) {
       console.log("[Pricing] Profile is loading, ignoring click.");
       return;
@@ -90,8 +90,8 @@ export default function PricingPage() {
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/b9f4aeaa-15c2-4e37-b8bd-d049fca18de0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'debug-session',runId:'pre-fix',hypothesisId:'H5',location:'client/src/pages/pricing.tsx:upgrade_click',message:'upgrade_click_unauthenticated',data:{redirectTo:'/pricing'},timestamp:Date.now()})}).catch(()=>{});
       // #endregion
-      // Redirect directly to GitHub OAuth with return path
-      window.location.href = "/api/auth/github?redirect=/pricing";
+      // Redirect to GitHub OAuth with return path and checkout flag to auto-trigger checkout after login
+      window.location.href = "/api/auth/github?redirect=/pricing?checkout=true";
       return;
     }
 
@@ -121,7 +121,28 @@ export default function PricingPage() {
     } finally {
       setIsUpgrading(false);
     }
-  };
+  }, [profile, isLoadingProfile, language, toast]);
+
+  // Auto-trigger checkout after login if user was trying to upgrade
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const autoCheckout = searchParams.get("checkout") === "true";
+    
+    // Only auto-trigger if user is logged in, products are loaded, and we have a Pro product
+    if (autoCheckout && profile?.id && !isLoadingProfile && !isLoadingProducts && stripeProducts) {
+      const proProduct = stripeProducts.find(p =>
+        p.productName.toLowerCase().includes('pro') ||
+        p.metadata?.plan === 'pro'
+      );
+      
+      if (proProduct?.priceId && profile.plan !== "pro") {
+        // Remove the checkout parameter from URL
+        window.history.replaceState({}, "", "/pricing");
+        // Trigger checkout automatically
+        handleUpgrade(proProduct.priceId);
+      }
+    }
+  }, [profile, isLoadingProfile, isLoadingProducts, stripeProducts, handleUpgrade]);
 
   // Find Pro product from Stripe
   const proProduct = stripeProducts?.find(p =>

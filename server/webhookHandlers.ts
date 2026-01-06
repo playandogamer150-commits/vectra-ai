@@ -60,7 +60,7 @@ export class WebhookHandlers {
       }
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        log(`Checkout completed for customer ${session.customer}`, 'stripe', 'info');
+        await WebhookHandlers.handleCheckoutCompleted(session);
         break;
       }
       default:
@@ -172,5 +172,77 @@ export class WebhookHandlers {
         updatedAt: new Date(),
       })
       .where(eq(appUsers.stripeCustomerId, customerId));
+  }
+
+  static async handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
+    log(`Checkout completed for customer ${session.customer}`, 'stripe', 'info');
+
+    const customerId = session.customer as string;
+    const userId = session.metadata?.userId;
+    const subscriptionId = session.subscription as string | null;
+
+    // If subscription was created, fetch it and activate plan immediately
+    if (subscriptionId) {
+      try {
+        const stripe = await getUncachableStripeClient();
+        if (!stripe) {
+          log('Stripe client not available for checkout completion', 'stripe', 'warn');
+          return;
+        }
+
+        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        log(`Retrieved subscription ${subscriptionId} with status: ${subscription.status}`, 'stripe', 'info');
+
+        // If subscription is active or trialing, activate Pro plan immediately
+        if (subscription.status === 'active' || subscription.status === 'trialing') {
+          const plan = 'pro';
+          let updated = false;
+
+          // Try to update by userId first (from metadata)
+          if (userId) {
+            const result = await db.update(appUsers)
+              .set({
+                stripeSubscriptionId: subscriptionId,
+                stripeCustomerId: customerId,
+                plan: plan,
+                planStatus: subscription.status as any,
+                updatedAt: new Date(),
+              })
+              .where(eq(appUsers.id, userId))
+              .returning();
+
+            if (result.length > 0) {
+              updated = true;
+              log(`[Checkout] Activated Pro plan for user ${userId} via checkout completion`, 'stripe', 'info');
+            }
+          }
+
+          // Fallback: update by customerId
+          if (!updated) {
+            const result = await db.update(appUsers)
+              .set({
+                stripeSubscriptionId: subscriptionId,
+                plan: plan,
+                planStatus: subscription.status as any,
+                updatedAt: new Date(),
+              })
+              .where(eq(appUsers.stripeCustomerId, customerId))
+              .returning();
+
+            if (result.length > 0) {
+              log(`[Checkout] Activated Pro plan for customer ${customerId} via checkout completion`, 'stripe', 'info');
+            } else {
+              log(`[Checkout] No user found for customerId ${customerId} during checkout completion`, 'stripe', 'warn');
+            }
+          }
+        } else {
+          log(`[Checkout] Subscription ${subscriptionId} is not active yet (status: ${subscription.status}), will wait for subscription.created event`, 'stripe', 'info');
+        }
+      } catch (err: any) {
+        log(`[Checkout] Error processing checkout completion: ${err.message}`, 'stripe', 'error');
+      }
+    } else {
+      log(`[Checkout] No subscription ID found in checkout session ${session.id}`, 'stripe', 'warn');
+    }
   }
 }
