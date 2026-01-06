@@ -187,10 +187,26 @@ export default function PricingPage() {
   }, [profile, isLoadingProfile, isLoadingProducts, stripeProducts, handleUpgrade, autoCheckoutTriggered, isUpgrading]);
 
   // Find Pro product from Stripe
-  const proProduct = stripeProducts?.find(p =>
-    p.productName.toLowerCase().includes('pro') ||
-    p.metadata?.plan === 'pro'
-  );
+  // Prefer explicit metadata (plan=pro) or name match, otherwise fall back to the first valid recurring paid price.
+  const proProduct = (() => {
+    if (!stripeProducts || stripeProducts.length === 0) return undefined;
+
+    const byMetadataOrName = stripeProducts.find(p =>
+      (p.metadata?.plan || "").toLowerCase() === "pro" ||
+      (p.productName || "").toLowerCase().includes("pro")
+    );
+    if (byMetadataOrName) return byMetadataOrName;
+
+    const validRecurring = stripeProducts.filter(p => p.active && !!p.priceId && (p.amount ?? 0) > 0 && !!p.interval);
+    if (validRecurring.length === 0) return undefined;
+
+    // Prefer monthly, then yearly, then lowest amount
+    const monthly = validRecurring.filter(p => p.interval === "month").sort((a, b) => a.amount - b.amount)[0];
+    if (monthly) return monthly;
+    const yearly = validRecurring.filter(p => p.interval === "year").sort((a, b) => a.amount - b.amount)[0];
+    if (yearly) return yearly;
+    return validRecurring.sort((a, b) => a.amount - b.amount)[0];
+  })();
   // #region agent log
   useEffect(() => {
     console.log("[Pricing][dbg] proProduct_resolved", {
@@ -199,6 +215,20 @@ export default function PricingPage() {
       proName: proProduct?.productName ?? null,
     });
   }, [proProduct]);
+  // #endregion
+
+  // #region agent log
+  useEffect(() => {
+    if (!stripeProducts) return;
+    console.log("[Pricing][dbg] stripeProducts_sample", stripeProducts.slice(0, 5).map(p => ({
+      productName: p.productName,
+      priceId: p.priceId,
+      amount: p.amount,
+      interval: p.interval,
+      plan: p.metadata?.plan,
+      active: p.active,
+    })));
+  }, [stripeProducts]);
   // #endregion
 
   // Format price for display
