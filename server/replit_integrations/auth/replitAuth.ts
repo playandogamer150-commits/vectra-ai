@@ -1,6 +1,5 @@
 import { Strategy as GitHubStrategy } from "passport-github2";
 import { Strategy as LocalStrategy } from "passport-local";
-import fs from "fs";
 
 import passport from "passport";
 import session from "express-session";
@@ -23,20 +22,6 @@ function isValidRedirectPath(path?: string): boolean {
   if (!path || typeof path !== "string") return false;
   // Only allow same-origin relative paths, avoid protocol/host and double slashes
   return /^\/[A-Za-z0-9/_\-?&=.%]*$/.test(path) && !path.startsWith("//");
-}
-
-const DEBUG_LOG_PATH = "d:\\TRABALHO MARKETING DIGITAL\\PROJETOS NETTIN\\ANARKOM\\VECTRA CURSOR (OFICIAL TBM)\\vectra-ai\\.cursor\\debug.log";
-
-function debugLog(entry: Record<string, any>) {
-  try {
-    fs.appendFileSync(
-      DEBUG_LOG_PATH,
-      JSON.stringify(entry) + "\n",
-      { encoding: "utf8" }
-    );
-  } catch {
-    // Swallow logging errors to avoid impacting auth flow
-  }
 }
 
 export function getSession() {
@@ -269,30 +254,6 @@ export async function setupAuth(app: Express) {
       if (redirectUrl && isValid) {
         req.session.returnTo = redirectUrl;
       }
-      // #region agent log
-      debugLog({
-        sessionId: "debug-session",
-        runId: "pre-fix",
-        hypothesisId: "H1",
-        location: "server/replit_integrations/auth/replitAuth.ts:oauth_start",
-        message: "oauth_start",
-        data: { redirect: redirectUrl, valid: isValid },
-        timestamp: Date.now(),
-      });
-      // #endregion
-      if (redirectUrl && isValid) {
-        // #region agent log
-        debugLog({
-          sessionId: "debug-session",
-          runId: "pre-fix",
-          hypothesisId: "H2",
-          location: "server/replit_integrations/auth/replitAuth.ts:session_returnTo_saved",
-          message: "session_returnTo_saved",
-          data: { returnTo: req.session.returnTo },
-          timestamp: Date.now(),
-        });
-        // #endregion
-      }
       next();
     },
     passport.authenticate('github', { scope: ['user:email'] })
@@ -301,17 +262,6 @@ export async function setupAuth(app: Express) {
   app.get("/api/auth/github/callback",
     passport.authenticate('github', { failureRedirect: '/api/login' }),
     function (req, res) {
-      // #region agent log
-      debugLog({
-        sessionId: "debug-session",
-        runId: "pre-fix",
-        hypothesisId: "H3",
-        location: "server/replit_integrations/auth/replitAuth.ts:oauth_callback",
-        message: "oauth_callback",
-        data: { returnTo: req.session?.returnTo, userId: (req as any)?.user?.id },
-        timestamp: Date.now(),
-      });
-      // #endregion
       // Use returnTo from session if available and valid, otherwise default to /image-studio
       const sessionReturnTo = req.session?.returnTo;
       const redirectTo = (sessionReturnTo && isValidRedirectPath(sessionReturnTo)) 
@@ -321,17 +271,6 @@ export async function setupAuth(app: Express) {
       if (req.session) {
         delete req.session.returnTo;
       }
-      // #region agent log
-      debugLog({
-        sessionId: "debug-session",
-        runId: "pre-fix",
-        hypothesisId: "H4",
-        location: "server/replit_integrations/auth/replitAuth.ts:oauth_redirect",
-        message: "oauth_redirect",
-        data: { destination: redirectTo, sessionReturnTo: sessionReturnTo, usedReturnTo: redirectTo === sessionReturnTo },
-        timestamp: Date.now(),
-      });
-      // #endregion
       // Successful authentication, redirect to app.
       res.redirect(redirectTo);
     }

@@ -54,20 +54,8 @@ export default function PricingPage() {
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 
-  // #region agent log
-  useEffect(() => {
-    // Client-side runtime evidence: are Stripe products loading / failing in production?
-    console.log("[Pricing][dbg] stripeProducts_state", {
-      isLoadingProducts,
-      productsCount: stripeProducts?.length ?? null,
-      hasError: !!productsError,
-    });
-  }, [isLoadingProducts, stripeProducts, productsError]);
-  // #endregion
-
   useEffect(() => {
     if (productsError) {
-      console.error("[Pricing][dbg] stripeProducts_error", productsError);
       toast({
         title: language === "pt-BR" ? "Pagamento indisponível" : "Payments unavailable",
         description: language === "pt-BR"
@@ -207,29 +195,7 @@ export default function PricingPage() {
     if (yearly) return yearly;
     return validRecurring.sort((a, b) => a.amount - b.amount)[0];
   })();
-  // #region agent log
-  useEffect(() => {
-    console.log("[Pricing][dbg] proProduct_resolved", {
-      hasProProduct: !!proProduct,
-      proPriceId: proProduct?.priceId ?? null,
-      proName: proProduct?.productName ?? null,
-    });
-  }, [proProduct]);
-  // #endregion
-
-  // #region agent log
-  useEffect(() => {
-    if (!stripeProducts) return;
-    console.log("[Pricing][dbg] stripeProducts_sample", stripeProducts.slice(0, 5).map(p => ({
-      productName: p.productName,
-      priceId: p.priceId,
-      amount: p.amount,
-      interval: p.interval,
-      plan: p.metadata?.plan,
-      active: p.active,
-    })));
-  }, [stripeProducts]);
-  // #endregion
+  // (logs de debug removidos após validação em produção)
 
   // Format price for display
   const formatPrice = (amount: number, currency: string) => {
