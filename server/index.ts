@@ -81,7 +81,10 @@ async function initStripe() {
     log('Stripe schema ready', 'stripe');
 
     const replitDomain = process.env.REPLIT_DOMAINS?.split(',')[0];
-    if (replitDomain) {
+    // If STRIPE_WEBHOOK_SECRET is set, we assume you're using a manually configured webhook
+    // (e.g., https://vectraai.io/api/stripe/webhook). In that case, skip Replit managed webhook
+    // to avoid startup failures from stale/orphaned managed webhook records.
+    if (replitDomain && !process.env.STRIPE_WEBHOOK_SECRET) {
       log('Setting up managed webhook...', 'stripe');
       const webhookBaseUrl = `https://${replitDomain}`;
       try {
@@ -93,7 +96,12 @@ async function initStripe() {
         log(`Webhook setup skipped: ${webhookError.message}`, 'stripe');
       }
     } else {
-      log('Skipping webhook setup (no REPLIT_DOMAINS)', 'stripe');
+      log(
+        replitDomain
+          ? 'Skipping managed webhook setup (STRIPE_WEBHOOK_SECRET is set)'
+          : 'Skipping webhook setup (no REPLIT_DOMAINS)',
+        'stripe'
+      );
     }
 
     log('Syncing Stripe data in background...', 'stripe');
