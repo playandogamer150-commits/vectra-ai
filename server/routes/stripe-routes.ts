@@ -18,10 +18,16 @@ router.get("/publishable-key", async (req, res) => {
 
 router.get("/products", async (req, res) => {
     try {
+        console.log("[Stripe Products] Request", {
+            host: req.get("host"),
+            hasStripeSecret: !!process.env.STRIPE_SECRET_KEY,
+            hasStripePublishable: !!process.env.STRIPE_PUBLISHABLE_KEY,
+        });
         const products = await stripeService.listProductsWithPrices();
+        console.log("[Stripe Products] Returning products", { count: products.length });
         res.json({ products });
     } catch (error: any) {
-        console.error("Error listing products:", error);
+        console.error("[Stripe Products] Error listing products:", error?.message || error);
         res.status(500).json({ error: "Failed to list products" });
     }
 });

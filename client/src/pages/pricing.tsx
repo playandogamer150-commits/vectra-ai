@@ -44,7 +44,7 @@ export default function PricingPage() {
   });
 
   // Fetch products from Stripe (dynamic)
-  const { data: stripeProducts, isLoading: isLoadingProducts } = useQuery<StripeProduct[]>({
+  const { data: stripeProducts, isLoading: isLoadingProducts, error: productsError } = useQuery<StripeProduct[]>({
     queryKey: ["/api/stripe/products"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/stripe/products");
@@ -53,6 +53,30 @@ export default function PricingPage() {
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
+
+  // #region agent log
+  useEffect(() => {
+    // Client-side runtime evidence: are Stripe products loading / failing in production?
+    console.log("[Pricing][dbg] stripeProducts_state", {
+      isLoadingProducts,
+      productsCount: stripeProducts?.length ?? null,
+      hasError: !!productsError,
+    });
+  }, [isLoadingProducts, stripeProducts, productsError]);
+  // #endregion
+
+  useEffect(() => {
+    if (productsError) {
+      console.error("[Pricing][dbg] stripeProducts_error", productsError);
+      toast({
+        title: language === "pt-BR" ? "Pagamento indisponível" : "Payments unavailable",
+        description: language === "pt-BR"
+          ? "Não conseguimos carregar os produtos do Stripe. Recarregue a página e tente novamente."
+          : "We couldn't load Stripe products. Refresh and try again.",
+        variant: "destructive",
+      });
+    }
+  }, [productsError, language, toast]);
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
@@ -94,6 +118,17 @@ export default function PricingPage() {
       // Redirect to GitHub OAuth with return path and checkout flag to auto-trigger checkout after login
       const redirectUrl = encodeURIComponent("/pricing?checkout=true");
       window.location.href = `/api/auth/github?redirect=${redirectUrl}`;
+      return;
+    }
+
+    if (!priceId) {
+      toast({
+        title: language === "pt-BR" ? "Plano indisponível" : "Plan unavailable",
+        description: language === "pt-BR"
+          ? "Não encontramos o preço do plano Pro no Stripe. Recarregue a página e tente novamente."
+          : "We couldn't find the Pro price in Stripe. Refresh and try again.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -156,6 +191,15 @@ export default function PricingPage() {
     p.productName.toLowerCase().includes('pro') ||
     p.metadata?.plan === 'pro'
   );
+  // #region agent log
+  useEffect(() => {
+    console.log("[Pricing][dbg] proProduct_resolved", {
+      hasProProduct: !!proProduct,
+      proPriceId: proProduct?.priceId ?? null,
+      proName: proProduct?.productName ?? null,
+    });
+  }, [proProduct]);
+  // #endregion
 
   // Format price for display
   const formatPrice = (amount: number, currency: string) => {
@@ -392,6 +436,17 @@ export default function PricingPage() {
                       {isCurrentPlan ? (
                         <Button variant="secondary" className="w-full" disabled>
                           {language === "pt-BR" ? "Plano Atual" : "Current Plan"}
+                        </Button>
+                      ) : plan.id === "pro" && !plan.priceId ? (
+                        <Button
+                          variant="default"
+                          className="w-full"
+                          disabled
+                          data-testid={`button-pricing-${plan.id}`}
+                        >
+                          {isLoadingProducts
+                            ? (language === "pt-BR" ? "Carregando..." : "Loading...")
+                            : (language === "pt-BR" ? "Indisponível" : "Unavailable")}
                         </Button>
                       ) : plan.priceId ? (
                         <Button
