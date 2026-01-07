@@ -1,0 +1,9 @@
+Contact: mailto:playandogamer150@gmail.com
+Preferred-Languages: pt-BR, en
+Canonical: https://vectraai.io/.well-known/security.txt
+Policy: https://vectraai.io/terms
+
+# Optional (preencher se você usar um tracker público):
+# Acknowledgments: https://vectraai.io/security/thanks
+
+
