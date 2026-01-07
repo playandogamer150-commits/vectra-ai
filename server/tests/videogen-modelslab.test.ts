@@ -37,6 +37,44 @@ describe("videogen ModelsLabProvider (Seedance/Veo)", () => {
     expect(result.status).toBe("error");
     expect(result.error).toMatch(/Source image URL is required/i);
   });
+
+  it("rejects LTX 2 Pro duration not in [6,8,10]", async () => {
+    const provider = new ModelsLabProvider("test-key");
+    const result = await provider.createJob({
+      userId: "u1",
+      sourceImageUrl: undefined,
+      prompt: "test",
+      targetAspect: "16:9",
+      durationSeconds: 9,
+      modelId: "ltx-2-pro-i2v",
+      generateAudio: true,
+      fps: 25,
+      resolution: "2560x1440",
+      generationType: "image-to-video",
+    });
+    expect(result.success).toBe(false);
+    expect(result.status).toBe("error");
+    expect(result.error).toMatch(/Allowed: 6s, 8s, 10s/);
+  });
+
+  it("rejects selecting LTX 2 Pro with 9:16", async () => {
+    const provider = new ModelsLabProvider("test-key");
+    const result = await provider.createJob({
+      userId: "u1",
+      sourceImageUrl: undefined,
+      prompt: "test",
+      targetAspect: "9:16",
+      durationSeconds: 6,
+      modelId: "ltx-2-pro-i2v",
+      generateAudio: false,
+      fps: 25,
+      resolution: "1920x1080",
+      generationType: "image-to-video",
+    });
+    expect(result.success).toBe(false);
+    expect(result.status).toBe("error");
+    expect(result.error).toMatch(/only supports 16:9/i);
+  });
 });
 
 

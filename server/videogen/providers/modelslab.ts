@@ -1,5 +1,5 @@
 import type { VideoProvider, CreateVideoJobInput, CreateJobResult, JobStatusResult, VideoJobStatus } from "../contracts";
-import { getModelForAspectRatio, type VideoModelConfig, type VideoAspectRatio } from "../model-registry";
+import { getModelForAspectRatio, getVideoModel, isValidVideoModel, type VideoModelConfig, type VideoAspectRatio } from "../model-registry";
 import { fetchWithTimeout } from "../../lib/fetch-with-timeout";
 
 const MODELSLAB_BASE_URL = "https://modelslab.com";
@@ -33,18 +33,54 @@ export class ModelsLabProvider implements VideoProvider {
       };
     }
 
-    const model = getModelForAspectRatio(aspectRatio);
+    // Choose model explicitly if provided; otherwise fall back to aspect-based default
+    const model =
+      input.modelId && isValidVideoModel(input.modelId)
+        ? getVideoModel(input.modelId)
+        : getModelForAspectRatio(aspectRatio);
+
+    // Hard guard: model must match requested aspect ratio
+    if (model.supportedAspectRatio !== aspectRatio) {
+      return {
+        success: false,
+        status: "error",
+        error: `Selected model ${model.displayName} only supports ${model.supportedAspectRatio} (requested ${aspectRatio}).`,
+      };
+    }
 
     console.log(`[VideoService] Auto-selected model ${model.id} (${model.displayName}) for aspect ratio ${aspectRatio}`);
 
     try {
       // Enforce per-model duration constraints (keeps UI/registry/server consistent)
       const duration = input.durationSeconds ?? model.minDurationSeconds;
+      if (model.allowedDurationSeconds && !model.allowedDurationSeconds.includes(duration)) {
+        return {
+          success: false,
+          status: "error",
+          error: `Invalid duration for ${model.displayName}. Allowed: ${model.allowedDurationSeconds.join("s, ")}s.`,
+        };
+      }
       if (duration < model.minDurationSeconds || duration > model.maxDurationSeconds) {
         return {
           success: false,
           status: "error",
           error: `Invalid duration for ${model.displayName}. Allowed: ${model.minDurationSeconds}s–${model.maxDurationSeconds}s.`,
+        };
+      }
+
+      // Enforce optional per-model fps/resolution constraints
+      if (model.supportedFps && typeof input.fps === "number" && !model.supportedFps.includes(input.fps)) {
+        return {
+          success: false,
+          status: "error",
+          error: `Invalid fps for ${model.displayName}. Allowed: ${model.supportedFps.join(", ")}.`,
+        };
+      }
+      if (model.supportedResolutions && input.resolution && !model.supportedResolutions.includes(input.resolution)) {
+        return {
+          success: false,
+          status: "error",
+          error: `Invalid resolution for ${model.displayName}. Allowed: ${model.supportedResolutions.join(", ")}.`,
         };
       }
       return await this.createImageToVideoJob(input, model, aspectRatio);
@@ -135,11 +171,17 @@ export class ModelsLabProvider implements VideoProvider {
       ...(input.seed && { seed: input.seed }),
     };
 
-    // Specific handling for Seedance 1.5 Pro
+    // Model-specific request payload
     if (modelId === "seedance-1-5-pro") {
-      requestBody.duration = input.durationSeconds || 5; // Pass as number
+      requestBody.duration = input.durationSeconds || 5; // number
+    } else if (modelId === "ltx-2-pro-i2v") {
+      // ModelsLab LTX 2 Pro Image->Video
+      requestBody.duration = String(input.durationSeconds || 10);
+      requestBody.resolution = input.resolution || "1920x1080";
+      requestBody.fps = String(input.fps || 25);
+      requestBody.generate_audio = input.generateAudio ?? false;
     } else {
-      // Default for other models (like Veo)
+      // Veo 3.1 (and similar)
       requestBody.duration = String(input.durationSeconds || 5);
       requestBody.resolution = "720p";
     }

@@ -1,4 +1,4 @@
-export type VideoModelId = "veo-3.1" | "seedance-1-5-pro";
+export type VideoModelId = "veo-3.1" | "seedance-1-5-pro" | "ltx-2-pro-i2v";
 export type VideoGenerationType = "text-to-video" | "image-to-video";
 export type VideoAspectRatio = "16:9" | "9:16";
 
@@ -13,6 +13,11 @@ export interface VideoModelConfig {
   generationType: VideoGenerationType;
   maxDurationSeconds: number;
   minDurationSeconds: number;
+  // Optional strict constraints used by some ModelsLab models
+  allowedDurationSeconds?: number[];
+  supportedFps?: number[];
+  supportedResolutions?: Array<"1920x1080" | "2560x1440" | "3840x2160">;
+  supportsAudio?: boolean;
 }
 
 export const VIDEO_MODEL_REGISTRY: Record<VideoModelId, VideoModelConfig> = {
@@ -27,6 +32,24 @@ export const VIDEO_MODEL_REGISTRY: Record<VideoModelId, VideoModelConfig> = {
     generationType: "image-to-video",
     maxDurationSeconds: 8,
     minDurationSeconds: 2,
+    supportsAudio: false,
+  },
+  "ltx-2-pro-i2v": {
+    id: "ltx-2-pro-i2v",
+    displayName: "LTX 2 Pro (Image to Video)",
+    provider: "modelslab",
+    endpoint: "/api/v7/video-fusion/image-to-video",
+    modelIdParam: "ltx-2-pro-i2v",
+    supportedAspectRatio: "16:9",
+    qualityTier: "ultra",
+    generationType: "image-to-video",
+    // ModelsLab docs: durations 6s, 8s, 10s
+    minDurationSeconds: 6,
+    maxDurationSeconds: 10,
+    allowedDurationSeconds: [6, 8, 10],
+    supportedFps: [25, 50],
+    supportedResolutions: ["1920x1080", "2560x1440", "3840x2160"],
+    supportsAudio: true,
   },
   "seedance-1-5-pro": {
     id: "seedance-1-5-pro",
@@ -39,6 +62,7 @@ export const VIDEO_MODEL_REGISTRY: Record<VideoModelId, VideoModelConfig> = {
     generationType: "image-to-video",
     maxDurationSeconds: 25,
     minDurationSeconds: 5,
+    supportsAudio: false,
   },
 };
 

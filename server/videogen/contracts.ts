@@ -12,6 +12,8 @@ export interface CreateVideoJobInput {
   seed?: number;
   modelId?: string;
   generateAudio?: boolean;
+  fps?: number;
+  resolution?: "1920x1080" | "2560x1440" | "3840x2160";
   generationType?: "text-to-video" | "image-to-video";
   apiKey?: string;
 }

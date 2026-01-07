@@ -771,7 +771,10 @@ export default function ModelsLabStudioPage() {
   const [videoAspect, setVideoAspect] = useState<"9:16" | "16:9">("16:9");
   const [detectedAspect, setDetectedAspect] = useState<"9:16" | "16:9" | null>(null);
   const [videoDuration, setVideoDuration] = useState<number>(5);
+  const [videoModel, setVideoModel] = useState<"veo-3.1" | "ltx-2-pro-i2v" | "seedance-1-5-pro">("veo-3.1");
   const [generateAudio, setGenerateAudio] = useState<boolean>(false);
+  const [videoResolution, setVideoResolution] = useState<"1920x1080" | "2560x1440" | "3840x2160">("1920x1080");
+  const [videoFps, setVideoFps] = useState<25 | 50>(25);
   const [currentVideoJobId, setCurrentVideoJobId] = useState<string | null>(null);
   const [videoGenerationMeta, setVideoGenerationMeta] = useState<{
     duration: number;
@@ -928,6 +931,10 @@ export default function ModelsLabStudioPage() {
         prompt: prompt || "Cinematic video with smooth natural motion, professional cinematography",
         targetAspect: videoAspect,
         durationSeconds: videoDuration,
+        modelId: videoModel,
+        generateAudio: videoModel === "ltx-2-pro-i2v" ? generateAudio : false,
+        fps: videoModel === "ltx-2-pro-i2v" ? videoFps : 25,
+        resolution: videoModel === "ltx-2-pro-i2v" ? videoResolution : "1920x1080",
         generationType: "image-to-video",
       });
       return await response.json();
@@ -972,7 +979,7 @@ export default function ModelsLabStudioPage() {
       sourceImage: selectedImageForVideo,
       generatedAt: new Date(),
       generationTimeMs: generationTime,
-      model: videoAspect === "9:16" ? "Seedance 1.5 Pro I2V" : "Veo 3.1",
+      model: getVideoModelInfo(videoModel).name,
     });
     setIsPollingVideo(false);
     setShowVideoDialog(false);
@@ -1049,20 +1056,35 @@ export default function ModelsLabStudioPage() {
       const detected: "16:9" | "9:16" = ratio >= 1 ? "16:9" : "9:16";
       setDetectedAspect(detected);
       setVideoAspect(detected);
+      setVideoModel(detected === "9:16" ? "seedance-1-5-pro" : "veo-3.1");
       setShowVideoDialog(true);
     };
     img.onerror = () => {
       setDetectedAspect("16:9");
       setVideoAspect("16:9");
+      setVideoModel("veo-3.1");
       setShowVideoDialog(true);
     };
     img.src = imageUrl;
   };
 
-  // Get model name based on aspect ratio
-  const getVideoModelInfo = (aspect: "16:9" | "9:16") => {
-    if (aspect === "9:16") {
+  // Keep model consistent with aspect ratio (Seedance is portrait-only)
+  useEffect(() => {
+    if (videoAspect === "9:16" && videoModel !== "seedance-1-5-pro") {
+      setVideoModel("seedance-1-5-pro");
+    }
+    if (videoAspect === "16:9" && videoModel === "seedance-1-5-pro") {
+      setVideoModel("veo-3.1");
+    }
+  }, [videoAspect, videoModel]);
+
+  // Get model name based on selected model
+  const getVideoModelInfo = (model: typeof videoModel) => {
+    if (model === "seedance-1-5-pro") {
       return { name: "Seedance 1.5 Pro", description: "Portrait video (9:16)" };
+    }
+    if (model === "ltx-2-pro-i2v") {
+      return { name: "LTX 2 Pro (I2V)", description: "Landscape video (16:9) • Audio • 25/50 FPS • FHD/2K/4K" };
     }
     return { name: "Google Veo 3.1", description: "Landscape video (16:9)" };
   };
@@ -2894,11 +2916,11 @@ export default function ModelsLabStudioPage() {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Auto-detected Model Info */}
+            {/* Selected Model Info */}
             <div className="p-4 bg-muted/50 rounded-lg border space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Model</span>
-                <Badge variant="secondary">{getVideoModelInfo(videoAspect).name}</Badge>
+                <Badge variant="secondary">{getVideoModelInfo(videoModel).name}</Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">{t.modelslab.videoAspectRatio || "Aspect Ratio"}</span>
@@ -2907,7 +2929,7 @@ export default function ModelsLabStudioPage() {
               {detectedAspect && (
                 <p className="text-xs text-muted-foreground">
                   {videoAspect === "16:9"
-                    ? "Landscape images use Google Veo 3.1"
+                    ? "Landscape images default to Google Veo 3.1 (you can switch to LTX 2 Pro)"
                     : "Portrait images use Seedance 1.5 Pro"}
                 </p>
               )}
@@ -2929,21 +2951,89 @@ export default function ModelsLabStudioPage() {
                   </Select>
                 </div>
 
+                {/* Model selector (16:9 supports Veo + LTX) */}
+                {videoAspect === "16:9" && (
+                  <div className="space-y-2">
+                    <Label>{t.modelslab.model || "Model"}</Label>
+                    <Select value={videoModel} onValueChange={(v) => setVideoModel(v as typeof videoModel)}>
+                      <SelectTrigger data-testid="select-video-model">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="veo-3.1">Google Veo 3.1 (16:9)</SelectItem>
+                        <SelectItem value="ltx-2-pro-i2v">LTX 2 Pro I2V (16:9 • Audio • 25/50 FPS)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label>{t.modelslab.videoDuration || "Duration"}: {videoDuration}s</Label>
-                  <Slider
-                    value={[videoDuration]}
-                    onValueChange={(v) => setVideoDuration(v[0])}
-                    min={2}
-                    max={videoAspect === "9:16" ? 25 : 8}
-                    step={1}
-                    data-testid="slider-video-duration"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>2s</span>
-                    <span>{videoAspect === "9:16" ? "25s" : "8s"}</span>
-                  </div>
+                  {videoModel === "ltx-2-pro-i2v" ? (
+                    <Select value={String(videoDuration)} onValueChange={(v) => setVideoDuration(Number(v))}>
+                      <SelectTrigger data-testid="select-video-duration">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="6">6s</SelectItem>
+                        <SelectItem value="8">8s</SelectItem>
+                        <SelectItem value="10">10s</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <>
+                      <Slider
+                        value={[videoDuration]}
+                        onValueChange={(v) => setVideoDuration(v[0])}
+                        min={2}
+                        max={videoAspect === "9:16" ? 25 : 8}
+                        step={1}
+                        data-testid="slider-video-duration"
+                      />
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>2s</span>
+                        <span>{videoAspect === "9:16" ? "25s" : "8s"}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
+
+                {/* LTX advanced params */}
+                {videoModel === "ltx-2-pro-i2v" && (
+                  <div className="space-y-3 rounded-lg border p-3 bg-muted/30">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Resolution</Label>
+                        <Select value={videoResolution} onValueChange={(v) => setVideoResolution(v as typeof videoResolution)}>
+                          <SelectTrigger data-testid="select-video-resolution">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1920x1080">FHD (1920×1080)</SelectItem>
+                            <SelectItem value="2560x1440">2K (2560×1440)</SelectItem>
+                            <SelectItem value="3840x2160">4K (3840×2160)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>FPS</Label>
+                        <Select value={String(videoFps)} onValueChange={(v) => setVideoFps(Number(v) as 25 | 50)}>
+                          <SelectTrigger data-testid="select-video-fps">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="25">25</SelectItem>
+                            <SelectItem value="50">50</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <Label>Generate audio</Label>
+                      <Switch checked={generateAudio} onCheckedChange={setGenerateAudio} />
+                    </div>
+                  </div>
+                )}
 
               </div>
             )}

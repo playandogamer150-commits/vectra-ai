@@ -790,6 +790,8 @@ export const createVideoJobRequestSchema = z.object({
   seed: z.number().optional(),
   modelId: z.string().default("seedance-1-5-pro"),
   generateAudio: z.boolean().default(false),
+  fps: z.number().int().optional().default(25),
+  resolution: z.enum(["1920x1080", "2560x1440", "3840x2160"]).optional().default("1920x1080"),
   generationType: z.enum(["text-to-video", "image-to-video"]).default("text-to-video"),
 });
 

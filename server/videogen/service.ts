@@ -52,7 +52,7 @@ export async function createVideoJob(
     userId,
     request.sourceImageUrl || "",
     request.prompt || null,
-    { aspect: finalAspect, duration: request.durationSeconds, modelId: request.modelId }
+    { aspect: finalAspect, duration: request.durationSeconds, modelId: request.modelId, fps: request.fps, resolution: request.resolution, audio: request.generateAudio }
   );
 
   const existingJob = await storage.findVideoJobByIdempotency(userId, idempotencyKey);
@@ -106,6 +106,8 @@ export async function createVideoJob(
     seed: request.seed,
     modelId: request.modelId || "seedance-1-5-pro",
     generateAudio: request.generateAudio ?? false,
+    fps: request.fps,
+    resolution: request.resolution,
     generationType,
     apiKey: customApiKey ?? undefined,
   };
