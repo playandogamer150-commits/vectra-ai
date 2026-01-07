@@ -785,7 +785,8 @@ export const createVideoJobRequestSchema = z.object({
   prompt: z.string().optional(),
   negativePrompt: z.string().optional(),
   targetAspect: z.enum(["9:16", "16:9", "1:1", "auto"]).default("auto"),
-  durationSeconds: z.number().min(2).max(8).default(5),
+  // NOTE: per-model constraints are enforced in the video provider/model registry.
+  durationSeconds: z.number().min(2).max(25).default(5),
   seed: z.number().optional(),
   modelId: z.string().default("seedance-1-5-pro"),
   generateAudio: z.boolean().default(false),

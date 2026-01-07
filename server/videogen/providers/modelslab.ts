@@ -38,6 +38,15 @@ export class ModelsLabProvider implements VideoProvider {
     console.log(`[VideoService] Auto-selected model ${model.id} (${model.displayName}) for aspect ratio ${aspectRatio}`);
 
     try {
+      // Enforce per-model duration constraints (keeps UI/registry/server consistent)
+      const duration = input.durationSeconds ?? model.minDurationSeconds;
+      if (duration < model.minDurationSeconds || duration > model.maxDurationSeconds) {
+        return {
+          success: false,
+          status: "error",
+          error: `Invalid duration for ${model.displayName}. Allowed: ${model.minDurationSeconds}s–${model.maxDurationSeconds}s.`,
+        };
+      }
       return await this.createImageToVideoJob(input, model, aspectRatio);
     } catch (error) {
       console.error("[ModelsLab] createJob error:", error);
