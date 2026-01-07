@@ -178,8 +178,12 @@ export class ModelsLabProvider implements VideoProvider {
       // ModelsLab LTX 2 Pro Image->Video
       requestBody.duration = String(input.durationSeconds || 10);
       requestBody.resolution = input.resolution || "1920x1080";
-      requestBody.fps = String(input.fps || 25);
+      requestBody.fps = input.fps || 25;
       requestBody.generate_audio = input.generateAudio ?? false;
+
+      // LTX payload per docs (keep minimal to avoid strict schema rejection)
+      delete requestBody.aspect_ratio;
+      delete requestBody.negative_prompt;
     } else {
       // Veo 3.1 (and similar)
       requestBody.duration = String(input.durationSeconds || 5);

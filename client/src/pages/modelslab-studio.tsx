@@ -1068,6 +1068,31 @@ export default function ModelsLabStudioPage() {
     img.src = imageUrl;
   };
 
+  // Auto-fix defaults when switching models/aspect ratios to avoid invalid requests
+  useEffect(() => {
+    // Seedance is portrait-only; Veo/LTX are landscape-only
+    if (videoAspect === "9:16" && videoModel !== "seedance-1-5-pro") {
+      setVideoModel("seedance-1-5-pro");
+    }
+    if (videoAspect === "16:9" && videoModel === "seedance-1-5-pro") {
+      setVideoModel("veo-3.1");
+    }
+
+    // Duration constraints
+    if (videoModel === "ltx-2-pro-i2v") {
+      if (![6, 8, 10].includes(videoDuration)) {
+        setVideoDuration(10);
+      }
+    } else if (videoAspect === "16:9") {
+      if (videoDuration > 8) setVideoDuration(8);
+      if (videoDuration < 2) setVideoDuration(2);
+    } else {
+      // 9:16 (Seedance)
+      if (videoDuration < 5) setVideoDuration(5);
+      if (videoDuration > 25) setVideoDuration(25);
+    }
+  }, [videoAspect, videoModel, videoDuration]);
+
   // Keep model consistent with aspect ratio (Seedance is portrait-only)
   useEffect(() => {
     if (videoAspect === "9:16" && videoModel !== "seedance-1-5-pro") {
