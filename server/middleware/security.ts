@@ -315,6 +315,9 @@ export function contentSecurityPolicy(req: Request, res: Response, next: NextFun
             ? `script-src 'self' 'nonce-${nonce}' https://js.stripe.com https://fast.wistia.com https://fast.wistia.net`
             : `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://fast.wistia.com https://fast.wistia.net`,
 
+        // Disallow inline event handlers like onclick=""
+        "script-src-attr 'none'",
+
         // Styles - stricter in production
         IS_PRODUCTION
             ? `style-src 'self' 'nonce-${nonce}' https://fonts.googleapis.com`
