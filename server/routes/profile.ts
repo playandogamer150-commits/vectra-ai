@@ -357,7 +357,7 @@ router.get("/usage", async (req, res) => {
                     imagesStandardPerDay: FREE_LIMITS.imagesStandardPerDay,
                     videosPerDay: FREE_LIMITS.videosPerDay,
                     maxFilters: 3,
-                    maxBlueprints: 5,
+                    maxBlueprints: 2,
                     loraTraining: false,
                 },
                 pro: {

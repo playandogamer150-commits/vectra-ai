@@ -5,32 +5,42 @@ import { compiler } from "../prompt-engine/compiler";
 import { generateRequestSchema } from "@shared/schema";
 import { ZodError } from "zod";
 import { applyGeminiGemsOptimization } from "../prompt-engine/gemini-gems";
+import { FREE_LIMITS } from "../lib/quotas";
 
 const router = Router();
 
 router.post("/generate", async (req, res) => {
     try {
+        const userId = getUserId(req);
         const rateLimitKey = req.ip || "anonymous";
         const isEnvAdminOverride = process.env.ADMIN_OVERRIDE === "true";
 
-        // Check if logged-in user is admin
-        const userId = getUserId(req);
-        let isUserAdmin = false;
-        if (userId) {
-            const appUser = await storage.getAppUser(userId);
-            isUserAdmin = appUser?.isAdmin === 1;
-        }
-
+        // Resolve plan/admin once
+        const appUser = userId ? await storage.getAppUser(userId) : undefined;
+        const isUserAdmin = appUser?.isAdmin === 1;
+        const isPro = appUser?.plan === "pro";
         const isAdminOverride = isEnvAdminOverride || isUserAdmin;
+        const isProOrAdmin = isAdminOverride || isPro;
 
-        const freeGenerationsPerDay = 3;
+        // Anonymous abuse protection (IP-based). Logged-in users use plan-based quotas.
+        const freeGenerationsPerDayAnonymous = 3;
         const freeFilterLimit = 3;
 
-        if (!isAdminOverride) {
-            const canProceed = await storage.checkRateLimit(rateLimitKey, freeGenerationsPerDay, 24 * 60 * 60 * 1000);
+        if (!userId) {
+            // Anonymous: keep IP-based limit
+            const canProceed = await storage.checkRateLimit(rateLimitKey, freeGenerationsPerDayAnonymous, 24 * 60 * 60 * 1000);
             if (!canProceed) {
                 return res.status(429).json({
-                    error: "Daily generation limit reached. Upgrade to Pro for unlimited generations.",
+                    error: "Daily generation limit reached. Create an account or upgrade to Pro for unlimited generations.",
+                    isPremiumRequired: true
+                });
+            }
+        } else if (!isProOrAdmin) {
+            // Logged-in Free: enforce per-user daily quota
+            const usedToday = await storage.getUsageToday(userId, "prompt");
+            if (usedToday >= FREE_LIMITS.promptsPerDay) {
+                return res.status(429).json({
+                    error: `Daily generation limit reached (${FREE_LIMITS.promptsPerDay}/${FREE_LIMITS.promptsPerDay}). Upgrade to Pro for unlimited generations.`,
                     isPremiumRequired: true
                 });
             }
@@ -38,7 +48,7 @@ router.post("/generate", async (req, res) => {
 
         const validated = generateRequestSchema.parse(req.body);
 
-        if (!isAdminOverride) {
+        if (!isProOrAdmin) {
             const premiumFilters = await storage.getFilters();
             const premiumFilterKeys = premiumFilters.filter(f => f.isPremium === 1).map(f => f.key);
             const appliedPremiumFilters = Object.keys(validated.filters).filter(k => premiumFilterKeys.includes(k));
@@ -318,7 +328,7 @@ router.post("/generate", async (req, res) => {
         }
 
         const savedPrompt = await storage.createGeneratedPrompt({
-            userId: null,
+            userId: userId || null,
             profileId: validated.profileId,
             blueprintId: validated.blueprintId || null,
             userBlueprintId: validated.userBlueprintId || null,
@@ -337,7 +347,16 @@ router.post("/generate", async (req, res) => {
             warnings: result.warnings,
         });
 
-        await storage.incrementRateLimit(rateLimitKey);
+        // Track usage for logged-in users (powers plan limits and usage dashboard)
+        if (userId) {
+            await storage.logUsage(userId, "prompt", {
+                filterCount: Object.keys(validated.filters || {}).length,
+                hasGeminiGems: Array.isArray(validated.geminiGems) && validated.geminiGems.length > 0,
+            });
+        } else {
+            // Anonymous: keep IP rate-limit accounting
+            await storage.incrementRateLimit(rateLimitKey);
+        }
 
         // Include Character Pack if generated
         const response: Record<string, unknown> = { ...savedPrompt };
