@@ -42,8 +42,8 @@ export function Header() {
     { href: "/image-studio", label: t.nav.imageStudio, icon: Image },
     { href: "/library", label: t.nav.library, icon: Library },
     { href: "/history", label: t.nav.history, icon: History },
-    { href: "/gallery/images", label: t.nav.imageStudio === "Image Studio" ? "Image Gallery" : "Galeria de Imagens", icon: ImageIcon },
-    { href: "/gallery/videos", label: t.nav.imageStudio === "Image Studio" ? "Video Gallery" : "Galeria de Vídeos", icon: Video },
+    { href: "/gallery/images", label: t.nav.imageStudio === "Image Studio" ? "Images" : "Imagens", icon: ImageIcon },
+    { href: "/gallery/videos", label: t.nav.imageStudio === "Image Studio" ? "Videos" : "Videos", icon: Video },
   ];
 
   return (
