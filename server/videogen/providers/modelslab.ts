@@ -221,6 +221,50 @@ export class ModelsLabProvider implements VideoProvider {
     return this.parseCreateResponse(data);
   }
 
+  private sanitizeOutputUrls(urls: string[] | undefined | null): string[] {
+    if (!urls || urls.length === 0) return [];
+
+    const cleaned: string[] = [];
+    for (const raw of urls) {
+      const u = (raw || "").trim();
+      if (!u) continue;
+
+      // Never treat API endpoints as playable media URLs
+      if (u.includes("/api/") || u.includes("video-fusion/image-to-video") || u.includes("video-fusion/fetch")) {
+        continue;
+      }
+
+      try {
+        const parsed = new URL(u);
+        const host = parsed.hostname.toLowerCase();
+        const path = parsed.pathname.toLowerCase();
+
+        // Block obvious API routes, allow typical asset/CDN hosts
+        if (path.includes("/api/")) continue;
+
+        const looksLikeVideoFile =
+          path.endsWith(".mp4") || path.endsWith(".webm") || path.endsWith(".mov") || path.endsWith(".m4v");
+
+        const isKnownAssetHost =
+          host === "assets.modelslab.com" ||
+          host.endsWith(".assets.modelslab.com") ||
+          host === "modelslab.com" ||
+          host.endsWith(".r2.dev") ||
+          host === "stablediffusionapi.com" ||
+          host.endsWith(".stablediffusionapi.com");
+
+        if (looksLikeVideoFile || isKnownAssetHost) {
+          cleaned.push(u);
+        }
+      } catch {
+        // If it's not a valid URL, ignore.
+        continue;
+      }
+    }
+
+    return cleaned;
+  }
+
   private parseCreateResponse(data: ModelsLabResponse): CreateJobResult {
     if (data.status === "error") {
       return {
@@ -231,10 +275,19 @@ export class ModelsLabProvider implements VideoProvider {
     }
 
     if (data.status === "success" && data.output && data.output.length > 0) {
+      const outputs = this.sanitizeOutputUrls(data.output);
+      if (outputs.length === 0) {
+        return {
+          success: false,
+          status: "error",
+          error: "Provider returned a success status but no valid media output URLs.",
+        };
+      }
       return {
         success: true,
         status: "success",
         providerJobId: data.id?.toString(),
+        outputs,
       };
     }
 
@@ -283,10 +336,12 @@ export class ModelsLabProvider implements VideoProvider {
 
   private parseFetchResponse(data: ModelsLabResponse): JobStatusResult {
     const status = this.mapStatus(data.status);
+    const outputs = this.sanitizeOutputUrls(data.output || []);
 
     return {
       status,
-      outputs: data.output || [],
+      // Some provider responses can include API URLs by mistake; never persist those as playable video URLs.
+      outputs,
       eta: data.eta,
       rawMeta: data as unknown as Record<string, unknown>,
       error: status === "error" ? data.message : undefined,

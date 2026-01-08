@@ -120,6 +120,7 @@ export async function createVideoJob(
         status: result.status,
         providerJobId: result.providerJobId || null,
         eta: result.eta || null,
+        resultUrls: result.outputs && result.outputs.length > 0 ? result.outputs : undefined,
         nextPollAt: result.status === "processing" ? new Date(Date.now() + 10000) : null,
       });
       return { success: true, jobId: job.id };

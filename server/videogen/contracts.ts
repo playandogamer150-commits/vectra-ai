@@ -24,6 +24,7 @@ export interface CreateJobResult {
   providerJobId?: string;
   status: VideoJobStatus;
   eta?: number;
+  outputs?: string[];
   error?: string;
 }
 
