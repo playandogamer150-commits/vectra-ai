@@ -17,6 +17,7 @@ import videoGenRouter from "./video-generation";
 import { imagesRouter, videosRouter, proxyRouter } from "./gallery";
 import presetsRouter from "./presets";
 import stripeRouter from "./stripe-routes";
+import { waitForDbReady } from "../lib/db-wait";
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
     // Set up authentication first
@@ -24,6 +25,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     registerAuthRoutes(app);
 
     // Initialize database with default data
+    await waitForDbReady({ maxWaitMs: 90000 });
     await seedDatabase();
 
     // Initialize Compiler Data
