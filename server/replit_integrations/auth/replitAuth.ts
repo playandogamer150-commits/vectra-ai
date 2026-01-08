@@ -285,7 +285,12 @@ export async function setupAuth(app: Express) {
   // Local Development Logic -------------------------------------------------------
   // CRITICAL: We strictly check NODE_ENV. This MUST NOT run in production.
 
-  const isDevelopment = process.env.NODE_ENV !== "production" && !process.env.REPL_ID;
+  // IMPORTANT: Only enable dev-only auto-login when explicitly running in development.
+  // Replit Deployments may not set NODE_ENV consistently; we must never enable this in production.
+  const isDevelopment =
+    process.env.NODE_ENV === "development" &&
+    process.env.REPLIT_DEPLOYMENT !== "1" &&
+    process.env.RAILWAY_ENVIRONMENT !== "production";
 
   if (isDevelopment) {
     console.log("[auth] Local development detected (NODE_ENV != production)");

@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Check, Crown, Sparkles, Building2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getQueryFn } from "@/lib/queryClient";
 
 interface UserProfile {
   id: string;
@@ -40,8 +41,9 @@ export default function PricingPage() {
   const [autoPixTriggered, setAutoPixTriggered] = useState(false);
 
   // Fetch user profile
-  const { data: profile, isLoading: isLoadingProfile } = useQuery<UserProfile>({
+  const { data: profile, isLoading: isLoadingProfile } = useQuery<UserProfile | null>({
     queryKey: ["/api/profile"],
+    queryFn: getQueryFn({ on401: "returnNull" }),
   });
 
   // Fetch products from Stripe (dynamic)
