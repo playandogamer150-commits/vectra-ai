@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { I18nProvider } from "@/lib/i18n";
 import { Header } from "@/components/header";
 import { CookieConsent } from "@/components/cookie-consent";
+import { DevelopmentBanner } from "@/components/development-banner";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import LandingPage from "@/pages/landing";
 import PricingPage from "@/pages/pricing";
@@ -55,6 +56,7 @@ function AppContent() {
 
   return (
     <>
+      <DevelopmentBanner topOffsetPx={showHeader ? 56 : 0} />
       {showHeader && <Header />}
       <Router />
       <Toaster />

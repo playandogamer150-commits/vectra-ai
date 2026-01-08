@@ -177,6 +177,13 @@ const translations = {
       cancel: "Cancel",
       close: "Close",
     },
+    devBanner: {
+      ariaLabel: "Product notice",
+      verifiedLabel: "Verified • Vectra",
+      title: "Vectra AI is in development.",
+      message: "We ship improvements daily. If you notice any issues, please report them to support.",
+      supportCta: "Contact support",
+    },
     loraStudio: {
       title: "LoRA Training Studio",
       subtitle: "Train custom AI models with your own images",
@@ -653,6 +660,13 @@ const translations = {
       save: "Salvar",
       cancel: "Cancelar",
       close: "Fechar",
+    },
+    devBanner: {
+      ariaLabel: "Aviso do produto",
+      verifiedLabel: "Verificado • Vectra",
+      title: "Vectra AI em desenvolvimento.",
+      message: "Estamos lançando melhorias diariamente. Se notar qualquer problema, reporte ao nosso suporte.",
+      supportCta: "Falar com o suporte",
     },
     loraStudio: {
       title: "Estúdio de Treinamento LoRA",
