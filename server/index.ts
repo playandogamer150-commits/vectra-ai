@@ -61,6 +61,7 @@ export { log };
 
 async function initStripe() {
   const databaseUrl = process.env.DATABASE_URL;
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!databaseUrl) {
     log('DATABASE_URL not found - skipping Stripe initialization', 'stripe');
@@ -68,6 +69,14 @@ async function initStripe() {
   }
 
   try {
+    // If a manual webhook secret is configured, do NOT run stripe-replit-sync boot logic.
+    // In production (vectraai.io), Stripe should be integrated via STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET.
+    // This avoids crashes caused by stale/orphaned managed webhook endpoint IDs inside stripe-replit-sync.
+    if (webhookSecret) {
+      log('STRIPE_WEBHOOK_SECRET set - skipping stripe-replit-sync initialization', 'stripe');
+      return;
+    }
+
     log('Checking Stripe credentials...', 'stripe');
     const stripeSync = await getStripeSync();
     log(`Stripe sync status: ${stripeSync ? 'ENABLED' : 'DISABLED'}`, 'stripe');

@@ -16,12 +16,11 @@ export class WebhookHandlers {
       );
     }
 
-    const sync = await getStripeSync();
-    await sync.processWebhook(payload, signature);
-
     const stripe = await getUncachableStripeClient();
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+    // If STRIPE_WEBHOOK_SECRET is configured, we run the manual webhook handler only.
+    // This avoids dependency on stripe-replit-sync (which can fail on stale/orphaned managed webhook IDs).
     if (webhookSecret && stripe) {
       try {
         const event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
@@ -29,6 +28,15 @@ export class WebhookHandlers {
       } catch (err) {
         log(`Webhook event parsing failed: ${err}`, 'stripe', 'warn');
       }
+      return;
+    }
+
+    // Fallback: Replit-managed mode (no STRIPE_WEBHOOK_SECRET). Let stripe-replit-sync validate/process.
+    const sync = await getStripeSync();
+    if (sync) {
+      await sync.processWebhook(payload, signature);
+    } else {
+      throw new Error("Stripe sync not configured (missing STRIPE_WEBHOOK_SECRET and StripeSync unavailable)");
     }
   }
 
