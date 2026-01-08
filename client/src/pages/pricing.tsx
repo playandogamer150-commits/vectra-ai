@@ -458,6 +458,13 @@ export default function PricingPage() {
                         </div>
                         <h3 className="text-lg font-medium mb-1">{plan.name}</h3>
                         <p className="text-sm text-muted-foreground mb-4">{plan.description}</p>
+                        {plan.id === "pro" && (
+                          <div className="flex items-center justify-center gap-2 mb-3">
+                            <Badge variant="secondary" className="text-[11px] h-6 px-2">
+                              {language === "pt-BR" ? "Pix • 30 dias" : "Pix • 30 days"}
+                            </Badge>
+                          </div>
+                        )}
                         <div className="flex items-baseline justify-center gap-1">
                           <span className="text-4xl font-medium tracking-tight">{plan.price}</span>
                           {plan.period && (
@@ -518,6 +525,14 @@ export default function PricingPage() {
                             >
                               {language === "pt-BR" ? "Assinar via Pix (30 dias)" : "Pay with Pix (30 days)"}
                             </Button>
+                          )}
+
+                          {plan.id === "pro" && (
+                            <p className="text-xs text-muted-foreground text-center leading-snug">
+                              {language === "pt-BR"
+                                ? "Pré‑pago por 30 dias. Renovação manual via Pix ou migre para cartão a qualquer momento."
+                                : "Prepaid for 30 days. Renew manually via Pix or switch to card anytime."}
+                            </p>
                           )}
                         </div>
                       ) : (
