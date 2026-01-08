@@ -112,6 +112,70 @@ router.post("/checkout", async (req, res) => {
     }
 });
 
+// PIX pre-paid checkout (30 days)
+router.post("/checkout-pix", async (req, res) => {
+    try {
+        const userId = requireAuth(req, res);
+        console.log("[Stripe Checkout PIX] Request received from UserID:", userId);
+        if (!userId) return;
+
+        const user = req.user as any;
+
+        let appUser = await storage.getAppUser(userId);
+        if (appUser?.plan === "pro") {
+            return res.status(400).json({ error: "Already subscribed to Pro" });
+        }
+
+        let customerId = appUser?.stripeCustomerId;
+        const userEmail = user?.claims?.email || `${user?.claims?.name || 'user'}@vectra.temp`;
+        const userName = user?.claims?.name || user?.claims?.sub || "User";
+
+        if (!customerId) {
+            try {
+                const customer = await stripeService.createCustomer(
+                    userEmail,
+                    userId,
+                    userName
+                );
+                customerId = customer.id;
+
+                if (appUser) {
+                    await stripeService.updateUserStripeInfo(userId, { stripeCustomerId: customerId });
+                } else {
+                    await storage.createAppUserFromReplit(userId, userName, customerId);
+                }
+                appUser = await storage.getAppUser(userId);
+            } catch (err: any) {
+                console.error("Failed to create Stripe customer:", err);
+                return res.status(500).json({ error: "Failed to initialize billing account: " + err.message });
+            }
+        }
+
+        if (!customerId) {
+            return res.status(500).json({ error: "Failed to resolve customer ID" });
+        }
+
+        const baseUrl = `${req.protocol}://${req.get('host')}`;
+        const locale = req.body.locale || req.headers['accept-language']?.split(',')[0] || 'pt-BR';
+        const successUrl = req.body.successUrl || `${baseUrl}/pricing?success=true&pix=true`;
+        const cancelUrl = req.body.cancelUrl || `${baseUrl}/pricing?canceled=true&pix=true`;
+
+        const session = await stripeService.createPix30dCheckoutSession(
+            customerId,
+            successUrl,
+            cancelUrl,
+            locale,
+            userId
+        );
+
+        console.log("[Stripe Checkout PIX] Session created:", session.id, "URL:", session.url);
+        res.json({ sessionId: session.id, url: session.url });
+    } catch (error: any) {
+        console.error("[Stripe Checkout PIX] Error creating checkout session:", error);
+        res.status(500).json({ error: error.message || "Failed to create checkout session" });
+    }
+});
+
 router.post("/portal", async (req, res) => {
     try {
         const userId = requireAuth(req, res);

@@ -250,6 +250,68 @@ export class WebhookHandlers {
         log(`[Checkout] Error processing checkout completion: ${err.message}`, 'stripe', 'error');
       }
     } else {
+      // PIX 30d pre-paid (one-time payment)
+      const purchaseType = session.metadata?.purchaseType;
+      const isPix30d = purchaseType === "pix_30d" || (session.mode === "payment" && session.payment_method_types?.includes("pix"));
+
+      if (isPix30d) {
+        try {
+          // Only grant after payment is confirmed
+          if (session.payment_status !== "paid") {
+            log(`[Checkout][PIX] Session ${session.id} completed but payment_status=${session.payment_status}`, 'stripe', 'warn');
+            return;
+          }
+
+          const now = new Date();
+          const cycleEnd = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000));
+
+          // Prefer update by userId (metadata), fallback to customerId
+          let updated = false;
+          if (userId) {
+            const result = await db.update(appUsers)
+              .set({
+                stripeCustomerId: customerId || null,
+                stripeSubscriptionId: null,
+                plan: "pro",
+                planStatus: "active" as any,
+                billingCycleEnd: cycleEnd,
+                updatedAt: now,
+              })
+              .where(eq(appUsers.id, userId))
+              .returning();
+
+            if (result.length > 0) {
+              updated = true;
+              log(`[Checkout][PIX] Activated Pro (30d) for user ${userId}`, 'stripe', 'info');
+            }
+          }
+
+          if (!updated && customerId) {
+            const result = await db.update(appUsers)
+              .set({
+                stripeCustomerId: customerId,
+                stripeSubscriptionId: null,
+                plan: "pro",
+                planStatus: "active" as any,
+                billingCycleEnd: cycleEnd,
+                updatedAt: now,
+              })
+              .where(eq(appUsers.stripeCustomerId, customerId))
+              .returning();
+
+            if (result.length > 0) {
+              log(`[Checkout][PIX] Activated Pro (30d) for customer ${customerId}`, 'stripe', 'info');
+            } else {
+              log(`[Checkout][PIX] No user found for customerId ${customerId}`, 'stripe', 'warn');
+            }
+          }
+          return;
+        } catch (err: any) {
+          log(`[Checkout][PIX] Error processing PIX completion: ${err.message}`, 'stripe', 'error');
+          return;
+        }
+      }
+
       log(`[Checkout] No subscription ID found in checkout session ${session.id}`, 'stripe', 'warn');
     }
   }

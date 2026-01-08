@@ -48,6 +48,50 @@ export class StripeService {
     });
   }
 
+  /**
+   * PIX pre-paid (30 days) - one-time payment.
+   * This keeps the monthly subscription via card intact, while offering a PIX option.
+   */
+  async createPix30dCheckoutSession(
+    customerId: string,
+    successUrl: string,
+    cancelUrl: string,
+    locale?: string,
+    userId?: string,
+  ) {
+    const stripe = await getUncachableStripeClient();
+    if (!stripe) throw new Error("Stripe disabled");
+    const checkoutLocale = locale?.startsWith('en') ? 'en' : 'pt-BR';
+
+    // R$ 59,90 in cents (BRL has 2 decimals in Stripe)
+    const unitAmount = 5990;
+
+    return await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: "payment",
+      payment_method_types: ["pix"],
+      line_items: [
+        {
+          price_data: {
+            currency: "brl",
+            unit_amount: unitAmount,
+            product_data: {
+              name: "Vectra AI Pro (Pix • 30 dias)",
+              description: "Acesso Pro por 30 dias (pré-pago via Pix).",
+            },
+          },
+          quantity: 1,
+        },
+      ],
+      success_url: successUrl,
+      cancel_url: cancelUrl,
+      locale: checkoutLocale,
+      expires_at: Math.floor(Date.now() / 1000) + (30 * 60), // 30 min
+      metadata: userId ? { userId, customerId, purchaseType: "pix_30d" } : { customerId, purchaseType: "pix_30d" },
+      payment_intent_data: userId ? { metadata: { userId, customerId, purchaseType: "pix_30d" } } : { metadata: { customerId, purchaseType: "pix_30d" } },
+    });
+  }
+
   async createCustomerPortalSession(customerId: string, returnUrl: string) {
     const stripe = await getUncachableStripeClient();
     if (!stripe) throw new Error("Stripe disabled");

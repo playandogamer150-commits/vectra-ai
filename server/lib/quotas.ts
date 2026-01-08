@@ -34,7 +34,21 @@ export async function checkImageQuotaAndModel(userId: string): Promise<ImageQuot
     }
 
     const appUser = await storage.getAppUser(userId);
-    const isPro = appUser?.plan === "pro";
+    const now = Date.now();
+    const isPrepaidExpired =
+        appUser?.plan === "pro" &&
+        !appUser?.stripeSubscriptionId &&
+        !!appUser?.billingCycleEnd &&
+        new Date(appUser.billingCycleEnd as any).getTime() <= now;
+
+    // If a PIX pre-paid Pro expired, downgrade to free (best-effort)
+    if (isPrepaidExpired) {
+        try {
+            await storage.updateAppUser(userId, { plan: "free", planStatus: "canceled" as any });
+        } catch { }
+    }
+
+    const isPro = appUser?.plan === "pro" && !isPrepaidExpired;
     const isAdmin = appUser?.isAdmin === 1;
 
     // Admins have unlimited access with HQ model
@@ -96,7 +110,20 @@ export async function checkGenerationLimits(userId: string, type: "prompt" | "im
     }
 
     const appUser = await storage.getAppUser(userId);
-    const isPro = appUser?.plan === "pro";
+    const now = Date.now();
+    const isPrepaidExpired =
+        appUser?.plan === "pro" &&
+        !appUser?.stripeSubscriptionId &&
+        !!appUser?.billingCycleEnd &&
+        new Date(appUser.billingCycleEnd as any).getTime() <= now;
+
+    if (isPrepaidExpired) {
+        try {
+            await storage.updateAppUser(userId, { plan: "free", planStatus: "canceled" as any });
+        } catch { }
+    }
+
+    const isPro = appUser?.plan === "pro" && !isPrepaidExpired;
     const isAdmin = appUser?.isAdmin === 1;
 
     // Admins have unlimited access

@@ -37,6 +37,7 @@ export default function PricingPage() {
   const [, setLocation] = useLocation();
   const [isUpgrading, setIsUpgrading] = useState(false);
   const [autoCheckoutTriggered, setAutoCheckoutTriggered] = useState(false);
+  const [autoPixTriggered, setAutoPixTriggered] = useState(false);
 
   // Fetch user profile
   const { data: profile, isLoading: isLoadingProfile } = useQuery<UserProfile>({
@@ -69,11 +70,18 @@ export default function PricingPage() {
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.get("success") === "true") {
+      const isPix = searchParams.get("pix") === "true";
       toast({
-        title: language === "pt-BR" ? "Assinatura ativada!" : "Subscription activated!",
+        title: language === "pt-BR"
+          ? (isPix ? "Pro ativado via Pix!" : "Assinatura ativada!")
+          : (isPix ? "Pro activated via Pix!" : "Subscription activated!"),
         description: language === "pt-BR"
-          ? "Bem-vindo ao Vectra AI Pro! Aproveite todos os recursos."
-          : "Welcome to Vectra AI Pro! Enjoy all features.",
+          ? (isPix
+            ? "Seu Pro foi ativado por 30 dias. Você pode renovar via Pix ou migrar para cartão a qualquer momento."
+            : "Bem-vindo ao Vectra AI Pro! Aproveite todos os recursos.")
+          : (isPix
+            ? "Your Pro is active for 30 days. You can renew via Pix or switch to card anytime."
+            : "Welcome to Vectra AI Pro! Enjoy all features."),
       });
       window.history.replaceState({}, "", "/pricing");
     }
@@ -148,13 +156,43 @@ export default function PricingPage() {
     }
   }, [profile, isLoadingProfile, language, toast]);
 
+  const handlePixUpgrade = useCallback(async () => {
+    if (isLoadingProfile) return;
+
+    if (!profile?.id) {
+      const redirectUrl = encodeURIComponent("/pricing?checkout=pix");
+      window.location.href = `/api/auth/github?redirect=${redirectUrl}`;
+      return;
+    }
+
+    setIsUpgrading(true);
+    try {
+      const response = await apiRequest("POST", "/api/stripe/checkout-pix", { locale: language });
+      const data = await response.json();
+      if (data.error) throw new Error(data.error);
+      if (data.url) window.location.href = data.url;
+    } catch (error: any) {
+      toast({
+        title: language === "pt-BR" ? "Erro" : "Error",
+        description: error?.message || (language === "pt-BR"
+          ? "Não foi possível iniciar o checkout via Pix. Tente novamente."
+          : "Could not start Pix checkout. Please try again."),
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpgrading(false);
+    }
+  }, [profile, isLoadingProfile, language, toast]);
+
   // Auto-trigger checkout after login if user was trying to upgrade
   useEffect(() => {
     // Prevent multiple triggers
     if (autoCheckoutTriggered) return;
     
     const searchParams = new URLSearchParams(window.location.search);
-    const autoCheckout = searchParams.get("checkout") === "true";
+    const checkoutParam = searchParams.get("checkout");
+    const autoCheckout = checkoutParam === "true";
+    const autoPix = checkoutParam === "pix";
     
     // Only auto-trigger if user is logged in, products are loaded, and we have a Pro product
     if (autoCheckout && profile?.id && !isLoadingProfile && !isLoadingProducts && stripeProducts && !isUpgrading) {
@@ -172,7 +210,13 @@ export default function PricingPage() {
         handleUpgrade(proProduct.priceId);
       }
     }
-  }, [profile, isLoadingProfile, isLoadingProducts, stripeProducts, handleUpgrade, autoCheckoutTriggered, isUpgrading]);
+
+    if (autoPix && !autoPixTriggered && profile?.id && !isLoadingProfile && !isUpgrading) {
+      setAutoPixTriggered(true);
+      window.history.replaceState({}, "", "/pricing");
+      handlePixUpgrade();
+    }
+  }, [profile, isLoadingProfile, isLoadingProducts, stripeProducts, handleUpgrade, autoCheckoutTriggered, isUpgrading, autoPixTriggered, handlePixUpgrade]);
 
   // Find Pro product from Stripe
   // Prefer explicit metadata (plan=pro) or name match, otherwise fall back to the first valid recurring paid price.
@@ -449,19 +493,33 @@ export default function PricingPage() {
                             : (language === "pt-BR" ? "Indisponível" : "Unavailable")}
                         </Button>
                       ) : plan.priceId ? (
-                        <Button
-                          variant={plan.variant}
-                          className="w-full"
-                          onClick={() => handleUpgrade(plan.priceId!)}
-                          disabled={isUpgrading || isLoadingProfile}
-                          data-testid={`button-pricing-${plan.id}`}
-                        >
-                          {isUpgrading ? (
-                            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {language === "pt-BR" ? "Carregando..." : "Loading..."}</>
-                          ) : (
-                            plan.cta
+                        <div className="space-y-2">
+                          <Button
+                            variant={plan.variant}
+                            className="w-full"
+                            onClick={() => handleUpgrade(plan.priceId!)}
+                            disabled={isUpgrading || isLoadingProfile}
+                            data-testid={`button-pricing-${plan.id}`}
+                          >
+                            {isUpgrading ? (
+                              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {language === "pt-BR" ? "Carregando..." : "Loading..."}</>
+                            ) : (
+                              plan.cta
+                            )}
+                          </Button>
+
+                          {plan.id === "pro" && (
+                            <Button
+                              variant="outline"
+                              className="w-full"
+                              onClick={handlePixUpgrade}
+                              disabled={isUpgrading || isLoadingProfile}
+                              data-testid="button-pricing-pro-pix"
+                            >
+                              {language === "pt-BR" ? "Assinar via Pix (30 dias)" : "Pay with Pix (30 days)"}
+                            </Button>
                           )}
-                        </Button>
+                        </div>
                       ) : (
                         <Link href={plan.href || "/"}>
                           <Button
