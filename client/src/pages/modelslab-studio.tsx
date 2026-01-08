@@ -365,12 +365,16 @@ export default function ModelsLabStudioPage() {
   // Result state
   const [result, setResult] = useState<ModelsLabResponse | null>(null);
   const [isPolling, setIsPolling] = useState(false);
+  const [imageFetchUrl, setImageFetchUrl] = useState<string | null>(null);
   const isCancelledRef = useRef(false);
   const promptAbortRef = useRef<AbortController | null>(null);
   const imageAbortRef = useRef<AbortController | null>(null);
   const text2ImgAbortRef = useRef<AbortController | null>(null);
   const pollAbortRef = useRef<AbortController | null>(null);
   const refineAbortRef = useRef<AbortController | null>(null);
+
+  const LAST_IMAGE_SESSION_KEY = "vectra-studio-last-image-session";
+  const LAST_IMAGE_SESSION_TTL_HOURS = 24;
 
   // HQ quota exhausted popup state
   const [showHqExhaustedPopup, setShowHqExhaustedPopup] = useState(false);
@@ -1477,17 +1481,20 @@ export default function ModelsLabStudioPage() {
 
       if (data.status === "processing" && data.fetch_result) {
         setIsPolling(true);
+        setImageFetchUrl(data.fetch_result);
         if (!isCancelledRef.current) {
           pollForResult(data.fetch_result);
         }
       } else if (data.status === "success" && data.output) {
         setResult(data);
+        setImageFetchUrl(null);
         const modelLabel = data.imageQuality === "hq" ? "Nano Banana Pro" : "Realistic Vision 5.1";
         toast({
           title: t.modelslab.success,
           description: `${t.modelslab.imageGenerated} (${modelLabel})`,
         });
       } else if (data.status === "error") {
+        setImageFetchUrl(null);
         toast({
           title: t.modelslab.error,
           description: data.message || t.modelslab.generationFailed,
@@ -1557,11 +1564,13 @@ export default function ModelsLabStudioPage() {
 
       if (data.status === "processing" && data.fetch_result) {
         setIsPolling(true);
+        setImageFetchUrl(data.fetch_result);
         if (!isCancelledRef.current) {
           pollForResult(data.fetch_result);
         }
       } else if (data.status === "success" && data.output) {
         setResult(data);
+        setImageFetchUrl(null);
         const modelLabel = data.imageQuality === "hq" ? "Nano Banana Pro" : "Realistic Vision 5.1";
         toast({
           title: t.modelslab.success,
@@ -1579,6 +1588,7 @@ export default function ModelsLabStudioPage() {
         });
 
       } else if (data.status === "error") {
+        setImageFetchUrl(null);
         toast({
           title: t.modelslab.error,
           description: data.message || t.modelslab.generationFailed,
@@ -1667,6 +1677,7 @@ export default function ModelsLabStudioPage() {
   const cancelGeneration = () => {
     isCancelledRef.current = true;
     setIsPolling(false);
+    setImageFetchUrl(null);
     promptAbortRef.current?.abort();
     imageAbortRef.current?.abort();
     text2ImgAbortRef.current?.abort();
@@ -1682,6 +1693,16 @@ export default function ModelsLabStudioPage() {
       description: t.modelslab.cancelledDescription || "You can now adjust your settings and try again.",
     });
   };
+
+  const clearImageResult = useCallback(() => {
+    setResult(null);
+    setIsPolling(false);
+    setImageFetchUrl(null);
+    pollAbortRef.current?.abort();
+    try {
+      sessionStorage.removeItem(LAST_IMAGE_SESSION_KEY);
+    } catch { }
+  }, []);
 
   const pollForResult = async (fetchUrl: string) => {
     let attempts = 0;
@@ -1707,6 +1728,7 @@ export default function ModelsLabStudioPage() {
         if (data.status === "success" && data.output) {
           setResult(data);
           setIsPolling(false);
+          setImageFetchUrl(null);
           toast({
             title: t.modelslab.success,
             description: t.modelslab.imageGenerated,
@@ -1716,6 +1738,7 @@ export default function ModelsLabStudioPage() {
           setTimeout(poll, 5000);
         } else if (data.status === "processing" && attempts >= maxAttempts) {
           setIsPolling(false);
+          setImageFetchUrl(null);
           toast({
             title: t.modelslab.error,
             description: t.modelslab.timeout,
@@ -1723,6 +1746,7 @@ export default function ModelsLabStudioPage() {
           });
         } else if (data.status === "error") {
           setIsPolling(false);
+          setImageFetchUrl(null);
           toast({
             title: t.modelslab.error,
             description: data.message || t.modelslab.generationFailed,
@@ -1732,6 +1756,7 @@ export default function ModelsLabStudioPage() {
       } catch {
         if (isCancelledRef.current) return;
         setIsPolling(false);
+        setImageFetchUrl(null);
         toast({
           title: t.modelslab.error,
           description: t.modelslab.pollingFailed,
@@ -1742,6 +1767,73 @@ export default function ModelsLabStudioPage() {
 
     poll();
   };
+
+  // Persist last generated image output + in-flight polling state (so navigating to gallery won't lose it)
+  useEffect(() => {
+    try {
+      const payload = {
+        version: 1,
+        timestamp: new Date().toISOString(),
+        data: {
+          lastResult: result
+            ? {
+              status: result.status,
+              output: result.output,
+              generationTime: (result as any).generationTime,
+              imageQuality: (result as any).imageQuality,
+            }
+            : null,
+          inFlight: isPolling && imageFetchUrl
+            ? { fetchUrl: imageFetchUrl }
+            : null,
+        },
+      };
+      // Only persist if we have something meaningful
+      if ((payload.data.lastResult?.output && payload.data.lastResult.output.length > 0) || payload.data.inFlight) {
+        sessionStorage.setItem(LAST_IMAGE_SESSION_KEY, JSON.stringify(payload));
+      }
+    } catch {
+      // ignore
+    }
+  }, [result, isPolling, imageFetchUrl]);
+
+  // Restore last image output automatically on mount (and resume polling if there was a job in-flight)
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(LAST_IMAGE_SESSION_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      const savedAt = parsed?.timestamp ? new Date(parsed.timestamp) : null;
+      if (!savedAt || Number.isNaN(savedAt.getTime())) return;
+      const hoursDiff = (Date.now() - savedAt.getTime()) / (1000 * 60 * 60);
+      if (hoursDiff > LAST_IMAGE_SESSION_TTL_HOURS) {
+        sessionStorage.removeItem(LAST_IMAGE_SESSION_KEY);
+        return;
+      }
+
+      const lastResult = parsed?.data?.lastResult;
+      const inFlight = parsed?.data?.inFlight;
+
+      if (lastResult?.output?.length) {
+        setResult({
+          status: lastResult.status || "success",
+          output: lastResult.output,
+          generationTime: lastResult.generationTime,
+          ...(lastResult.imageQuality ? { imageQuality: lastResult.imageQuality } : {}),
+        } as any);
+      }
+
+      if (inFlight?.fetchUrl && typeof inFlight.fetchUrl === "string") {
+        setIsPolling(true);
+        setImageFetchUrl(inFlight.fetchUrl);
+        // resume polling
+        pollForResult(inFlight.fetchUrl);
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleFilterChange = (key: string, value: string) => {
     setActiveFilters((prev) => ({ ...prev, [key]: value }));
@@ -2523,6 +2615,18 @@ export default function ModelsLabStudioPage() {
           <div className="vectra-studio-card-header">
             <Sparkles className="w-4 h-4 vectra-studio-card-icon" />
             <span className="vectra-studio-card-title">{t.modelslab.outputTitle}</span>
+            {((result?.output && result.output.length > 0) || isPolling) && (
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={clearImageResult}
+                title={t.modelslab.close || "Close"}
+                className="ml-auto"
+                data-testid="button-close-image-result"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            )}
           </div>
           <div className="space-y-4">
             {result?.output && result.output.length > 0 ? (
