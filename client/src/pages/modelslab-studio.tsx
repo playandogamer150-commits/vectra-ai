@@ -366,6 +366,11 @@ export default function ModelsLabStudioPage() {
   const [result, setResult] = useState<ModelsLabResponse | null>(null);
   const [isPolling, setIsPolling] = useState(false);
   const isCancelledRef = useRef(false);
+  const promptAbortRef = useRef<AbortController | null>(null);
+  const imageAbortRef = useRef<AbortController | null>(null);
+  const text2ImgAbortRef = useRef<AbortController | null>(null);
+  const pollAbortRef = useRef<AbortController | null>(null);
+  const refineAbortRef = useRef<AbortController | null>(null);
 
   // HQ quota exhausted popup state
   const [showHqExhaustedPopup, setShowHqExhaustedPopup] = useState(false);
@@ -1242,6 +1247,10 @@ export default function ModelsLabStudioPage() {
   // Prompt Engine mutation
   const generatePromptMutation = useMutation({
     mutationFn: async () => {
+      isCancelledRef.current = false;
+      promptAbortRef.current?.abort();
+      const controller = new AbortController();
+      promptAbortRef.current = controller;
       const isUserBlueprint = blueprintTab === "custom" && selectedUserBlueprint;
       const res = await apiRequest("POST", "/api/generate", {
         profileId: selectedProfile,
@@ -1252,10 +1261,11 @@ export default function ModelsLabStudioPage() {
         subject,
         cinematicSettings: showCinematicPanel ? cinematicSettings : undefined,
         geminiGems: activeGems.length > 0 ? activeGems : undefined,
-      });
+      }, { signal: controller.signal });
       return res.json() as Promise<GeneratedPromptResult>;
     },
     onSuccess: (data) => {
+      if (isCancelledRef.current) return;
       // Invalidate usage cache to sync limits
       queryClient.invalidateQueries({ queryKey: ["/api/profile/usage"] });
 
@@ -1266,15 +1276,19 @@ export default function ModelsLabStudioPage() {
         description: t.modelslab.promptApplied || "Prompt applied to the textarea"
       });
     },
-    onError: (error: Error) => {
-      const errorMsg = error.message.toLowerCase();
+    onError: (error: any) => {
+      const msg = String(error?.message || error || "").toLowerCase();
+      if (isCancelledRef.current && (error?.name === "AbortError" || msg.includes("aborted") || msg.includes("abort"))) {
+        return;
+      }
+      const errorMsg = msg;
       if (errorMsg.includes("limit") || errorMsg.includes("premium") || errorMsg.includes("403")) {
         setUpgradeFeature("prompt");
         setShowUpgradeModal(true);
       } else {
         toast({
           title: t.modelslab.error,
-          description: error.message,
+          description: String(error?.message || error),
           variant: "destructive"
         });
       }
@@ -1284,6 +1298,11 @@ export default function ModelsLabStudioPage() {
   // Image generation mutation
   const generateImageMutation = useMutation({
     mutationFn: async () => {
+      isCancelledRef.current = false;
+      imageAbortRef.current?.abort();
+      const controller = new AbortController();
+      imageAbortRef.current = controller;
+
       if (generationMode === "img2img" && images.length === 0) {
         throw new Error(t.modelslab.noImages);
       }
@@ -1438,10 +1457,11 @@ export default function ModelsLabStudioPage() {
         preserveTattoos: cinematicSettings?.preserveTattoos,
         // Send the raw subject separately for priority extraction
         rawSubject: subject || undefined,
-      });
+      }, { signal: controller.signal });
       return res.json() as Promise<ModelsLabResponse>;
     },
     onSuccess: async (data) => {
+      if (isCancelledRef.current) return;
       // Invalidate usage cache to sync limits
       queryClient.invalidateQueries({ queryKey: ["/api/profile/usage"] });
 
@@ -1457,7 +1477,9 @@ export default function ModelsLabStudioPage() {
 
       if (data.status === "processing" && data.fetch_result) {
         setIsPolling(true);
-        pollForResult(data.fetch_result);
+        if (!isCancelledRef.current) {
+          pollForResult(data.fetch_result);
+        }
       } else if (data.status === "success" && data.output) {
         setResult(data);
         const modelLabel = data.imageQuality === "hq" ? "Nano Banana Pro" : "Realistic Vision 5.1";
@@ -1473,15 +1495,19 @@ export default function ModelsLabStudioPage() {
         });
       }
     },
-    onError: (error: Error) => {
-      const errorMsg = error.message.toLowerCase();
+    onError: (error: any) => {
+      const msg = String(error?.message || error || "").toLowerCase();
+      if (isCancelledRef.current && (error?.name === "AbortError" || msg.includes("aborted") || msg.includes("abort"))) {
+        return;
+      }
+      const errorMsg = msg;
       if (errorMsg.includes("limit") || errorMsg.includes("premium") || errorMsg.includes("403")) {
         setUpgradeFeature("image");
         setShowUpgradeModal(true);
       } else {
         toast({
           title: t.modelslab.error,
-          description: error.message,
+          description: String(error?.message || error),
           variant: "destructive",
         });
       }
@@ -1492,6 +1518,11 @@ export default function ModelsLabStudioPage() {
   // Uses 'subject' (raw user text) for pure text-to-image, or 'prompt' (compiled) if Prompt Engine is active
   const generateText2ImgMutation = useMutation({
     mutationFn: async () => {
+      isCancelledRef.current = false;
+      text2ImgAbortRef.current?.abort();
+      const controller = new AbortController();
+      text2ImgAbortRef.current = controller;
+
       // For text2img, prefer the manual prompt text if Prompt Engine is OFF
       // If Prompt Engine is ON, use the compiled prompt
       const textPrompt = usePromptEngine ? prompt : (prompt.trim() ? prompt : subject);
@@ -1506,10 +1537,11 @@ export default function ModelsLabStudioPage() {
         prompt: textPrompt,
         aspectRatio: cinematicSettings?.optics?.aspectRatio || aspectRatio,
         negativePrompt: "bad quality, blurry, distorted, low resolution, watermark, text, ugly, deformed",
-      });
+      }, { signal: controller.signal });
       return res.json() as Promise<ModelsLabResponse>;
     },
     onSuccess: async (data) => {
+      if (isCancelledRef.current) return;
       // Invalidate usage cache to sync limits
       queryClient.invalidateQueries({ queryKey: ["/api/profile/usage"] });
 
@@ -1525,7 +1557,9 @@ export default function ModelsLabStudioPage() {
 
       if (data.status === "processing" && data.fetch_result) {
         setIsPolling(true);
-        pollForResult(data.fetch_result);
+        if (!isCancelledRef.current) {
+          pollForResult(data.fetch_result);
+        }
       } else if (data.status === "success" && data.output) {
         setResult(data);
         const modelLabel = data.imageQuality === "hq" ? "Nano Banana Pro" : "Realistic Vision 5.1";
@@ -1552,15 +1586,19 @@ export default function ModelsLabStudioPage() {
         });
       }
     },
-    onError: (error: Error) => {
-      const errorMsg = error.message.toLowerCase();
+    onError: (error: any) => {
+      const msg = String(error?.message || error || "").toLowerCase();
+      if (isCancelledRef.current && (error?.name === "AbortError" || msg.includes("aborted") || msg.includes("abort"))) {
+        return;
+      }
+      const errorMsg = msg;
       if (errorMsg.includes("limit") || errorMsg.includes("premium") || errorMsg.includes("403")) {
         setUpgradeFeature("image");
         setShowUpgradeModal(true);
       } else {
         toast({
           title: t.modelslab.error,
-          description: error.message,
+          description: String(error?.message || error),
           variant: "destructive",
         });
       }
@@ -1577,6 +1615,11 @@ export default function ModelsLabStudioPage() {
 
   const refinePromptMutation = useMutation({
     mutationFn: async () => {
+      isCancelledRef.current = false;
+      refineAbortRef.current?.abort();
+      const controller = new AbortController();
+      refineAbortRef.current = controller;
+
       const inputPrompt = usePromptEngine ? subject : (prompt.trim() ? prompt : subject);
 
       if (!inputPrompt.trim()) {
@@ -1586,7 +1629,7 @@ export default function ModelsLabStudioPage() {
       const res = await apiRequest("POST", "/api/modelslab/refine-prompt", {
         prompt: inputPrompt,
         aspectRatio: cinematicSettings?.optics?.aspectRatio || aspectRatio,
-      });
+      }, { signal: controller.signal });
       try {
         return await res.json();
       } catch (e) {
@@ -1594,6 +1637,7 @@ export default function ModelsLabStudioPage() {
       }
     },
     onSuccess: (data) => {
+      if (isCancelledRef.current) return;
       setRefinedPromptData(data);
       // Update the correct field based on engine status
       if (usePromptEngine) {
@@ -1606,10 +1650,14 @@ export default function ModelsLabStudioPage() {
         description: `Tipo detectado: ${data.analysis.type}`,
       });
     },
-    onError: (error: Error) => {
+    onError: (error: any) => {
+      const msg = String(error?.message || error || "").toLowerCase();
+      if (isCancelledRef.current && (error?.name === "AbortError" || msg.includes("aborted") || msg.includes("abort"))) {
+        return;
+      }
       toast({
         title: t.modelslab.error,
-        description: error.message,
+        description: String(error?.message || error),
         variant: "destructive",
       });
     },
@@ -1619,6 +1667,16 @@ export default function ModelsLabStudioPage() {
   const cancelGeneration = () => {
     isCancelledRef.current = true;
     setIsPolling(false);
+    promptAbortRef.current?.abort();
+    imageAbortRef.current?.abort();
+    text2ImgAbortRef.current?.abort();
+    pollAbortRef.current?.abort();
+    refineAbortRef.current?.abort();
+    // Reset mutation loading states (prevents UI from staying stuck)
+    generateImageMutation.reset();
+    generateText2ImgMutation.reset();
+    generatePromptMutation.reset();
+    refinePromptMutation.reset();
     toast({
       title: t.modelslab.cancelled || "Generation cancelled",
       description: t.modelslab.cancelledDescription || "You can now adjust your settings and try again.",
@@ -1628,7 +1686,6 @@ export default function ModelsLabStudioPage() {
   const pollForResult = async (fetchUrl: string) => {
     let attempts = 0;
     const maxAttempts = 60;
-    isCancelledRef.current = false; // Reset cancelled state when starting
 
     const poll = async () => {
       // Check if cancelled before continuing
@@ -1637,7 +1694,9 @@ export default function ModelsLabStudioPage() {
       }
 
       try {
-        const res = await apiRequest("POST", "/api/modelslab/status", { fetchUrl });
+        const controller = new AbortController();
+        pollAbortRef.current = controller;
+        const res = await apiRequest("POST", "/api/modelslab/status", { fetchUrl }, { signal: controller.signal });
         const data = await res.json() as ModelsLabResponse;
 
         // Check again after fetch in case cancelled during request
@@ -2318,10 +2377,8 @@ export default function ModelsLabStudioPage() {
                       size="icon"
                       variant="outline"
                       onClick={() => {
-                        // Logic to pause/stop generation if supported, or just placeholder visually
                         if (generatePromptMutation.isPending) {
-                          // Example: Resetting mutation state to 'stop' the loading UI
-                          generatePromptMutation.reset();
+                          cancelGeneration();
                         }
                       }}
                       disabled={!generatePromptMutation.isPending}
