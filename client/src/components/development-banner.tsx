@@ -76,14 +76,7 @@ export function DevelopmentBanner({
             <BadgeCheck className="w-4 h-4 mr-1.5" />
             {t.devBanner?.verifiedLabel || "Verificado • Vectra"}
           </Badge>
-
-          <p className="min-w-0 flex-1 text-sm text-white/85 truncate">
-            <span className="font-semibold text-white/95">{t.devBanner?.title || "Vectra AI em desenvolvimento."}</span>{" "}
-            <span className="text-white/70">
-              {t.devBanner?.message ||
-                "Estamos lançando melhorias diariamente. Se notar qualquer problema, reporte ao nosso suporte."}
-            </span>
-          </p>
+          <div className="flex-1" />
 
           <Link href="/support" data-testid="development-banner-support-link">
             <button className="hidden sm:inline-flex items-center gap-1 text-xs text-white/75 hover:text-white transition-colors">
